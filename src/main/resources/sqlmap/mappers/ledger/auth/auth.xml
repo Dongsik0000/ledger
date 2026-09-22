@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.auth.dao.AuthDAO">
+
+    <select id="selectUserByUsername" parameterType="string" resultType="java.util.HashMap">
+        SELECT id, username, password_hash, pay_day, pay_day_adjust
+        FROM app_user
+        WHERE username = #{username}
+    </select>
+
+    <insert id="insertUser" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO app_user (username, password_hash)
+        VALUES (#{username}, #{passwordHash})
+    </insert>
+
+    <!-- 가입 시 기본 카테고리. group_name 은 "총 식비" 같은 묶음 집계용 -->
+    <insert id="insertDefaultCategories" parameterType="map">
+        INSERT INTO category (user_id, name, type, group_name, sort_order) VALUES
+        (#{id}, '식비',      'EXPENSE', '식비', 1),
+        (#{id}, '배달',      'EXPENSE', '식비', 2),
+        (#{id}, '카페/간식', 'EXPENSE', '식비', 3),
+        (#{id}, '장보기',    'EXPENSE', '식비', 4),
+        (#{id}, '교통',      'EXPENSE', NULL,   5),
+        (#{id}, '고정지출',  'EXPENSE', NULL,   6),
+        (#{id}, '저축',      'EXPENSE', NULL,   7),
+        (#{id}, '기타',      'EXPENSE', NULL,   8),
+        (#{id}, '급여',      'INCOME',  NULL,   1),
+        (#{id}, '기타',      'INCOME',  NULL,   2)
+    </insert>
+
+    <insert id="insertDefaultPaymentMethods" parameterType="map">
+        INSERT INTO payment_method (user_id, name, sort_order) VALUES
+        (#{id}, '신용카드', 1),
+        (#{id}, '체크카드', 2),
+        (#{id}, '계좌이체', 3),
+        (#{id}, '현금',     4)
+    </insert>
+</mapper>

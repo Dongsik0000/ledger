@@ -1,0 +1,334 @@
+@charset "UTF-8";
+/* 디자인 토큰 (design 프로젝트 common.css :root 그대로) */
+	:root {
+  /* ===========================
+      Design System - Colors
+     =========================== */
+
+  /* Primary */
+  --color-primary: #7C6FE0;
+  --color-primary-deep: #7C3FED;
+  --color-primary-light: #E8E0FF;
+  --color-primary-lavender: #B8A3FF;
+
+  /* Semantic */
+  --color-success: #10B981;
+  --color-danger: #E04343;
+  --color-warning: #F5A623;
+  --color-info: #F6D232;
+
+  /* 밝은 정보/경증 색상을 배지에서도 읽기 쉽게 쓰기 위한 전용 색상 */
+  --color-info-text: #c2a215;
+  --color-bg-info: #FFF9D6;
+
+  /* ===========================
+      Reusable Chart Colors
+     =========================== */
+
+  /* 공통 그래프 팔레트 */
+  --chart-color-primary: var(--color-primary-deep);
+  --chart-color-secondary: var(--color-success);
+  --chart-color-tertiary: var(--color-warning);
+  --chart-color-quaternary: #3B82F6;
+
+  /* 그래프 축, 격자, 트랙 및 데이터 포인트 */
+  --chart-color-grid: #ECECF3;
+  --chart-color-axis: #9A9AAC;
+  --chart-color-track: #F1F1F5;
+  --chart-color-point-border: #FFFFFF;
+  --chart-color-donut-mild: #FACC15;
+  --chart-color-donut-moderate: #F59E0B;
+  --chart-color-danger-accent: #FF5E5E;
+  --chart-color-region-high: #E64141;
+  --chart-color-region-warning: #FFA51E;
+
+  /* 위험 단계 그래프 */
+  --chart-color-normal: var(--color-success);
+  --chart-color-mild: var(--color-info);
+  --chart-color-moderate: var(--color-warning);
+  --chart-color-high-risk: var(--color-danger);
+
+  /* 통합 상태 추이 그래프 */
+  --chart-color-depression: var(--chart-color-quaternary);
+  --chart-color-stress: var(--chart-color-secondary);
+  --chart-color-hrv: var(--color-primary);
+  --chart-color-activity: var(--chart-color-tertiary);
+
+  /* Neutral */
+  --color-text-primary: #2D2D3A;
+  --color-text-secondary: #6C6D80;
+  --color-text-tertiary: #9CA3AF;
+  --color-border: #E8E8F1;
+  --color-white: #FFFFFF;
+  --color-bg-page: #FAFAFE;
+  --color-sidebar: #2D2A4A;
+
+  /* Alert Backgrounds */
+  --color-bg-danger: #FFF2F2;
+  --color-bg-warning: #FFF7E6;
+  
+ /* grey-color */ 
+  --grey-5:#f4f5f6;
+  --grey-10:#e6e8ea;
+  --grey-20:#cdd1d5;
+  --grey-30:#b1b8be;
+  --grey-40:#8a949e;
+  --grey-50:#6d7882;
+  --grey-60:#58616a;
+  --grey-70:#464c53;
+  --grey-80:#33363d;
+  --grey-90:#1e2124; /* base */
+  --grey-95:#131416;
+
+ /* Grey-Opacity   */
+  --greyOpacity50: rgba(0,23,51,0.02);
+  --greyOpacity100: rgba(2,32,71,0.05);
+  --greyOpacity200: rgba(0,27,55,0.1);
+  --greyOpacity300: rgba(0,29,58,0.18);
+  --greyOpacity400: rgba(0,25,54,0.31);
+  --greyOpacity500: rgba(3,24,50,0.46);
+  --greyOpacity600: rgba(0,19,43,0.58);
+  --greyOpacity700: rgba(3,18,40,0.7);
+  --greyOpacity800: rgba(0,12,30,0.8);
+  --greyOpacity900: rgba(2,9,19,0.91);
+  
+  
+  /* ===========================
+     ATEC Design System - Typography
+     =========================== */
+
+  /* Font Families */
+  --font-primary: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Font Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Font Sizes */
+  --font-size-display: 36px;
+  --font-size-h1: 28px;
+  --font-size-h2: 24px;
+  --font-size-h3: 20px;
+  --font-size-body-lg: 14px;
+  --font-size-body-md: 13px;
+  --font-size-body-sm: 12px;
+  --font-size-caption: 10px;
+
+  /* Line Heights */
+  --line-height-default: 150%;
+  --line-height-tight: 110%;
+
+  /* Letter Spacing */
+  --letter-spacing-default: -0.024em;
+  --letter-spacing-none: 0;
+ 
+ /* ============================ */
+
+  /*  Shadow */
+  --shadow-s: 0 0 4px 0 var(--greyOpacity100),0 4px 16px 0 var(--greyOpacity100);
+  --shadow-m: 0 8px 16px 0 var(--greyOpacity200),0 4px 8px 0 var(--greyOpacity100);
+  --shadow-l: 0 24px 40px 0 var(--greyOpacity50),0 16px 24px 0 var(--greyOpacity200),0 0 8px 0 var(--greyOpacity100);
+  
+}
+
+/* 공통 로딩 오버레이 + 공통 모달 (js/common/modal.js, common.js _loading 이 사용) — design style.css 1~198행 */
+
+/* ================================================================
+ * 공통 로딩 오버레이 (common.js _loading)
+ * 대상 영역의 레이아웃을 밀지 않고 처리 상태를 중앙에 표시한다.
+ * ================================================================ */
+.line-manage-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 9990;
+  display: grid;
+  place-items: center;
+  min-width: 100%;
+  min-height: 100%;
+  border-radius: inherit;
+  background: rgba(250, 250, 254, .78);
+  backdrop-filter: blur(3px);
+}
+
+.line-manage-loading-inner {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 28px;
+  border: 1px solid rgba(124, 111, 224, .16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 16px 40px rgba(45, 42, 74, .14);
+}
+
+.line-manage-loading .spinner-wrap {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+}
+
+.line-manage-loading .krds-spinner {
+  width: 32px;
+  height: 32px;
+  border: 4px solid var(--color-primary-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: common-loading-spin .8s linear infinite;
+}
+
+.line-manage-loading .loading-title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+}
+
+@keyframes common-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line-manage-loading .krds-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* ================================================================
+ * 공통 모달 (modal.js)
+ * 동적으로 생성되는 알림/경고/확인 모달을 화면 중앙에 고정한다.
+ * ================================================================ */
+.manage-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.manage-modal.is-open {
+  display: flex;
+}
+
+.manage-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 33, 36, .48);
+  backdrop-filter: blur(2px);
+}
+
+.manage-modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 400px);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-white);
+  box-shadow: 0 24px 60px rgba(45, 42, 74, .2);
+  color: var(--color-text-primary);
+}
+
+.route-error-demo-body {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 36px 32px 24px;
+  text-align: center;
+}
+
+.route-error-demo-icon {
+  position: relative;
+  width: 52px;
+  height: 46px;
+  margin-bottom: 20px;
+}
+
+.route-error-demo-icon::before {
+  position: absolute;
+  inset: 0;
+  background: var(--color-warning);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 46'%3E%3Cpath d='M26 2.5c2.2 0 4.2 1.2 5.3 3.1l18.5 32.1c2.2 3.8-.6 8.3-4.9 8.3H7.1c-4.3 0-7.1-4.5-4.9-8.3L20.7 5.6A6.1 6.1 0 0 1 26 2.5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 46'%3E%3Cpath d='M26 2.5c2.2 0 4.2 1.2 5.3 3.1l18.5 32.1c2.2 3.8-.6 8.3-4.9 8.3H7.1c-4.3 0-7.1-4.5-4.9-8.3L20.7 5.6A6.1 6.1 0 0 1 26 2.5Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  content: "";
+}
+
+.route-error-demo-icon span {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  width: 5px;
+  border-radius: 999px;
+  background: var(--color-white);
+  transform: translateX(-50%);
+}
+
+.route-error-demo-icon span:first-child {
+  top: 15px;
+  height: 15px;
+}
+
+.route-error-demo-icon span:last-child {
+  bottom: 8px;
+  height: 5px;
+}
+
+.common-warn-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.4;
+}
+
+.common-warn-desc {
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.manage-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 32px 32px;
+}
+
+.manage-modal-btn {
+  min-width: 120px;
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.manage-modal-btn.primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-white);
+}
+
+.manage-modal-btn.primary:hover {
+  border-color: var(--color-primary-deep);
+  background: var(--color-primary-deep);
+}
+
+.manage-modal-btn:focus-visible {
+  outline: 3px solid rgba(124, 111, 224, .3);
+  outline-offset: 2px;
+}
+
+/* 공통 버튼: 클릭 가능한 버튼은 손 모양, 비활성 버튼은 사용 불가 커서로 표시한다. */

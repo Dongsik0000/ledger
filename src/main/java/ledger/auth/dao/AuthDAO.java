@@ -1,0 +1,31 @@
+package ledger.auth.dao;
+
+import jakarta.annotation.Resource;
+import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.Map;
+
+@Repository("authDAO")
+public class AuthDAO {
+
+    @Resource(name = "sqlSession-ledger-postgre")
+    private SqlSessionTemplate sqlSession;
+
+    public static final String SQL_PATH = "ledger.auth.dao.AuthDAO";
+
+    public Map<String, Object> selectUserByUsername(String username) {
+        return sqlSession.selectOne(SQL_PATH + ".selectUserByUsername", username);
+    }
+
+    // param: username, passwordHash. 실행 후 param.id 에 생성된 키가 들어간다
+    public int insertUser(Map<String, Object> param) {
+        return sqlSession.insert(SQL_PATH + ".insertUser", param);
+    }
+
+    // param.id 사용자에게 기본 카테고리/결제수단 생성
+    public int insertDefaultMaster(Map<String, Object> param) {
+        sqlSession.insert(SQL_PATH + ".insertDefaultCategories", param);
+        return sqlSession.insert(SQL_PATH + ".insertDefaultPaymentMethods", param);
+    }
+}

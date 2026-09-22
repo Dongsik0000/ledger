@@ -1,0 +1,12 @@
+{
+  "name": "가계부",
+  "short_name": "가계부",
+  "start_url": "./ledger/dashboard",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6fa",
+  "theme_color": "#7C6FE0",
+  "icons": [
+    { "src": "resources/images/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

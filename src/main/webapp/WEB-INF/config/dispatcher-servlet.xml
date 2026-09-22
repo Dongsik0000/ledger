@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/mvc https://www.springframework.org/schema/mvc/spring-mvc.xsd
+                           http://www.springframework.org/schema/task https://www.springframework.org/schema/task/spring-task.xsd">
+
+    <mvc:annotation-driven/>
+    <mvc:resources mapping="/resources/**" location="/resources/"/>
+    <mvc:resources mapping="/manifest.json" location="/"/>
+
+    <context:component-scan base-package="ledger"/>
+
+    <!-- @Scheduled 활성화: 고정 항목 자동 생성(매일 00:05). 스케줄 메서드를 가진 빈은 이 컨텍스트(ledger 패키지)에 둔다 -->
+    <task:annotation-driven scheduler="scheduler"/>
+    <task:scheduler id="scheduler" pool-size="1"/>
+
+    <!-- 0순위: 빈 이름으로 뷰 찾기 (jsonView) -->
+    <bean class="org.springframework.web.servlet.view.BeanNameViewResolver">
+        <property name="order" value="0"/>
+    </bean>
+    <bean id="jsonView" class="org.springframework.web.servlet.view.json.MappingJackson2JsonView">
+        <property name="contentType" value="application/json;charset=UTF-8"/>
+    </bean>
+
+    <!-- 1순위: JSP. 컨트롤러는 "dashboard/dashboardMain" 처럼 /WEB-INF/jsp/ledger/ 이하 경로를 반환한다.
+         레이아웃(메뉴+본문)은 Tiles 대신 /WEB-INF/tags/layout.tag 로 각 JSP가 자기 본문을 감싼다. -->
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/jsp/ledger/"/>
+        <property name="suffix" value=".jsp"/>
+        <property name="order" value="1"/>
+    </bean>
+
+    <bean id="messageSource" class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+        <property name="basenames">
+            <list><value>classpath:/message/message-common</value></list>
+        </property>
+        <property name="defaultEncoding" value="UTF-8"/>
+        <property name="cacheSeconds" value="60"/>
+    </bean>
+
+    <!-- 로그인 확인 인터셉터: /ledger/** 는 세션에 userId 가 있어야 접근 가능 -->
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <mvc:mapping path="/ledger/**"/>
+            <bean class="ledger.interceptor.LoginPageInterceptor"/>
+        </mvc:interceptor>
+    </mvc:interceptors>
+</beans>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/tx https://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!-- globals.properties 의 값은 ${ENV_VAR:기본값} 형태로 환경변수를 참조한다 (서버: /etc/ledger/app.env) -->
+    <context:property-placeholder location="classpath:/egovProps/globals.properties"/>
+
+    <bean id="dataSource-postgresql" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <property name="jdbcUrl" value="${Globals.Ledger.Postgre.Url}"/>
+        <property name="username" value="${Globals.Ledger.Postgre.UserName}"/>
+        <property name="password" value="${Globals.Ledger.Postgre.Password}"/>
+        <property name="maximumPoolSize" value="5"/>
+        <property name="connectionTimeout" value="5000"/>
+    </bean>
+
+    <bean id="sqlSessionFactory-ledger-postgre" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource-postgresql"/>
+        <property name="configLocation" value="classpath:/sqlmap/mybatis-config.xml"/>
+        <property name="mapperLocations" value="classpath:/sqlmap/mappers/ledger/**/*.xml"/>
+    </bean>
+
+    <bean id="sqlSession-ledger-postgre" class="org.mybatis.spring.SqlSessionTemplate" destroy-method="clearCache">
+        <constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory-ledger-postgre"/>
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource-postgresql"/>
+    </bean>
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!-- 비밀번호 해시 -->
+    <bean id="passwordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
+
+</beans>

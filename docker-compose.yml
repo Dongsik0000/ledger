@@ -1,0 +1,24 @@
+# ledger 배포 구성 (서버: /var/www/html/p3)
+#
+#   docker compose up -d --build     기동
+#   docker compose logs -f app       로그
+#   docker compose down              중지
+#
+# 호스트 PostgreSQL(127.0.0.1:5432) 에 붙기 위해 host 네트워크를 쓴다. Tomcat 은 127.0.0.1:8081 에만 열리고
+# 외부 요청은 nginx /p3/ 가 받는다 (deploy/nginx-ledger.conf).
+# 비밀값은 /etc/ledger/app.env (deploy/app.env.example 참고).
+
+name: ledger
+
+services:
+  app:
+    build:
+      context: .
+    image: ledger:local
+    container_name: ledger
+    network_mode: host
+    env_file:
+      - /etc/ledger/app.env
+    environment:
+      CATALINA_OPTS: -Dtomcat.address=127.0.0.1
+    restart: unless-stopped

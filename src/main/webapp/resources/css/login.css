@@ -1,0 +1,32 @@
+@charset "UTF-8";
+/* 로그인/가입 화면 */
+.login-body { background: #f5f6fa; }
+.login-page {
+  max-width: 400px;
+  margin: 10vh auto;
+  padding: 32px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-s);
+}
+.login-page h1 { margin-bottom: 24px; font-size: 22px; }
+.login-field { display: block; margin-bottom: 16px; }
+.login-field span { display: block; margin-bottom: 6px; font-size: 14px; color: #6b7280; }
+.login-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+}
+.login-submit-button {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+.login-links { margin-top: 16px; text-align: center; font-size: 14px; }
