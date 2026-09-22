@@ -15,6 +15,9 @@
 
     <context:component-scan base-package="ledger"/>
 
+    <!-- 플레이스홀더 설정은 컨텍스트마다 따로 필요하다. 루트(context-datasource.xml)의 것은 이 컨텍스트의 @Value 에 적용되지 않는다 -->
+    <context:property-placeholder location="classpath:/egovProps/globals.properties"/>
+
     <!-- @Scheduled 활성화: 고정 항목 자동 생성(매일 00:05). 스케줄 메서드를 가진 빈은 이 컨텍스트(ledger 패키지)에 둔다 -->
     <task:annotation-driven scheduler="scheduler"/>
     <task:scheduler id="scheduler" pool-size="1"/>

@@ -11,6 +11,8 @@
     <context:property-placeholder location="classpath:/egovProps/globals.properties"/>
 
     <bean id="dataSource-postgresql" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <!-- Tomcat 이 DriverManager 를 먼저 초기화해서 웹앱 드라이버가 자동 등록되지 않으므로 명시 -->
+        <property name="driverClassName" value="org.postgresql.Driver"/>
         <property name="jdbcUrl" value="${Globals.Ledger.Postgre.Url}"/>
         <property name="username" value="${Globals.Ledger.Postgre.UserName}"/>
         <property name="password" value="${Globals.Ledger.Postgre.Password}"/>

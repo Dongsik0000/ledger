@@ -20,6 +20,9 @@ mvn cargo:run
 ```
 
 환경변수 `LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`, `LEDGER_SIGNUP_CODE`, `LEDGER_HOLIDAY_API_KEY` 로 설정을 덮어쓸 수 있다.
+예: Docker PostgreSQL 을 다른 포트로 띄웠다면 `LEDGER_DB_URL=jdbc:postgresql://localhost:5434/ledger mvn cargo:run` (PowerShell: `$env:LEDGER_DB_URL="..."; mvn cargo:run`).
+
+Docker 컨테이너에 DB 를 만들 때는 `docker exec -i <컨테이너> psql -U <슈퍼유저> -d postgres < db/000_create_db.sql` 처럼 컨테이너 안에서 실행하면 비밀번호 없이 된다.
 
 ## 구조
 

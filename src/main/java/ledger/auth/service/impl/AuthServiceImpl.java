@@ -28,12 +28,13 @@ public class AuthServiceImpl implements AuthService {
     public Map<String, Object> login(String username, String password) {
         Map<String, Object> result = new HashMap<>();
 
+        // resultType=HashMap 이면 키는 컬럼명 그대로(snake_case). mapUnderscoreToCamelCase 는 빈 매핑에만 적용된다
         Map<String, Object> user = authDAO.selectUserByUsername(username);
         if (user == null) {
             result.put("code", Constants.LOGIN_FAIL_NOT_EXIST);
             return result;
         }
-        if (!passwordEncoder.matches(password, (String) user.get("passwordHash"))) {
+        if (!passwordEncoder.matches(password, (String) user.get("password_hash"))) {
             result.put("code", Constants.LOGIN_FAIL_WRONG_PASSWORD);
             return result;
         }

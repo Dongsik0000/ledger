@@ -101,7 +101,12 @@
             <version>3.0.1</version>
         </dependency>
 
-        <!-- 로깅 -->
+        <!-- 로깅. slf4j-api 는 전이 의존성으로 1.7 이 섞여 들어오므로 2.x 로 직접 고정 (logback 1.5 는 SLF4J 2 필요) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.17</version>
+        </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
