@@ -3,6 +3,7 @@
 Spring Framework 6 (XML 설정) + MyBatis + PostgreSQL + JSP, Tomcat 10.1 / Java 17.
 Oracle Cloud 서버의 nginx `/p3/` → Docker Tomcat `127.0.0.1:8081` 로 서비스한다.
 
+- 다른 PC에서 이어서 하기: [docs/HANDOFF.md](docs/HANDOFF.md)
 - 설계·기능 계획: [docs/plan.md](docs/plan.md)
 - 서버 운영: [deploy/OPERATIONS.md](deploy/OPERATIONS.md)
 
