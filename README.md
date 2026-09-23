@@ -26,6 +26,35 @@ mvn cargo:run
 
 Docker 컨테이너에 DB 를 만들 때는 `docker exec -i <컨테이너> psql -U <슈퍼유저> -d postgres < db/000_create_db.sql` 처럼 컨테이너 안에서 실행하면 비밀번호 없이 된다.
 
+## IntelliJ IDEA Ultimate 로 실행 (권장)
+
+`mvn cargo:run` 은 매번 재시작해야 하지만, IntelliJ 로 띄우면 JSP·CSS·JS 를 저장하는 즉시 반영되고 중단점 디버깅도 된다.
+
+**1) Tomcat 등록** (PC 당 1회)
+`File → Settings → Build, Execution, Deployment → Application Servers` → `+` → Tomcat Server →
+Tomcat Home 에 Tomcat 10.1 경로 입력. 없으면 `mvn cargo:run` 을 한 번 돌린 뒤
+`target/cargo/installs/tomcat-10.1.41/apache-tomcat-10.1.41` 를 `target` 밖으로 복사해서 쓰면 된다(18 MB).
+
+**2) 실행 구성** `Run → Edit Configurations` → `+` → Tomcat Server → **Local**
+
+| 탭 | 항목 | 값 |
+|---|---|---|
+| Server | URL (Open browser) | `http://localhost:8081/p3/` — 브라우저를 열 주소 |
+| Server | On 'Update' action | `Update classes and resources` — 저장 시 즉시 반영 |
+| Server | Tomcat Server Settings > **HTTP port** | **`8081`** — 실제 서버 포트. URL 과 별개 항목이다 |
+| Deployment | Artifact | `ledger:war exploded` (`+` → Artifact 로 추가) |
+| Deployment | **Application context** | **`/p3`** — 끝에 슬래시를 붙이면 배포가 실패한다 |
+
+`ledger:war exploded` 가 목록에 없으면 Maven 창에서 Reload All Maven Projects 후 다시 연다.
+
+**자주 나는 오류**
+
+| 메시지 | 원인 |
+|---|---|
+| `Error during artifact deployment` | Application context 에 끝 슬래시(`/p3/`) |
+| `Address localhost:1099 is already in use` | 이전 Tomcat 이 안 죽음. `netstat -ano -p tcp \| findstr :1099` 로 PID 확인 후 `taskkill /F /PID <PID>` |
+| `Cannot open URL` | URL 만 바꾸고 HTTP port 를 안 바꿈 |
+
 ## 구조
 
 ```
