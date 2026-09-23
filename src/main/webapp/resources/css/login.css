@@ -1,32 +1,36 @@
 @charset "UTF-8";
-/* 로그인/가입 화면 */
-.login-body { background: #f5f6fa; }
-.login-page {
-  max-width: 400px;
-  margin: 10vh auto;
-  padding: 32px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: var(--shadow-s);
-}
-.login-page h1 { margin-bottom: 24px; font-size: 22px; }
-.login-field { display: block; margin-bottom: 16px; }
-.login-field span { display: block; margin-bottom: 6px; font-size: 14px; color: #6b7280; }
-.login-field input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 16px;
-}
-.login-submit-button {
-  width: 100%;
-  padding: 12px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 16px;
-  cursor: pointer;
-}
-.login-links { margin-top: 16px; text-align: center; font-size: 14px; }
+.login-body { min-height: 100dvh; background: #f6f5ef; }
+.auth-shell { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; }
+.auth-story { background: #e7ecdc; padding: 44px 12%; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; border-right: 1px solid #dce3ce; }
+.auth-story-copy { padding: 50px 0 28px; position: relative; z-index: 1; }
+.auth-story h2 { font-size: clamp(31px,3.4vw,47px); line-height: 1.5; letter-spacing: -1.7px; }
+.auth-story p { margin-top: 22px; color: #5e6e52; font-size: 13px; line-height: 1.9; }
+.auth-art { height: 220px; width: 240px; margin: 15px auto 25px; position: relative; }
+.paper-note { position: absolute; width: 188px; height: 174px; left: 18px; top: 16px; border-radius: 12px; background: #fffdf5; border: 1px solid #d7ddca; transform: rotate(-7deg); box-shadow: 0 18px 25px #4a5d3210; padding: 27px 23px; }
+.paper-note::before { content: ''; position: absolute; width: 67px; height: 22px; background: #a7b88a80; top: -10px; left: 61px; transform: rotate(5deg); }
+.paper-note span { display: block; height: 1px; background: #e1e5d6; margin-top: 25px; }
+.paper-note .icon { color: #779062; width: 25px; height: 25px; }
+.art-leaf { position: absolute; width: 57px; height: 89px; background: #819761; border-radius: 80% 0 80% 0; transform: rotate(22deg); right: 3px; bottom: 13px; border: 1px solid #6e8850; }
+.art-leaf::after { content: ''; position: absolute; width: 1px; height: 75px; background: #e1e9cc; left: 29px; top: 15px; transform: rotate(25deg); }
+.auth-story-footer { font-size: 10px; letter-spacing: 2px; color: #6b7b5d; }
+.auth-main { display: flex; align-items: center; justify-content: center; padding: 48px; }
+.login-page { width: 100%; max-width: 370px; }
+.login-page h1 { font-size: 34px; margin-bottom: 10px; }
+.auth-intro { color: #69745f; font-size: 13px; margin-bottom: 32px; }
+.login-form { display: flex; flex-direction: column; gap: 19px; }
+.login-field { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.login-field input { min-height: 49px !important; background: #fffefa; }
+.login-submit-button { width: 100%; min-height: 48px; border: 0; border-radius: 9px; background: #45654c; color: #fffefa; font-size: 14px; margin-top: 5px; transition: background .2s, transform .2s; }
+.login-submit-button:hover { background: #304c37; }
+.login-submit-button:active { transform: scale(.99); }
+.login-links { font-size: 12px; color: #6b7663; margin-top: 25px; text-align: center; }
+.login-links a { color: #3b5c3e; font-weight: 600; margin-left: 8px; text-decoration: underline; text-underline-offset: 4px; }
+.auth-fineprint { margin-top: 39px; border-top: 1px solid #dfe4d6; padding-top: 20px; color: #717b68; font-size: 11px; line-height: 1.8; }
+.mobile-brand { display: none; }
+.error-body { min-height: 100dvh; display: grid; place-items: center; padding: 25px; }
+.error-page { max-width: 520px; text-align: center; padding: 42px; }
+.error-page .brand { justify-content: center; margin-bottom: 40px; }
+.error-code { font-size: 80px; line-height: 1; color: #648153; font-weight: 600; letter-spacing: -5px; margin-bottom: 22px; }
+.error-page h1 { font-size: 28px; }
+.error-page p { margin: 18px 0 27px; color: #66735d; font-size: 13px; }
+@media (max-width: 768px) { .auth-shell { display: block; } .auth-story { display: none; } .auth-main { padding: 35px 25px; min-height: 100dvh; align-items: flex-start; } .login-page { max-width: 420px; margin: 0 auto; } .mobile-brand { display: flex; margin-bottom: 57px; } .login-page h1 { font-size: 32px; } .auth-intro { margin-bottom: 29px; } .login-form { gap: 21px; } .login-field input { font-size: 16px; } .auth-fineprint { margin-top: 35px; } .error-page { padding: 25px; } }

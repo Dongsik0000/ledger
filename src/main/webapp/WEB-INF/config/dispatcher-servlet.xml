@@ -46,6 +46,14 @@
         <property name="cacheSeconds" value="60"/>
     </bean>
 
+    <!-- 임시: 디자인 미리보기용 화면 매핑. 해당 화면의 @Controller 를 만들면 그 줄을 지운다.
+         겹쳐도 오류는 나지 않고 @Controller 가 우선하지만, 남겨 두면 어느 쪽이 응답하는지 헷갈린다 -->
+    <mvc:view-controller path="/ledger/entry" view-name="entry/entryMain"/>
+    <mvc:view-controller path="/ledger/summary" view-name="summary/summaryMain"/>
+    <mvc:view-controller path="/ledger/recurring" view-name="recurring/recurringMain"/>
+    <mvc:view-controller path="/ledger/asset" view-name="asset/assetMain"/>
+    <mvc:view-controller path="/ledger/settings" view-name="settings/settingsMain"/>
+
     <!-- 로그인 확인 인터셉터: /ledger/** 는 세션에 userId 가 있어야 접근 가능 -->
     <mvc:interceptors>
         <mvc:interceptor>
