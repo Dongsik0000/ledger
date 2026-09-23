@@ -14,6 +14,7 @@ Oracle Cloud 서버의 nginx `/p3/` → Docker Tomcat `127.0.0.1:8081` 로 서�
 psql -U postgres -f db/000_create_db.sql
 psql -U ledger_app -d ledger -f db/001_schema.sql
 psql -U ledger_app -d ledger -f db/002_seed_holiday_2026.sql
+psql -U ledger_app -d ledger -f db/003_comments.sql
 
 # 2. 기동 (Tomcat 10.1 을 자동으로 받아서 띄운다)
 mvn cargo:run
