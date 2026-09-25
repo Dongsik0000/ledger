@@ -19,4 +19,29 @@ public class HolidayServiceImpl implements HolidayService {
     public List<LocalDate> selectHolidayDates(Map<String, Object> param) {
         return holidayDAO.selectHolidayDates(param);
     }
+
+    @Override
+    public List<Map<String, Object>> selectHolidayList(Map<String, Object> param) {
+        return holidayDAO.selectHolidayList(param);
+    }
+
+    @Override
+    public int countHoliday(LocalDate date) {
+        return holidayDAO.countHoliday(date);
+    }
+
+    @Override
+    public int insertHoliday(Map<String, Object> param) {
+        return holidayDAO.insertHoliday(param);
+    }
+
+    @Override
+    public int upsertHoliday(Map<String, Object> param) {
+        return holidayDAO.upsertHoliday(param);
+    }
+
+    @Override
+    public int deleteHoliday(LocalDate date) {
+        return holidayDAO.deleteHoliday(date);
+    }
 }

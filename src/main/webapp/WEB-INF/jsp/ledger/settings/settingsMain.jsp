@@ -4,6 +4,7 @@
 <t:layout title="설정" page="settings">
 <jsp:attribute name="script">
 <script defer src="<c:url value='/resources/js/app/settings/settings.js'/>"></script>
+<script defer src="<c:url value='/resources/js/app/settings/holiday.js'/>"></script>
 </jsp:attribute>
 <jsp:body>
 <header class="page-head">

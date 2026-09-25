@@ -8,4 +8,30 @@
         FROM holiday
         WHERE holiday_date BETWEEN #{from} AND #{to}
     </select>
+
+    <!-- 설정 화면 목록 -->
+    <select id="selectHolidayList" parameterType="map" resultType="java.util.HashMap">
+        SELECT to_char(holiday_date, 'YYYY-MM-DD') AS "date", name
+        FROM holiday
+        WHERE holiday_date BETWEEN #{from} AND #{to}
+        ORDER BY holiday_date
+    </select>
+
+    <select id="countHoliday" parameterType="java.time.LocalDate" resultType="int">
+        SELECT count(*) FROM holiday WHERE holiday_date = #{date}
+    </select>
+
+    <insert id="insertHoliday" parameterType="map">
+        INSERT INTO holiday (holiday_date, name) VALUES (#{date}, #{name})
+    </insert>
+
+    <!-- API 가져오기: 같은 날짜는 이름만 갱신 -->
+    <insert id="upsertHoliday" parameterType="map">
+        INSERT INTO holiday (holiday_date, name) VALUES (#{date}, #{name})
+        ON CONFLICT (holiday_date) DO UPDATE SET name = EXCLUDED.name
+    </insert>
+
+    <delete id="deleteHoliday" parameterType="java.time.LocalDate">
+        DELETE FROM holiday WHERE holiday_date = #{date}
+    </delete>
 </mapper>
