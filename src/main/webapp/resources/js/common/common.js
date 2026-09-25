@@ -84,7 +84,13 @@ App.CODE = {
     LOGIN_BLOCKED: '03',
     SIGNUP_FAIL_CODE: '11',
     SIGNUP_FAIL_EXISTS: '12',
-    SIGNUP_BLOCKED: '13'
+    SIGNUP_BLOCKED: '13',
+    INVALID: '90',
+    NOT_FOUND: '91',
+    DUPLICATE: '92',
+    HOLIDAY_KEY_MISSING: '93',
+    HOLIDAY_API_FAIL: '94',
+    IN_USE: '95'
 };
 
 // App.fail(res, fallback): 화면이 따로 처리하지 않은 결과 코드의 공통 안내.
@@ -109,6 +115,90 @@ App.escape = function (v) {
 // App.money(n): 1930000 -> "1,930,000원". 부호(+/−)는 화면에서 붙인다.
 App.money = function (n) {
     return Number(n || 0).toLocaleString('ko-KR') + '원';
+};
+
+// App.h(tag, props, children): DOM 요소를 안전하게 만든다. 문자열 자식은 텍스트 노드(HTML 해석 없음).
+//   props.text: textContent, props.attrs: setAttribute, props.on: 이벤트, 그 밖: 프로퍼티(value, checked, type, className …)
+//
+// 사용 예)
+//   App.h('button', {type: 'button', className: 'button small', text: '저장', on: {click: save}})
+App.h = function (tag, props, children) {
+    var el = document.createElement(tag);
+    props = props || {};
+    Object.keys(props).forEach(function (k) {
+        var v = props[k];
+        if (v === undefined || v === null) return;
+        if (k === 'attrs') {
+            Object.keys(v).forEach(function (a) { el.setAttribute(a, v[a]); });
+        } else if (k === 'on') {
+            Object.keys(v).forEach(function (ev) { el.addEventListener(ev, v[ev]); });
+        } else if (k === 'text') {
+            el.textContent = v;
+        } else {
+            el[k] = v;
+        }
+    });
+    (children || []).forEach(function (c) {
+        if (c === null || c === undefined || c === false) return;
+        el.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+    });
+    return el;
+};
+
+// App.icon(name): 아이콘 스프라이트(layout/icons.jsp)의 #i-name
+App.icon = function (name) {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'icon');
+    svg.setAttribute('aria-hidden', 'true');
+    var use = document.createElementNS(ns, 'use');
+    use.setAttribute('href', '#i-' + name);
+    svg.appendChild(use);
+    return svg;
+};
+
+// App.parseAmount(s): "1,930,000" -> 1930000. 숫자 1~11자리가 아니면 null
+App.parseAmount = function (s) {
+    var t = String(s === null || s === undefined ? '' : s).replace(/[,\s]/g, '');
+    return /^\d{1,11}$/.test(t) ? Number(t) : null;
+};
+
+// App.bindAmountInput(input): 금액 칸에 입력하는 동안 쉼표 서식
+App.bindAmountInput = function (input) {
+    input.addEventListener('input', function () {
+        var digits = input.value.replace(/\D/g, '').slice(0, 11);
+        input.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+    });
+};
+
+// App.saved(title): 저장·삭제 성공을 짧게 알린다
+App.saved = function (title) {
+    _alert(title || '저장했어요', {autoClose: 900});
+};
+
+// App.result(res, handlers): 결과 코드 분기 공통. handlers.ok 는 성공, handlers['95'] 처럼 코드별 처리.
+// 처리하지 않은 90·92 는 서버 message, 91 은 "찾을 수 없어요", 나머지는 App.fail.
+//
+// 사용 예)
+//   App.post(url, param).then(function(res){ App.result(res, {ok: reload}); });
+App.result = function (res, handlers) {
+    handlers = handlers || {};
+    var code = res && res.code;
+    if (code === App.CODE.SUCCESS) {
+        if (handlers.ok) handlers.ok(res);
+        return;
+    }
+    if (handlers[code]) {
+        handlers[code](res);
+        return;
+    }
+    if (code === App.CODE.INVALID || code === App.CODE.DUPLICATE) {
+        _error('확인해 주세요', res.message || '입력한 내용을 확인해 주세요.');
+    } else if (code === App.CODE.NOT_FOUND) {
+        _error('찾을 수 없어요', '이미 삭제되었거나 권한이 없는 항목이에요.');
+    } else {
+        App.fail(res);
+    }
 };
 
 // 로그아웃: data-logout 속성을 가진 요소를 누르면 POST /auth/logout 후 로그인 화면으로.
