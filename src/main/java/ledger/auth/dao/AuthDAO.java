@@ -23,9 +23,13 @@ public class AuthDAO {
         return sqlSession.insert(SQL_PATH + ".insertUser", param);
     }
 
-    // param.id 사용자에게 기본 카테고리/결제수단 생성
-    public int insertDefaultMaster(Map<String, Object> param) {
-        sqlSession.insert(SQL_PATH + ".insertDefaultCategories", param);
+    // param.id 사용자에게 기본 카테고리 10개
+    public int insertDefaultCategories(Map<String, Object> param) {
+        return sqlSession.insert(SQL_PATH + ".insertDefaultCategories", param);
+    }
+
+    // param.id 사용자에게 기본 결제수단 4개
+    public int insertDefaultPaymentMethods(Map<String, Object> param) {
         return sqlSession.insert(SQL_PATH + ".insertDefaultPaymentMethods", param);
     }
 }
