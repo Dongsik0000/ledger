@@ -92,6 +92,14 @@ class ParamUtilTest {
     }
 
     @Test
+    void mapAllowsNullValues() {
+        Map<String, Object> m = ParamUtil.map("a", 1, "b", null);
+        assertEquals(1, m.get("a"));
+        assertTrue(m.containsKey("b"));
+        assertNull(m.get("b"));
+    }
+
+    @Test
     void hasChecksTrimmedValue() {
         assertTrue(ParamUtil.has(Map.<String, Object>of("k", " a "), "k"));
         assertFalse(ParamUtil.has(Map.<String, Object>of("k", "  "), "k"));

@@ -1,0 +1,230 @@
+App.settings = (function(){
+    var m$ = {
+            payDay: document.getElementById('payDay'),
+            payDayAdjust: document.getElementById('payDayAdjust'),
+            cycleSave: document.getElementById('cycleSave'),
+            expenseBody: document.getElementById('expenseCategoryBody'),
+            incomeBody: document.getElementById('incomeCategoryBody'),
+            categoryAdd: document.getElementById('categoryAdd'),
+            newCategoryName: document.getElementById('newCategoryName'),
+            newCategoryGroup: document.getElementById('newCategoryGroup'),
+            newCategoryOrder: document.getElementById('newCategoryOrder'),
+            categoryAddSave: document.getElementById('categoryAddSave'),
+            categoryAddCancel: document.getElementById('categoryAddCancel'),
+            paymentBody: document.getElementById('paymentBody'),
+            paymentAdd: document.getElementById('paymentAdd'),
+            newPaymentName: document.getElementById('newPaymentName'),
+            paymentAddSave: document.getElementById('paymentAddSave'),
+            paymentAddCancel: document.getElementById('paymentAddCancel')
+        },
+        settings = { submitting: false },
+        url = {
+            load: contextPath + '/ledger/settings/load',
+            cycleSave: contextPath + '/ledger/settings/cycle/save',
+            categorySave: contextPath + '/ledger/settings/category/save',
+            categoryDelete: contextPath + '/ledger/settings/category/delete',
+            categoryMove: contextPath + '/ledger/settings/category/move',
+            paymentSave: contextPath + '/ledger/settings/payment/save',
+            paymentDelete: contextPath + '/ledger/settings/payment/delete',
+            paymentMove: contextPath + '/ledger/settings/payment/move'
+        },
+
+        init = function(){
+            m$.cycleSave.addEventListener('click', saveCycle);
+            m$.categoryAddSave.addEventListener('click', addCategory);
+            m$.categoryAddCancel.addEventListener('click', function(){
+                resetCategoryAdd();
+                m$.categoryAdd.open = false;
+            });
+            m$.paymentAddSave.addEventListener('click', addPayment);
+            m$.paymentAddCancel.addEventListener('click', function(){
+                m$.newPaymentName.value = '';
+                m$.paymentAdd.open = false;
+            });
+            load();
+        },
+
+        load = function(){
+            App.post(url.load)
+                .then(function(res){
+                    App.result(res, { ok: function(){ render(res.data); } });
+                })
+                .catch(function(){});
+        },
+
+        render = function(data){
+            m$.payDay.value = String(data.payDay);
+            m$.payDayAdjust.checked = !!data.payDayAdjust;
+            renderRows(m$.expenseBody, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryRow, 5, '지출 카테고리가 없어요.');
+            renderRows(m$.incomeBody, data.categories.filter(function(c){ return c.type === 'INCOME'; }), categoryRow, 5, '수입 카테고리가 없어요.');
+            renderRows(m$.paymentBody, data.paymentMethods, paymentRow, 4, '결제수단이 없어요.');
+        },
+
+        renderRows = function(tbody, list, rowFn, cols, emptyText){
+            var rows = list.map(rowFn);
+            if (!rows.length) {
+                rows = [App.h('tr', null, [App.h('td', {attrs: {colspan: cols}, text: emptyText})])];
+            }
+            tbody.replaceChildren.apply(tbody, rows);
+        },
+
+        // 요청 공통: 중복 전송을 막고, 성공하면 짧게 알린 뒤 다시 불러온다
+        //   opts.title 성공 문구, opts.done 성공 후 추가 동작, opts.inUse 95(사용 중) 처리
+        send = function(u, param, opts){
+            opts = opts || {};
+            if (settings.submitting) return;
+            settings.submitting = true;
+            var handlers = {
+                ok: function(){
+                    App.saved(opts.title);
+                    if (opts.done) opts.done();
+                    load();
+                }
+            };
+            handlers[App.CODE.NOT_FOUND] = function(){
+                _error('찾을 수 없어요', '이미 삭제되었거나 권한이 없는 항목이에요.');
+                load();
+            };
+            if (opts.inUse) handlers[App.CODE.IN_USE] = opts.inUse;
+
+            App.post(u, param)
+                .then(function(res){ App.result(res, handlers); })
+                .catch(function(){})
+                .then(function(){ settings.submitting = false; });
+        },
+
+        // 삭제 확인 → 사용 중(95)이면 숨기기를 제안
+        confirmDelete = function(name, u, id, hide){
+            _confirm('삭제할까요?', '‘' + name + '’ 항목을 삭제해요.', function(){
+                send(u, {id: id}, {
+                    title: '삭제했어요',
+                    inUse: function(res){
+                        _confirm('사용 중인 항목이에요', res.message + '\n대신 숨길까요?', hide);
+                    }
+                });
+            });
+        },
+
+        saveCycle = function(){
+            send(url.cycleSave, {payDay: m$.payDay.value, payDayAdjust: m$.payDayAdjust.checked});
+        },
+
+        field = function(label, input){
+            return App.h('label', {className: 'field'}, [App.h('span', {text: label}), input]);
+        },
+
+        switchField = function(input){
+            return App.h('label', {className: 'switch'}, [input, App.h('span', {attrs: {'aria-hidden': 'true'}})]);
+        },
+
+        smallButton = function(text, onClick, extraClass, label){
+            return App.h('button', {
+                type: 'button',
+                className: 'button small' + (extraClass ? ' ' + extraClass : ''),
+                text: text,
+                attrs: label ? {'aria-label': label} : null,
+                on: {click: onClick}
+            });
+        },
+
+        categoryRow = function(c){
+            var name = App.h('input', {type: 'text', value: c.name, maxLength: 50}),
+                group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '없음'}),
+                order = App.h('input', {type: 'number', value: c.sortOrder, min: 0, max: 9999, inputMode: 'numeric'}),
+                active = App.h('input', {type: 'checkbox', checked: !!c.active, attrs: {'aria-label': c.name + ' 표시'}}),
+                save = function(overrides){
+                    var param = {id: c.id, type: c.type, name: name.value, groupName: group.value, sortOrder: order.value, active: active.checked};
+                    send(url.categorySave, Object.assign(param, overrides || {}));
+                },
+                move = function(direction){
+                    return function(){ send(url.categoryMove, {id: c.id, direction: direction}, {title: '순서를 바꿨어요'}); };
+                };
+
+            return App.h('tr', null, [
+                App.h('th', {attrs: {scope: 'row'}}, [field('이름', name)]),
+                App.h('td', {attrs: {'data-label': '그룹'}}, [field('그룹명', group)]),
+                App.h('td', {attrs: {'data-label': '표시 순서'}}, [
+                    App.h('div', {className: 'order-control'}, [
+                        field('순서', order),
+                        smallButton('↑', move('UP'), null, c.name + ' 위로 이동'),
+                        smallButton('↓', move('DOWN'), null, c.name + ' 아래로 이동')
+                    ])
+                ]),
+                App.h('td', {attrs: {'data-label': '표시'}}, [switchField(active)]),
+                App.h('td', {attrs: {'data-label': '관리'}}, [
+                    smallButton('저장', function(){ save(); }),
+                    ' ',
+                    smallButton('삭제', function(){
+                        confirmDelete(c.name, url.categoryDelete, c.id, function(){ save({active: false}); });
+                    }, 'danger')
+                ])
+            ]);
+        },
+
+        paymentRow = function(p){
+            var name = App.h('input', {type: 'text', value: p.name, maxLength: 50}),
+                active = App.h('input', {type: 'checkbox', checked: !!p.active, attrs: {'aria-label': p.name + ' 표시'}}),
+                save = function(overrides){
+                    var param = {id: p.id, name: name.value, active: active.checked};
+                    send(url.paymentSave, Object.assign(param, overrides || {}));
+                },
+                move = function(direction){
+                    return function(){ send(url.paymentMove, {id: p.id, direction: direction}, {title: '순서를 바꿨어요'}); };
+                };
+
+            return App.h('tr', null, [
+                App.h('th', {attrs: {scope: 'row'}}, [field('결제수단 이름', name)]),
+                App.h('td', {attrs: {'data-label': '순서'}}, [
+                    App.h('div', {className: 'order-control'}, [
+                        smallButton('↑', move('UP'), null, p.name + ' 위로 이동'),
+                        smallButton('↓', move('DOWN'), null, p.name + ' 아래로 이동')
+                    ])
+                ]),
+                App.h('td', {attrs: {'data-label': '표시'}}, [switchField(active)]),
+                App.h('td', {attrs: {'data-label': '관리'}}, [
+                    smallButton('저장', function(){ save(); }),
+                    ' ',
+                    smallButton('삭제', function(){
+                        confirmDelete(p.name, url.paymentDelete, p.id, function(){ save({active: false}); });
+                    }, 'danger')
+                ])
+            ]);
+        },
+
+        resetCategoryAdd = function(){
+            m$.newCategoryName.value = '';
+            m$.newCategoryGroup.value = '';
+            m$.newCategoryOrder.value = '';
+        },
+
+        addCategory = function(){
+            var checked = document.querySelector('input[name="newCategoryType"]:checked');
+            if (App.isEmpty(m$.newCategoryName.value.trim())) {
+                _error('알림', '카테고리 이름을 입력해주세요.');
+                return;
+            }
+            send(url.categorySave, {
+                type: checked ? checked.value : 'EXPENSE',
+                name: m$.newCategoryName.value,
+                groupName: m$.newCategoryGroup.value,
+                sortOrder: m$.newCategoryOrder.value
+            }, {title: '추가했어요', done: resetCategoryAdd});
+        },
+
+        addPayment = function(){
+            if (App.isEmpty(m$.newPaymentName.value.trim())) {
+                _error('알림', '결제수단 이름을 입력해주세요.');
+                return;
+            }
+            send(url.paymentSave, {name: m$.newPaymentName.value}, {
+                title: '추가했어요',
+                done: function(){ m$.newPaymentName.value = ''; }
+            });
+        };
+
+    return { init: init };
+}());
+
+document.addEventListener('DOMContentLoaded', function(){
+    App.settings.init();
+});

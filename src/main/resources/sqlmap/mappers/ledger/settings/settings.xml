@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.settings.dao.SettingsDAO">
+
+    <!-- 주기 설정 -->
+    <select id="selectUserSetting" parameterType="long" resultType="java.util.HashMap">
+        SELECT pay_day AS "payDay", pay_day_adjust AS "payDayAdjust"
+        FROM app_user
+        WHERE id = #{userId}
+    </select>
+
+    <update id="updateUserSetting" parameterType="map">
+        UPDATE app_user
+        SET pay_day = #{payDay}, pay_day_adjust = #{payDayAdjust}
+        WHERE id = #{userId}
+    </update>
+
+    <!-- 카테고리: 지출 먼저, 표시 순서대로 -->
+    <select id="selectCategoryList" parameterType="long" resultType="java.util.HashMap">
+        SELECT id, type, name, group_name AS "groupName", sort_order AS "sortOrder", active
+        FROM category
+        WHERE user_id = #{userId}
+        ORDER BY CASE type WHEN 'EXPENSE' THEN 0 ELSE 1 END, sort_order, id
+    </select>
+
+    <select id="selectCategory" parameterType="map" resultType="java.util.HashMap">
+        SELECT id, type, name, group_name AS "groupName", sort_order AS "sortOrder", active
+        FROM category
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <!-- 같은 구분에 같은 이름(수정 중인 자기 자신 제외) -->
+    <select id="countCategoryName" parameterType="map" resultType="int">
+        SELECT count(*)
+        FROM category
+        WHERE user_id = #{userId} AND type = #{type} AND name = #{name}
+        <if test="id != null">AND id &lt;&gt; #{id}</if>
+    </select>
+
+    <!-- 이 카테고리를 쓰는 거래·고정 항목 수 -->
+    <select id="countCategoryUsage" parameterType="map" resultType="int">
+        SELECT (SELECT count(*) FROM ledger_entry WHERE category_id = #{id} AND user_id = #{userId})
+             + (SELECT count(*) FROM recurring_item WHERE category_id = #{id} AND user_id = #{userId})
+    </select>
+
+    <select id="selectMaxCategoryOrder" parameterType="map" resultType="int">
+        SELECT COALESCE(MAX(sort_order), 0)
+        FROM category
+        WHERE user_id = #{userId} AND type = #{type}
+    </select>
+
+    <select id="selectCategoryIds" parameterType="map" resultType="long">
+        SELECT id
+        FROM category
+        WHERE user_id = #{userId} AND type = #{type}
+        ORDER BY sort_order, id
+    </select>
+
+    <insert id="insertCategory" parameterType="map">
+        INSERT INTO category (user_id, type, name, group_name, sort_order, active)
+        VALUES (#{userId}, #{type}, #{name}, #{groupName}, #{sortOrder}, #{active})
+    </insert>
+
+    <update id="updateCategory" parameterType="map">
+        UPDATE category
+        SET type = #{type}, name = #{name}, group_name = #{groupName}, sort_order = #{sortOrder}, active = #{active}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <update id="updateCategoryOrder" parameterType="map">
+        UPDATE category SET sort_order = #{sortOrder}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteCategory" parameterType="map">
+        DELETE FROM category WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 결제수단 -->
+    <select id="selectPaymentList" parameterType="long" resultType="java.util.HashMap">
+        SELECT id, name, sort_order AS "sortOrder", active
+        FROM payment_method
+        WHERE user_id = #{userId}
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="selectPayment" parameterType="map" resultType="java.util.HashMap">
+        SELECT id, name, sort_order AS "sortOrder", active
+        FROM payment_method
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <select id="countPaymentName" parameterType="map" resultType="int">
+        SELECT count(*)
+        FROM payment_method
+        WHERE user_id = #{userId} AND name = #{name}
+        <if test="id != null">AND id &lt;&gt; #{id}</if>
+    </select>
+
+    <select id="countPaymentUsage" parameterType="map" resultType="int">
+        SELECT (SELECT count(*) FROM ledger_entry WHERE payment_method_id = #{id} AND user_id = #{userId})
+             + (SELECT count(*) FROM recurring_item WHERE payment_method_id = #{id} AND user_id = #{userId})
+    </select>
+
+    <select id="selectMaxPaymentOrder" parameterType="long" resultType="int">
+        SELECT COALESCE(MAX(sort_order), 0) FROM payment_method WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectPaymentIds" parameterType="long" resultType="long">
+        SELECT id FROM payment_method WHERE user_id = #{userId} ORDER BY sort_order, id
+    </select>
+
+    <insert id="insertPayment" parameterType="map">
+        INSERT INTO payment_method (user_id, name, sort_order, active)
+        VALUES (#{userId}, #{name}, #{sortOrder}, #{active})
+    </insert>
+
+    <update id="updatePayment" parameterType="map">
+        UPDATE payment_method SET name = #{name}, active = #{active}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <update id="updatePaymentOrder" parameterType="map">
+        UPDATE payment_method SET sort_order = #{sortOrder}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="deletePayment" parameterType="map">
+        DELETE FROM payment_method WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+</mapper>

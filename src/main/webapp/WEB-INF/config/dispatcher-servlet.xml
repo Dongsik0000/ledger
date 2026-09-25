@@ -58,7 +58,6 @@
     <mvc:view-controller path="/ledger/summary" view-name="summary/summaryMain"/>
     <mvc:view-controller path="/ledger/recurring" view-name="recurring/recurringMain"/>
     <mvc:view-controller path="/ledger/asset" view-name="asset/assetMain"/>
-    <mvc:view-controller path="/ledger/settings" view-name="settings/settingsMain"/>
 
     <mvc:interceptors>
         <!-- POST 는 Ajax(JSON) 만: CSRF 차단 -->

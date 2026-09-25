@@ -3,6 +3,7 @@ package ledger.cmmn.util;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -26,6 +27,16 @@ public class ParamUtil {
     public static String raw(Map<String, Object> param, String key) {
         Object value = param == null ? null : param.get(key);
         return value == null ? "" : String.valueOf(value);
+    }
+
+    // DAO 에 넘길 파라미터 맵. Map.of 와 달리 null 값을 허용한다(선택 칸).
+    // 요청 본문을 그대로 넘기지 않고 이것으로 필요한 값만 담는다(클라이언트가 userId 등을 끼워 넣지 못하게).
+    public static Map<String, Object> map(Object... keyValues) {
+        Map<String, Object> m = new HashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            m.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return m;
     }
 
     public static boolean has(Map<String, Object> param, String key) {
