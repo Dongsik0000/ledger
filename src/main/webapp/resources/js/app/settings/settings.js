@@ -16,7 +16,10 @@ App.settings = (function(){
             paymentAdd: document.getElementById('paymentAdd'),
             newPaymentName: document.getElementById('newPaymentName'),
             paymentAddSave: document.getElementById('paymentAddSave'),
-            paymentAddCancel: document.getElementById('paymentAddCancel')
+            paymentAddCancel: document.getElementById('paymentAddCancel'),
+            exportFrom: document.getElementById('exportFrom'),
+            exportTo: document.getElementById('exportTo'),
+            exportButton: document.getElementById('exportButton')
         },
         settings = { submitting: false },
         url = {
@@ -28,7 +31,8 @@ App.settings = (function(){
             categoryMove: contextPath + '/ledger/settings/category/move',
             paymentSave: contextPath + '/ledger/settings/payment/save',
             paymentDelete: contextPath + '/ledger/settings/payment/delete',
-            paymentMove: contextPath + '/ledger/settings/payment/move'
+            paymentMove: contextPath + '/ledger/settings/payment/move',
+            exportCsv: contextPath + '/ledger/settings/export'
         },
 
         init = function(){
@@ -43,7 +47,31 @@ App.settings = (function(){
                 m$.newPaymentName.value = '';
                 m$.paymentAdd.open = false;
             });
+            initExport();
             load();
+        },
+
+        // 기본 기간: 이번 달 1일 ~ 오늘
+        initExport = function(){
+            var d = new Date(),
+                ym = d.getFullYear() + '-' + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1);
+            m$.exportFrom.value = ym + '-01';
+            m$.exportTo.value = ym + '-' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+            m$.exportButton.addEventListener('click', exportCsv);
+        },
+
+        // 파일 다운로드라 페이지 이동으로 받는다(서버가 attachment 로 응답해 화면은 그대로)
+        exportCsv = function(){
+            var from = m$.exportFrom.value, to = m$.exportTo.value;
+            if (!from || !to) {
+                _error('알림', '시작일과 종료일을 입력해주세요.');
+                return;
+            }
+            if (from > to) {
+                _error('알림', '시작일이 종료일보다 늦어요.');
+                return;
+            }
+            location.href = url.exportCsv + '?' + new URLSearchParams({from: from, to: to}).toString();
         },
 
         load = function(){

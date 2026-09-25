@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.asset.dao.AssetDAO">
+
+    <select id="selectAssetList" parameterType="long" resultType="java.util.HashMap">
+        SELECT id, name, amount, to_char(updated_at, 'YYYY-MM-DD') AS "updatedAt"
+        FROM asset
+        WHERE user_id = #{userId}
+        ORDER BY id
+    </select>
+
+    <insert id="insertAsset" parameterType="map">
+        INSERT INTO asset (user_id, name, amount, updated_at)
+        VALUES (#{userId}, #{name}, #{amount}, now())
+    </insert>
+
+    <update id="updateAsset" parameterType="map">
+        UPDATE asset SET name = #{name}, amount = #{amount}, updated_at = now()
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteAsset" parameterType="map">
+        DELETE FROM asset WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+</mapper>

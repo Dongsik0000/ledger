@@ -1,21 +1,31 @@
 package ledger.settings.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import ledger.cmmn.util.Constants;
+import ledger.cmmn.util.CsvUtil;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.entry.service.EntryService;
 import ledger.settings.service.SettingsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.io.Writer;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -32,9 +42,13 @@ public class SettingsApiController {
     private static final Set<String> TYPES = Set.of("EXPENSE", "INCOME");
     private static final Set<String> DIRECTIONS = Set.of("UP", "DOWN");
     private static final String MSG_IN_USE_DELETE = "거래나 고정 항목에서 쓰고 있어 삭제할 수 없어요.";
+    private static final int EXPORT_MAX_YEARS = 10;
 
     @Autowired
     private SettingsService settingsService;
+
+    @Autowired
+    private EntryService entryService;
 
     @GetMapping
     public String settings() {
@@ -237,6 +251,34 @@ public class SettingsApiController {
             }
         }
         return Response.of(Constants.SUCCESS);
+    }
+
+    // 거래 CSV 내보내기(파일 다운로드, 읽기 전용이라 GET). 기간 오류는 400 오류 화면
+    @GetMapping("/export")
+    public void export(@RequestParam String from, @RequestParam String to, HttpSession session,
+                       HttpServletResponse response) throws IOException {
+        Map<String, Object> range = ParamUtil.map("from", from, "to", to);
+        LocalDate fromDate = ParamUtil.date(range, "from");
+        LocalDate toDate = ParamUtil.date(range, "to");
+        if (fromDate == null || toDate == null || fromDate.isAfter(toDate) || fromDate.plusYears(EXPORT_MAX_YEARS).isBefore(toDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내보내기 기간 오류");
+        }
+
+        List<Map<String, Object>> entries = new ArrayList<>(entryService.selectEntryList(ParamUtil.map(
+                "userId", SessionUtil.getUserId(session), "from", fromDate, "to", toDate)));
+        Collections.reverse(entries);   // 목록은 최신순이라 날짜 오름차순으로
+
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=\"ledger-" + fromDate + "-" + toDate + ".csv\"");
+        response.setHeader("Cache-Control", "no-store");
+        Writer writer = response.getWriter();
+        writer.write('﻿');   // 엑셀이 UTF-8 한글을 알아보도록 BOM
+        writer.write(CsvUtil.line(List.of("날짜", "구분", "카테고리", "내용", "금액", "결제수단", "메모")));
+        for (Map<String, Object> e : entries) {
+            writer.write(CsvUtil.line(Arrays.asList(e.get("entryDate"), "INCOME".equals(e.get("type")) ? "수입" : "지출",
+                    e.get("categoryName"), e.get("title"), e.get("amount"), e.get("paymentMethodName"), e.get("memo"))));
+        }
+        writer.flush();
     }
 
     // ids 안에서 id 를 한 칸 위(UP)·아래(DOWN)로 옮긴다. 끝이라 옮길 수 없거나 없는 id 면 false
