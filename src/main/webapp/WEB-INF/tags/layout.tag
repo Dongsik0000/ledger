@@ -17,7 +17,6 @@
     <link rel="stylesheet" href="<c:url value='/resources/css/common.css'/>">
     <link rel="stylesheet" href="<c:url value='/resources/css/style.css'/>">
     <script>var contextPath = "${pageContext.request.contextPath}";</script>
-    <script src="<c:url value='/resources/js/lib/jquery.1.11.3.min.js'/>"></script>
     <script src="<c:url value='/resources/js/lib/chartjs/chart.umd.js'/>"></script>
     <script src="<c:url value='/resources/js/common/common.js'/>"></script>
     <script src="<c:url value='/resources/js/common/modal.js'/>"></script>

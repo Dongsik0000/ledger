@@ -4,7 +4,7 @@ var App = window.App || {};
 
 // App.ajax(url, data, opts): 서버(jsonView) 공통 호출. fetch 기반, JSON 요청/응답 고정.
 // opts.method 기본 POST, opts.onError 없으면 _error 모달로 공통 처리.
-// jQuery 1.11.3의 $.ajax는 진짜 Promise가 아니라 .catch()를 못 씀 - fetch 유지.
+// jQuery 는 쓰지 않는다(알려진 취약점, 제거함).
 //
 // 사용 예)
 //   App.ajax(contextPath + '/design/login', { user_id: 'abc', user_pw: '1234' })
@@ -25,7 +25,7 @@ App.ajax = function (url, data, opts) {
     };
 
     if (method === 'GET') {
-        if (data) url += (url.indexOf('?') === -1 ? '?' : '&') + $.param(data);
+        if (data) url += (url.indexOf('?') === -1 ? '?' : '&') + new URLSearchParams(data).toString();
     } else {
         fetchOpt.body = JSON.stringify(data || {});
     }
@@ -75,6 +75,54 @@ App.isEmpty = function (v) {
     if (typeof v === 'object') return Object.keys(v).length === 0;
     return false;
 };
+
+// 서버 결과 코드. Java ledger.cmmn.util.Constants 와 같은 값을 유지한다.
+App.CODE = {
+    SUCCESS: '00',
+    FAIL: '99',
+    LOGIN_FAIL: '01',
+    LOGIN_BLOCKED: '03',
+    SIGNUP_FAIL_CODE: '11',
+    SIGNUP_FAIL_EXISTS: '12',
+    SIGNUP_BLOCKED: '13'
+};
+
+// App.fail(res, fallback): 화면이 따로 처리하지 않은 결과 코드의 공통 안내.
+//
+// 사용 예)
+//   if(res.code === App.CODE.SUCCESS){ ... } else App.fail(res, '저장 중 문제가 발생했습니다.');
+App.fail = function (res, fallback) {
+    _error('오류', (res && res.message) || fallback || '요청 처리 중 문제가 발생했습니다.');
+};
+
+// App.escape(v): 사용자 입력을 HTML 문자열에 넣기 전에 반드시 거친다. 가능하면 textContent 를 쓴다.
+//
+// 사용 예)
+//   li.innerHTML = '<strong>' + App.escape(row.title) + '</strong>';
+App.escape = function (v) {
+    var map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
+    return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function (c) {
+        return map[c];
+    });
+};
+
+// App.money(n): 1930000 -> "1,930,000원". 부호(+/−)는 화면에서 붙인다.
+App.money = function (n) {
+    return Number(n || 0).toLocaleString('ko-KR') + '원';
+};
+
+// 로그아웃: data-logout 속성을 가진 요소를 누르면 POST /auth/logout 후 로그인 화면으로.
+App.logout = function () {
+    App.post(contextPath + '/auth/logout')
+        .then(function () { location.href = contextPath + '/login'; })
+        .catch(function () {});
+};
+document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-logout]') : null;
+    if (!el) return;
+    e.preventDefault();
+    App.logout();
+});
 
 // App.formToObject(form): <form> -> {name: value} 평면 객체. 폼 제출 데이터를 서버로 보낼 때 사용.
 //

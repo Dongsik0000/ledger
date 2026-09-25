@@ -74,13 +74,13 @@
 </strong>
 <small>나만의 가계부</small>
 </div>
-<a class="icon-button" href="<c:url value='/logout'/>">
+<button class="icon-button" type="button" data-logout>
 <svg class="icon" aria-hidden="true">
 <use href="#i-logout">
 </use>
 </svg>
 <span class="sr-only">로그아웃</span>
-</a>
+</button>
 </div>
 </div>
 </aside>

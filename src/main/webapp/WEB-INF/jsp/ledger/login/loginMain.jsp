@@ -14,7 +14,6 @@
 <link rel="stylesheet" href="<c:url value='/resources/css/style.css'/>">
 <link rel="stylesheet" href="<c:url value='/resources/css/login.css'/>">
 <script>var contextPath = "${pageContext.request.contextPath}";</script>
-<script defer src="<c:url value='/resources/js/lib/jquery.1.11.3.min.js'/>"></script>
 <script defer src="<c:url value='/resources/js/common/common.js'/>"></script>
 <script defer src="<c:url value='/resources/js/common/modal.js'/>"></script>
 <script defer src="<c:url value='/resources/js/app/login/login.js'/>"></script>
