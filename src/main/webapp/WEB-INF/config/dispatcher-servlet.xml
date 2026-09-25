@@ -4,10 +4,12 @@
        xmlns:context="http://www.springframework.org/schema/context"
        xmlns:mvc="http://www.springframework.org/schema/mvc"
        xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:tx="http://www.springframework.org/schema/tx"
        xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
                            http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
                            http://www.springframework.org/schema/mvc https://www.springframework.org/schema/mvc/spring-mvc.xsd
-                           http://www.springframework.org/schema/task https://www.springframework.org/schema/task/spring-task.xsd">
+                           http://www.springframework.org/schema/task https://www.springframework.org/schema/task/spring-task.xsd
+                           http://www.springframework.org/schema/tx https://www.springframework.org/schema/tx/spring-tx.xsd">
 
     <mvc:annotation-driven/>
     <mvc:resources mapping="/resources/**" location="/resources/"/>
@@ -21,6 +23,10 @@
     <!-- @Scheduled 활성화: 고정 항목 자동 생성(매일 00:05). 스케줄 메서드를 가진 빈은 이 컨텍스트(ledger 패키지)에 둔다 -->
     <task:annotation-driven scheduler="scheduler"/>
     <task:scheduler id="scheduler" pool-size="1"/>
+
+    <!-- @Transactional 활성화. tx:annotation-driven 은 자기 컨텍스트의 빈에만 적용되는데 컴포넌트 스캔은 이 컨텍스트에 있다.
+         로직을 가진 ApiController 메서드에 @Transactional 을 붙인다. transactionManager 는 루트 컨텍스트(context-datasource.xml) 빈 -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
 
     <!-- 0순위: 빈 이름으로 뷰 찾기 (jsonView) -->
     <bean class="org.springframework.web.servlet.view.BeanNameViewResolver">
@@ -54,8 +60,14 @@
     <mvc:view-controller path="/ledger/asset" view-name="asset/assetMain"/>
     <mvc:view-controller path="/ledger/settings" view-name="settings/settingsMain"/>
 
-    <!-- 로그인 확인 인터셉터: /ledger/** 는 세션에 userId 가 있어야 접근 가능 -->
     <mvc:interceptors>
+        <!-- POST 는 Ajax(JSON) 만: CSRF 차단 -->
+        <mvc:interceptor>
+            <mvc:mapping path="/auth/**"/>
+            <mvc:mapping path="/ledger/**"/>
+            <bean class="ledger.interceptor.ApiRequestInterceptor"/>
+        </mvc:interceptor>
+        <!-- 로그인 확인: /ledger/** 는 세션에 userId 가 있어야 접근 가능 -->
         <mvc:interceptor>
             <mvc:mapping path="/ledger/**"/>
             <bean class="ledger.interceptor.LoginPageInterceptor"/>

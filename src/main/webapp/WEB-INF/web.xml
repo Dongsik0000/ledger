@@ -59,6 +59,10 @@
         <error-code>500</error-code>
         <location>/WEB-INF/jsp/ledger/error.jsp</location>
     </error-page>
+    <!-- 그 밖의 오류(400, 403, 405 …)도 Tomcat 기본 화면(서버 버전 노출) 대신 같은 화면 -->
+    <error-page>
+        <location>/WEB-INF/jsp/ledger/error.jsp</location>
+    </error-page>
 
     <session-config>
         <session-timeout>1440</session-timeout>
