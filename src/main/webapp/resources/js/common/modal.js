@@ -1,3 +1,10 @@
+// 편집 창(<dialog>.showModal())은 브라우저 최상위 레이어에 올라가서, body 에 붙은 모달은 z-index 와 상관없이 그 뒤에 가려진다.
+// 열린 dialog 가 있으면 모달을 그 안으로 옮겨 같은 레이어에서 보이게 한다.
+function _modalHost(modal){
+    var host = document.querySelector('dialog[open]') || document.body;
+    if (modal.parentNode !== host) host.appendChild(modal);
+}
+
 function _alert(title, desc, callback, options){
     if(typeof desc === 'function'){
         options  = callback;
@@ -74,6 +81,7 @@ function _alert(title, desc, callback, options){
     modal.querySelector('.manage-complete-title').textContent = title || '';
     modal.querySelector('.manage-complete-desc').textContent  = desc  || '';
     modal._cb = callback || null;
+    _modalHost(modal);
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
     if(!options.autoClose) modal.focus();
@@ -152,6 +160,7 @@ function _error(title, desc, callback){
 	modal.querySelector('.common-warn-title').textContent = title || '';
 	modal.querySelector('.common-warn-desc').textContent  = desc  || '';
 	modal._cb = callback || null;
+	_modalHost(modal);
 	modal.classList.add('is-open');
 	modal.setAttribute('aria-hidden', 'false');
 	modal.focus();
@@ -224,6 +233,7 @@ function _confirm(title, desc, callback){
 	modal.querySelector('.common-confirm-title').textContent = title || '';
 	modal.querySelector('.common-confirm-desc').textContent  = desc  || '';
 	modal._cb = callback || null;
+	_modalHost(modal);
 	modal.classList.add('is-open');
 	modal.setAttribute('aria-hidden', 'false');
 	modal.focus();

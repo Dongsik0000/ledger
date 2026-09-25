@@ -12,8 +12,14 @@
                            http://www.springframework.org/schema/tx https://www.springframework.org/schema/tx/spring-tx.xsd">
 
     <mvc:annotation-driven/>
-    <mvc:resources mapping="/resources/**" location="/resources/"/>
-    <mvc:resources mapping="/manifest.json" location="/"/>
+    <!-- 정적 자원은 no-cache: 브라우저가 보관하되 매번 변경 여부를 물어본다(바뀌지 않았으면 304).
+         배포 후에도 예전 JS·CSS 가 남아 화면이 어긋나지 않게 한다 -->
+    <mvc:resources mapping="/resources/**" location="/resources/">
+        <mvc:cache-control no-cache="true"/>
+    </mvc:resources>
+    <mvc:resources mapping="/manifest.json" location="/">
+        <mvc:cache-control no-cache="true"/>
+    </mvc:resources>
 
     <context:component-scan base-package="ledger"/>
 
@@ -54,7 +60,6 @@
 
     <!-- 임시: 디자인 미리보기용 화면 매핑. 해당 화면의 @Controller 를 만들면 그 줄을 지운다.
          겹쳐도 오류는 나지 않고 @Controller 가 우선하지만, 남겨 두면 어느 쪽이 응답하는지 헷갈린다 -->
-    <mvc:view-controller path="/ledger/entry" view-name="entry/entryMain"/>
     <mvc:view-controller path="/ledger/summary" view-name="summary/summaryMain"/>
     <mvc:view-controller path="/ledger/recurring" view-name="recurring/recurringMain"/>
     <mvc:view-controller path="/ledger/asset" view-name="asset/assetMain"/>
