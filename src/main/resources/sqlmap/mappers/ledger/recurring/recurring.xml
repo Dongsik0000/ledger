@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.recurring.dao.RecurringDAO">
+
+    <sql id="itemColumns">
+        i.id, i.name, i.type, i.amount,
+        i.category_id AS "categoryId", c.name AS "categoryName",
+        i.payment_method_id AS "paymentMethodId", p.name AS "paymentMethodName",
+        i.day_of_month AS "dayOfMonth", i.adjust, i.active, i.memo
+    </sql>
+
+    <!-- 활성 먼저, 결제일 순 -->
+    <select id="selectItemList" parameterType="long" resultType="java.util.HashMap">
+        SELECT <include refid="itemColumns"/>
+        FROM recurring_item i
+        JOIN category c ON c.id = i.category_id
+        LEFT JOIN payment_method p ON p.id = i.payment_method_id
+        WHERE i.user_id = #{userId}
+        ORDER BY i.active DESC, i.day_of_month, i.id
+    </select>
+
+    <select id="selectItem" parameterType="map" resultType="java.util.HashMap">
+        SELECT <include refid="itemColumns"/>
+        FROM recurring_item i
+        JOIN category c ON c.id = i.category_id
+        LEFT JOIN payment_method p ON p.id = i.payment_method_id
+        WHERE i.id = #{id} AND i.user_id = #{userId}
+    </select>
+
+    <!-- 스케줄러: 모든 사용자의 활성 항목(거래는 각 항목의 user_id 로 만든다) -->
+    <select id="selectActiveItems" resultType="java.util.HashMap">
+        SELECT id, user_id AS "userId", name, type, amount,
+               category_id AS "categoryId", payment_method_id AS "paymentMethodId",
+               day_of_month AS "dayOfMonth", adjust, memo
+        FROM recurring_item
+        WHERE active
+    </select>
+
+    <insert id="insertItem" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO recurring_item (user_id, name, type, amount, category_id, payment_method_id, day_of_month, adjust, active, memo)
+        VALUES (#{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{paymentMethodId}, #{dayOfMonth}, #{adjust}, #{active}, #{memo})
+    </insert>
+
+    <update id="updateItem" parameterType="map">
+        UPDATE recurring_item
+        SET name = #{name}, type = #{type}, amount = #{amount}, category_id = #{categoryId},
+            payment_method_id = #{paymentMethodId}, day_of_month = #{dayOfMonth}, adjust = #{adjust},
+            active = #{active}, memo = #{memo}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <update id="updateItemActive" parameterType="map">
+        UPDATE recurring_item SET active = #{active}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <!-- 생성 기록(recurring_run)은 FK ON DELETE CASCADE 로 함께 지워지고, 이미 만든 거래는 남는다 -->
+    <delete id="deleteItem" parameterType="map">
+        DELETE FROM recurring_item WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 그 달 처리 기록. 이미 있으면 아무것도 하지 않는다(중복 생성 방지). 영향 행 수 1 = 새로 처리 -->
+    <insert id="insertRun" parameterType="map">
+        INSERT INTO recurring_run (recurring_id, period_ym, entry_id)
+        VALUES (#{recurringId}, #{periodYm}, #{entryId})
+        ON CONFLICT (recurring_id, period_ym) DO NOTHING
+    </insert>
+
+    <update id="updateRunEntry" parameterType="map">
+        UPDATE recurring_run SET entry_id = #{entryId}
+        WHERE recurring_id = #{recurringId} AND period_ym = #{periodYm}
+    </update>
+
+    <!-- 이번 주기 상태·기록 금액: 처리 기록과 연결된 거래 금액(거래를 지웠으면 NULL) -->
+    <select id="selectRuns" parameterType="map" resultType="java.util.HashMap">
+        SELECT r.recurring_id AS "recurringId", r.period_ym AS "periodYm", e.amount
+        FROM recurring_run r
+        JOIN recurring_item i ON i.id = r.recurring_id
+        LEFT JOIN ledger_entry e ON e.id = r.entry_id
+        WHERE i.user_id = #{userId}
+          AND r.period_ym IN
+        <foreach collection="months" item="m" open="(" separator="," close=")">#{m}</foreach>
+    </select>
+</mapper>

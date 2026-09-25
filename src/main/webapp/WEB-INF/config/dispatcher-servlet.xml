@@ -61,7 +61,6 @@
     <!-- 임시: 디자인 미리보기용 화면 매핑. 해당 화면의 @Controller 를 만들면 그 줄을 지운다.
          겹쳐도 오류는 나지 않고 @Controller 가 우선하지만, 남겨 두면 어느 쪽이 응답하는지 헷갈린다 -->
     <mvc:view-controller path="/ledger/summary" view-name="summary/summaryMain"/>
-    <mvc:view-controller path="/ledger/recurring" view-name="recurring/recurringMain"/>
     <mvc:view-controller path="/ledger/asset" view-name="asset/assetMain"/>
 
     <mvc:interceptors>
