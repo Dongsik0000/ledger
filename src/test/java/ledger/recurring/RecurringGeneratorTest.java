@@ -41,6 +41,20 @@ class RecurringGeneratorTest {
                 RecurringGenerator.duesBefore(5, "NONE", LocalDate.parse("2026-09-26"), NONE));
     }
 
+    // 11/1(일) PREV_BIZ → 10/30(금): 다음 달분이 이번 달로 당겨지면 그날 기록 대상이어야 한다
+    @Test
+    void prevBusinessDayFromNextMonthIsDueToday() {
+        assertEquals(List.of(due(2026, 9, "2026-09-01"), due(2026, 10, "2026-10-01"), due(2026, 11, "2026-10-30")),
+                RecurringGenerator.duesUpTo(1, "PREV_BIZ", LocalDate.parse("2026-10-30"), NONE));
+    }
+
+    // 10/31 에 새로 만든 항목: 이미 지난 11월분(10/30)도 건너뛸 대상
+    @Test
+    void prevBusinessDayFromNextMonthIsSkippableAfterwards() {
+        assertEquals(List.of(due(2026, 9, "2026-09-01"), due(2026, 10, "2026-10-01"), due(2026, 11, "2026-10-30")),
+                RecurringGenerator.duesBefore(1, "PREV_BIZ", LocalDate.parse("2026-10-31"), NONE));
+    }
+
     // 8/31(월) → 그대로, 9/30(수). NEXT_BIZ 로 다음 달로 넘어가도 "몇 월분"은 원래 달
     @Test
     void nextBusinessDayKeepsOriginalMonth() {

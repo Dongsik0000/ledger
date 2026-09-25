@@ -136,7 +136,7 @@
 <input type="month" id="categoryMonth">
 </label>
 </div>
-<div class="chart-wrap">
+<div class="chart-wrap donut">
 <canvas id="categoryChart" aria-label="선택 월 카테고리 비중 도넛 차트" role="img"></canvas>
 </div>
 <div class="category-legend" id="categoryLegend"></div>

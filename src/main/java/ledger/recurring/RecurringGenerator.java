@@ -57,15 +57,18 @@ public class RecurringGenerator {
         return created;
     }
 
-    // 저장·결제일 변경·재활성화 직후: 이미 지난 결제일은 건너뜀(entry_id 없는 기록)으로 두고, 오늘이 결제일이면 바로 기록.
+    // 신규·결제일 변경·재활성화 직후: 이미 지난 결제일은 건너뜀(entry_id 없는 기록)으로 둔다.
     // item: id, userId, name, type, amount, categoryId, paymentMethodId, dayOfMonth, adjust, memo
-    public void skipPassedAndGenerate(Map<String, Object> item, LocalDate today) {
-        Set<LocalDate> holidays = holidays(today);
-        for (PayCycle.Due due : duesBefore(day(item), (String) item.get("adjust"), today, holidays)) {
+    public void skipPassed(Map<String, Object> item, LocalDate today) {
+        for (PayCycle.Due due : duesBefore(day(item), (String) item.get("adjust"), today, holidays(today))) {
             recurringService.insertRun(ParamUtil.map(
                     "recurringId", item.get("id"), "periodYm", due.month().toString(), "entryId", null));
         }
-        generate(item, today, holidays);
+    }
+
+    // 저장 직후: 결제일이 오늘까지인데 아직 처리되지 않은 분을 바로 기록(오늘이 결제일이면 오늘 기록)
+    public void generate(Map<String, Object> item, LocalDate today) {
+        generate(item, today, holidays(today));
     }
 
     // 지난달·이번 달 결제일 중 today 이하(생성 대상)
@@ -90,10 +93,11 @@ public class RecurringGenerator {
         return dues;
     }
 
+    // 지난달·이번 달·다음 달분. 다음 달분은 PREV_BIZ 보정으로 이번 달로 당겨질 수 있다(예: 11/1 일요일 → 10/30)
     private static List<PayCycle.Due> candidates(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
         YearMonth thisMonth = YearMonth.from(today);
         List<PayCycle.Due> dues = new ArrayList<>();
-        for (YearMonth m : List.of(thisMonth.minusMonths(1), thisMonth)) {
+        for (YearMonth m : List.of(thisMonth.minusMonths(1), thisMonth, thisMonth.plusMonths(1))) {
             dues.add(new PayCycle.Due(m, PayCycle.dueDate(m, day, adjust, holidays)));
         }
         return dues;

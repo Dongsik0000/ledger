@@ -180,9 +180,8 @@ App.settings = (function(){
                 group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '없음'}),
                 order = App.h('input', {type: 'number', value: c.sortOrder, min: 0, max: 9999, inputMode: 'numeric'}),
                 active = App.h('input', {type: 'checkbox', checked: !!c.active, attrs: {'aria-label': c.name + ' 표시'}}),
-                save = function(overrides){
-                    var param = {id: c.id, type: c.type, name: name.value, groupName: group.value, sortOrder: order.value, active: active.checked};
-                    send(url.categorySave, Object.assign(param, overrides || {}));
+                save = function(){
+                    send(url.categorySave, {id: c.id, type: c.type, name: name.value, groupName: group.value, sortOrder: order.value, active: active.checked});
                 },
                 move = function(direction){
                     return function(){ send(url.categoryMove, {id: c.id, direction: direction}, {title: '순서를 바꿨어요'}); };
@@ -203,7 +202,10 @@ App.settings = (function(){
                     smallButton('저장', function(){ save(); }),
                     ' ',
                     smallButton('삭제', function(){
-                        confirmDelete(c.name, url.categoryDelete, c.id, function(){ save({active: false}); });
+                        // 숨기기는 저장된 원래 값으로(입력칸에서 고치다 만 값까지 저장하지 않게)
+                        confirmDelete(c.name, url.categoryDelete, c.id, function(){
+                            send(url.categorySave, {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', sortOrder: c.sortOrder, active: false}, {title: '숨겼어요'});
+                        });
                     }, 'danger')
                 ])
             ]);
@@ -212,9 +214,8 @@ App.settings = (function(){
         paymentRow = function(p){
             var name = App.h('input', {type: 'text', value: p.name, maxLength: 50}),
                 active = App.h('input', {type: 'checkbox', checked: !!p.active, attrs: {'aria-label': p.name + ' 표시'}}),
-                save = function(overrides){
-                    var param = {id: p.id, name: name.value, active: active.checked};
-                    send(url.paymentSave, Object.assign(param, overrides || {}));
+                save = function(){
+                    send(url.paymentSave, {id: p.id, name: name.value, active: active.checked});
                 },
                 move = function(direction){
                     return function(){ send(url.paymentMove, {id: p.id, direction: direction}, {title: '순서를 바꿨어요'}); };
@@ -233,7 +234,9 @@ App.settings = (function(){
                     smallButton('저장', function(){ save(); }),
                     ' ',
                     smallButton('삭제', function(){
-                        confirmDelete(p.name, url.paymentDelete, p.id, function(){ save({active: false}); });
+                        confirmDelete(p.name, url.paymentDelete, p.id, function(){
+                            send(url.paymentSave, {id: p.id, name: p.name, active: false}, {title: '숨겼어요'});
+                        });
                     }, 'danger')
                 ])
             ]);

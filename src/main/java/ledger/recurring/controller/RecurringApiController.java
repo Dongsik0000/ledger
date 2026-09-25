@@ -158,17 +158,29 @@ public class RecurringApiController {
             return Response.invalid("결제수단을 다시 골라 주세요.");
         }
 
+        Map<String, Object> saved = null;
+        if (id != null) {
+            saved = recurringService.selectItem(ParamUtil.map("id", id, "userId", userId));
+            if (saved == null) {
+                return Response.of(Constants.NOT_FOUND);
+            }
+        }
+
         Map<String, Object> item = ParamUtil.map("userId", userId, "id", id, "name", name, "type", type,
                 "amount", amount, "categoryId", categoryId, "paymentMethodId", paymentMethodId,
                 "dayOfMonth", dayOfMonth, "adjust", adjust, "active", active, "memo", memo.isEmpty() ? null : memo);
         if (id == null) {
             recurringService.insertItem(item);            // item.id 에 새 키
-        } else if (recurringService.updateItem(item) == 0) {
-            return Response.of(Constants.NOT_FOUND);
+        } else {
+            recurringService.updateItem(item);
         }
 
         if (active) {
-            recurringGenerator.skipPassedAndGenerate(item, LocalDate.now(SEOUL));
+            LocalDate today = LocalDate.now(SEOUL);
+            if (shouldSkipPassed(saved, dayOfMonth, adjust)) {
+                recurringGenerator.skipPassed(item, today);
+            }
+            recurringGenerator.generate(item, today);
         }
         return Response.of(Constants.SUCCESS);
     }
@@ -188,11 +200,15 @@ public class RecurringApiController {
         if (saved == null) {
             return Response.of(Constants.NOT_FOUND);
         }
+        boolean wasActive = Boolean.TRUE.equals(saved.get("active"));
         key.put("active", active);
         recurringService.updateItemActive(key);
-        if (active) {
+        // 꺼져 있던 항목을 켤 때만: 꺼져 있던 동안 지난 결제일은 건너뛰고, 오늘 결제일이면 기록
+        if (active && !wasActive) {
+            LocalDate today = LocalDate.now(SEOUL);
             saved.put("userId", userId);
-            recurringGenerator.skipPassedAndGenerate(saved, LocalDate.now(SEOUL));
+            recurringGenerator.skipPassed(saved, today);
+            recurringGenerator.generate(saved, today);
         }
         return Response.of(Constants.SUCCESS);
     }
@@ -209,6 +225,15 @@ public class RecurringApiController {
             return Response.of(Constants.NOT_FOUND);
         }
         return Response.of(Constants.SUCCESS);
+    }
+
+    // 지난 결제일 건너뛰기는 신규·결제일/보정 변경·재활성화일 때만(spec 3.4).
+    // 금액·이름만 바꾼 수정에서 건너뛰면, 스케줄러 실패로 누락된 결제가 조용히 "건너뜀"으로 가려진다
+    static boolean shouldSkipPassed(Map<String, Object> saved, int dayOfMonth, String adjust) {
+        if (saved == null || !Boolean.TRUE.equals(saved.get("active"))) {
+            return true;
+        }
+        return ((Number) saved.get("dayOfMonth")).intValue() != dayOfMonth || !adjust.equals(saved.get("adjust"));
     }
 
     private static long id(Map<String, Object> item) {
