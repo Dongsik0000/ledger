@@ -58,9 +58,9 @@ Tomcat 9 이하(`javax`)는 Spring 6(`jakarta`)과 맞지 않아 쓸 수 없다.
 
 ```
 src/main/java/ledger/
-  cmmn/        공통 (Response, Constants, SessionUtil, CmmnController: /login /signup /logout)
-  interceptor/ LoginPageInterceptor — /ledger/** 는 세션 userId 필수
-  auth/        로그인·가입 (controller → service/impl → dao → sqlmap/mappers/ledger/auth/auth.xml)
+  cmmn/        공통 (Response, Constants, SessionUtil, ParamUtil, RequestUtil, LoginAttemptLimiter, CmmnExceptionHandler)
+  interceptor/ ApiRequestInterceptor — POST 는 Ajax+JSON 만 / LoginPageInterceptor — /ledger/** 는 세션 userId 필수
+  auth/        로그인·가입·로그아웃. AuthApiController 에 로직, AuthServiceImpl 은 DAO 연결만 (→ sqlmap/mappers/ledger/auth/auth.xml)
   dashboard/ entry/ recurring/ summary/ asset/ settings/   각 기능, 같은 계층 구조
 src/main/resources/
   spring/context-datasource.xml   HikariCP, MyBatis, 트랜잭션, BCrypt
@@ -83,3 +83,5 @@ deploy/                           nginx, app.env 예시, 백업, 운영 가이�
 - 모든 사용자 데이터 쿼리는 `AND user_id = #{userId}` 를 건다. userId 는 `SessionUtil.getUserId(session)`.
 - 금액은 원 단위 `bigint` 양수, 수입/지출은 `type` 컬럼으로 구분.
 - 주기(급여일 기준)와 이월은 저장하지 않고 계산한다 — docs/plan.md "핵심 계산" 참고.
+- 로직(검증·분기·계산·세션·`@Transactional`)은 `XxxApiController`, `ServiceImpl` 은 DAO 호출만. 컨트롤러에서 try/catch 금지(CmmnExceptionHandler 가 처리).
+- 화면 데이터는 Ajax 로 그린다. 사용자 값은 `textContent`/`App.escape` 로만 HTML 에 넣는다. 결과 코드는 `App.CODE`.
