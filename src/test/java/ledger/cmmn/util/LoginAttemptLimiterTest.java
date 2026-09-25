@@ -3,6 +3,15 @@ package ledger.cmmn.util;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,57 +22,102 @@ class LoginAttemptLimiterTest {
 
     @BeforeEach
     void setUp() {
-        limiter = new LoginAttemptLimiter(() -> now[0]);
+        limiter = new LoginAttemptLimiter(() -> now[0], 100);
     }
 
-    private void fail(String key, int times) {
+    private int acquire(LoginAttemptLimiter target, String key, int times) {
+        int allowed = 0;
         for (int i = 0; i < times; i++) {
-            limiter.recordFailure(key);
+            if (target.tryAcquire(key)) {
+                allowed++;
+            }
         }
+        return allowed;
     }
 
     @Test
-    void fourFailuresNotBlocked() {
-        fail("a", 4);
-        assertFalse(limiter.isBlocked("a"));
+    void firstFiveAttemptsAllowed() {
+        assertEquals(5, acquire(limiter, "a", 5));
     }
 
     @Test
-    void fifthFailureBlocks() {
-        fail("a", 5);
-        assertTrue(limiter.isBlocked("a"));
+    void sixthAttemptBlocked() {
+        acquire(limiter, "a", 5);
+        assertFalse(limiter.tryAcquire("a"));
     }
 
     @Test
     void blockExpiresAfterFiveMinutes() {
-        fail("a", 5);
+        acquire(limiter, "a", 5);
         now[0] += LoginAttemptLimiter.BLOCK_MILLIS - 1;
-        assertTrue(limiter.isBlocked("a"));
+        assertFalse(limiter.tryAcquire("a"));
         now[0] += 1;
-        assertFalse(limiter.isBlocked("a"));
-        fail("a", 1);   // 차단이 끝나면 횟수도 새로 센다
-        assertFalse(limiter.isBlocked("a"));
+        assertEquals(5, acquire(limiter, "a", 5)); // 차단이 끝나면 횟수도 새로 센다
+        assertFalse(limiter.tryAcquire("a"));
     }
 
     @Test
-    void oldFailuresForgotten() {
-        fail("a", 4);
+    void oldAttemptsForgotten() {
+        acquire(limiter, "a", 4);
         now[0] += LoginAttemptLimiter.BLOCK_MILLIS + 1;
-        fail("a", 1);
-        assertFalse(limiter.isBlocked("a"));
+        assertEquals(5, acquire(limiter, "a", 5));
     }
 
     @Test
     void resetClears() {
-        fail("a", 4);
+        acquire(limiter, "a", 4);
         limiter.reset("a");
-        fail("a", 4);
-        assertFalse(limiter.isBlocked("a"));
+        assertEquals(5, acquire(limiter, "a", 5));
     }
 
     @Test
     void keysAreIndependent() {
-        fail("a", 5);
-        assertFalse(limiter.isBlocked("b"));
+        acquire(limiter, "a", 6);
+        assertTrue(limiter.tryAcquire("b"));
+    }
+
+    // 동시에 몰려와도 확인과 증가가 한 번에 일어나 5번까지만 통과한다
+    @Test
+    void concurrentAttemptsCannotExceedLimit() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(16);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger allowed = new AtomicInteger();
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < 64; i++) {
+            futures.add(pool.submit(() -> {
+                start.await();
+                if (limiter.tryAcquire("a")) {
+                    allowed.incrementAndGet();
+                }
+                return null;
+            }));
+        }
+        start.countDown();
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        pool.shutdown();
+        assertEquals(5, allowed.get());
+    }
+
+    // 키가 상한만큼 차 있으면 새 키는 막는다(메모리 소모 공격 방지). 이미 있는 키는 계속 센다
+    @Test
+    void newKeysRejectedWhenFull() {
+        LoginAttemptLimiter small = new LoginAttemptLimiter(() -> now[0], 3);
+        small.tryAcquire("a");
+        small.tryAcquire("b");
+        small.tryAcquire("c");
+        assertFalse(small.tryAcquire("d"));
+        assertTrue(small.tryAcquire("a"));
+    }
+
+    @Test
+    void staleKeysPurgedWhenFull() {
+        LoginAttemptLimiter small = new LoginAttemptLimiter(() -> now[0], 3);
+        small.tryAcquire("a");
+        small.tryAcquire("b");
+        small.tryAcquire("c");
+        now[0] += LoginAttemptLimiter.BLOCK_MILLIS + 1;
+        assertTrue(small.tryAcquire("d"));
     }
 }

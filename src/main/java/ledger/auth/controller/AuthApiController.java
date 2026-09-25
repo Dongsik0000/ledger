@@ -72,9 +72,9 @@ public class AuthApiController {
     public Response login(@RequestBody HashMap<String, Object> param, HttpServletRequest request) {
         String username = ParamUtil.str(param, "username");
         String password = ParamUtil.raw(param, "password");
-        String attemptKey = "login|" + username.toLowerCase(Locale.ROOT) + "|" + RequestUtil.clientIp(request);
+        String attemptKey = loginAttemptKey(username, RequestUtil.clientIp(request));
 
-        if (loginAttemptLimiter.isBlocked(attemptKey)) {
+        if (!loginAttemptLimiter.tryAcquire(attemptKey)) {
             return Response.of(Constants.LOGIN_BLOCKED);
         }
 
@@ -86,7 +86,6 @@ public class AuthApiController {
         boolean matched = fitsBcrypt(password) && passwordEncoder.matches(password, hash);
 
         if (user == null || !matched) {
-            loginAttemptLimiter.recordFailure(attemptKey);
             return Response.of(Constants.LOGIN_FAIL);
         }
 
@@ -105,18 +104,18 @@ public class AuthApiController {
         String code = ParamUtil.str(param, "signupCode");
         String attemptKey = "signup|" + RequestUtil.clientIp(request);
 
-        if (loginAttemptLimiter.isBlocked(attemptKey)) {
-            return Response.of(Constants.SIGNUP_BLOCKED);
-        }
         if (username.isEmpty() || username.length() > USERNAME_MAX
                 || password.length() < PASSWORD_MIN || !fitsBcrypt(password)) {
             return Response.of(Constants.FAIL, "아이디는 50자 이하, 비밀번호는 8자 이상 72바이트 이하로 입력해주세요.", null);
         }
+        if (!loginAttemptLimiter.tryAcquire(attemptKey)) {
+            return Response.of(Constants.SIGNUP_BLOCKED);
+        }
         // 코드 검사를 중복 검사보다 먼저 — 코드가 없는 사람이 아이디 존재 여부를 알아낼 수 없게
         if (!isSignupCodeValid(code)) {
-            loginAttemptLimiter.recordFailure(attemptKey);
             return Response.of(Constants.SIGNUP_FAIL_CODE);
         }
+        loginAttemptLimiter.reset(attemptKey);
         if (authService.selectUserByUsername(username) != null) {
             return Response.of(Constants.SIGNUP_FAIL_EXISTS);
         }
@@ -135,6 +134,12 @@ public class AuthApiController {
     public Response logout(HttpServletRequest request) {
         SessionUtil.logout(request);
         return Response.of(Constants.SUCCESS);
+    }
+
+    // 시도 제한 키. 검증을 통과하지 못한 아이디(빈 값, 50자 초과)는 넣지 않는다 — 긴 키로 메모리를 채우는 공격 방지
+    static String loginAttemptKey(String username, String ip) {
+        boolean valid = !username.isEmpty() && username.length() <= USERNAME_MAX;
+        return "login|" + (valid ? username.toLowerCase(Locale.ROOT) : "") + "|" + ip;
     }
 
     private boolean fitsBcrypt(String password) {
