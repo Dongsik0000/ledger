@@ -1,4 +1,5 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" isErrorPage="true"%>
+<%-- isErrorPage 를 쓰지 않는다: 켜면 Spring 이 남긴 예외 속성 때문에 JSP 가 상태를 500 으로 덮어써 404/400 이 500 이 된다 --%>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="jakarta.tags.core"%>
 <!DOCTYPE html>
 <html lang="ko">
