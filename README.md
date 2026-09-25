@@ -58,10 +58,14 @@ Tomcat 9 이하(`javax`)는 Spring 6(`jakarta`)과 맞지 않아 쓸 수 없다.
 
 ```
 src/main/java/ledger/
-  cmmn/        공통 (Response, Constants, SessionUtil, ParamUtil, RequestUtil, LoginAttemptLimiter, CmmnExceptionHandler)
+  cmmn/        공통 (Response, Constants, SessionUtil, ParamUtil, LikeUtil, CsvUtil, RequestUtil, LoginAttemptLimiter, CmmnExceptionHandler)
   interceptor/ ApiRequestInterceptor — POST 는 Ajax+JSON 만 / LoginPageInterceptor — /ledger/** 는 세션 userId 필수
   auth/        로그인·가입·로그아웃. AuthApiController 에 로직, AuthServiceImpl 은 DAO 연결만 (→ sqlmap/mappers/ledger/auth/auth.xml)
-  dashboard/ entry/ recurring/ summary/ asset/ settings/   각 기능, 같은 계층 구조
+  settings/ entry/ dashboard/ recurring/ holiday/ summary/ asset/   각 기능, 같은 계층 구조(XxxApiController → XxxService → impl → XxxDAO → mapper)
+  cycle/PayCycle                  주기·결제일 계산(순수, JUnit)
+  recurring/RecurringGenerator    고정 항목 거래 생성(저장 직후·RecurringScheduler 매일 00:05·기동 시)
+  holiday/HolidayApiClient, HolidayXmlParser   공공데이터포털 특일정보(XXE 차단)
+  summary/SummaryTables           요약 표(카테고리 그룹 소계·결제수단)
 src/main/resources/
   spring/context-datasource.xml   HikariCP, MyBatis, 트랜잭션, BCrypt
   sqlmap/mybatis-config.xml, sqlmap/mappers/ledger/<기능>/*.xml
@@ -72,7 +76,7 @@ src/main/webapp/
   WEB-INF/layout/ledgerMenu.jsp   사이드 메뉴
   WEB-INF/jsp/ledger/<기능>/*.jsp
   resources/js/app/<기능>/*.js    App.xxx = (function(){ ... return {init} }()) 패턴
-  resources/js/common/            common.js (App.post/get, _loading), modal.js (_alert/_error/_confirm)
+  resources/js/common/            common.js (App.post/get, App.h 안전한 DOM 생성, App.result 결과 코드 분기, 금액 입력), modal.js (_alert/_error/_confirm, 열린 dialog 위에 표시)
   resources/js/lib/chartjs/       Chart.js 4.4.6
 db/                               번호 순서 SQL
 deploy/                           nginx, app.env 예시, 백업, 운영 가이드
