@@ -255,7 +255,8 @@ public class SettingsApiController {
 
     // 거래 CSV 내보내기(파일 다운로드, 읽기 전용이라 GET). 기간 오류는 400 오류 화면
     @GetMapping("/export")
-    public void export(@RequestParam String from, @RequestParam String to, HttpSession session,
+    // 파라미터 이름을 명시한다(-parameters 없이 컴파일돼 이름을 알 수 없으면 500)
+    public void export(@RequestParam("from") String from, @RequestParam("to") String to, HttpSession session,
                        HttpServletResponse response) throws IOException {
         Map<String, Object> range = ParamUtil.map("from", from, "to", to);
         LocalDate fromDate = ParamUtil.date(range, "from");
