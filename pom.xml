@@ -140,32 +140,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
             </plugin>
-            <!-- 로컬 실행: mvn cargo:run → http://localhost:8081/p3/ (Tomcat 10.1을 자동으로 받아 띄운다) -->
-            <plugin>
-                <groupId>org.codehaus.cargo</groupId>
-                <artifactId>cargo-maven3-plugin</artifactId>
-                <version>1.10.20</version>
-                <configuration>
-                    <container>
-                        <containerId>tomcat10x</containerId>
-                    </container>
-                    <configuration>
-                        <properties>
-                            <cargo.servlet.port>8081</cargo.servlet.port>
-                        </properties>
-                    </configuration>
-                    <deployables>
-                        <deployable>
-                            <groupId>${project.groupId}</groupId>
-                            <artifactId>${project.artifactId}</artifactId>
-                            <type>war</type>
-                            <properties>
-                                <context>p3</context>
-                            </properties>
-                        </deployable>
-                    </deployables>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 </project>

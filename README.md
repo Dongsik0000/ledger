@@ -9,31 +9,30 @@ Oracle Cloud 서버의 nginx `/p3/` → Docker Tomcat `127.0.0.1:8081` 로 서�
 
 ## 로컬 실행
 
+**1) DB** (로컬 PostgreSQL). `.sql` 은 UTF-8 이므로 Windows 에서는 먼저 `$env:PGCLIENTENCODING="UTF8"` 을 지정한다.
+
 ```bash
-# 1. DB (로컬 PostgreSQL)
 psql -U postgres -f db/000_create_db.sql
 psql -U ledger_app -d ledger -f db/001_schema.sql
 psql -U ledger_app -d ledger -f db/002_seed_holiday_2026.sql
 psql -U ledger_app -d ledger -f db/003_comments.sql
-
-# 2. 기동 (Tomcat 10.1 을 자동으로 받아서 띄운다)
-mvn cargo:run
-# → http://localhost:8081/p3/  (가입 코드 기본값: dev-signup, globals.properties 참고)
 ```
-
-환경변수 `LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`, `LEDGER_SIGNUP_CODE`, `LEDGER_HOLIDAY_API_KEY` 로 설정을 덮어쓸 수 있다.
-예: Docker PostgreSQL 을 다른 포트로 띄웠다면 `LEDGER_DB_URL=jdbc:postgresql://localhost:5434/ledger mvn cargo:run` (PowerShell: `$env:LEDGER_DB_URL="..."; mvn cargo:run`).
 
 Docker 컨테이너에 DB 를 만들 때는 `docker exec -i <컨테이너> psql -U <슈퍼유저> -d postgres < db/000_create_db.sql` 처럼 컨테이너 안에서 실행하면 비밀번호 없이 된다.
 
-## IntelliJ IDEA Ultimate 로 실행 (권장)
+**2) 기동** 아래 "IntelliJ IDEA Ultimate 로 실행" → http://localhost:8081/p3/ (가입 코드 기본값: dev-signup, globals.properties 참고)
 
-`mvn cargo:run` 은 매번 재시작해야 하지만, IntelliJ 로 띄우면 JSP·CSS·JS 를 저장하는 즉시 반영되고 중단점 디버깅도 된다.
+환경변수 `LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`, `LEDGER_SIGNUP_CODE`, `LEDGER_HOLIDAY_API_KEY` 로 설정을 덮어쓸 수 있다.
+예: Docker PostgreSQL 을 다른 포트로 띄웠다면 실행 구성의 `Startup/Connection` 탭 → Environment variables 에 `LEDGER_DB_URL=jdbc:postgresql://localhost:5434/ledger` 를 넣는다.
+
+## IntelliJ IDEA Ultimate 로 실행
+
+JSP·CSS·JS 를 저장하는 즉시 반영되고 중단점 디버깅도 된다.
 
 **1) Tomcat 등록** (PC 당 1회)
 `File → Settings → Build, Execution, Deployment → Application Servers` → `+` → Tomcat Server →
-Tomcat Home 에 Tomcat 10.1 경로 입력. 없으면 `mvn cargo:run` 을 한 번 돌린 뒤
-`target/cargo/installs/tomcat-10.1.41/apache-tomcat-10.1.41` 를 `target` 밖으로 복사해서 쓰면 된다(18 MB).
+Tomcat Home 에 Tomcat 10.1 경로 입력. 없으면 https://tomcat.apache.org/download-10.cgi 에서 10.1.x 의 `64-bit Windows zip` 을 받아 압축을 푼 폴더를 지정한다.
+Tomcat 9 이하(`javax`)는 Spring 6(`jakarta`)과 맞지 않아 쓸 수 없다.
 
 **2) 실행 구성** `Run → Edit Configurations` → `+` → Tomcat Server → **Local**
 
