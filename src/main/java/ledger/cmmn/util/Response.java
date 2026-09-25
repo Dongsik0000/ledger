@@ -25,6 +25,11 @@ public class Response {
         return new Response(code, message, data);
     }
 
+    // 입력 오류(90). message 는 화면에 그대로 보인다
+    public static Response invalid(String message) {
+        return new Response(Constants.INVALID, message, null);
+    }
+
     public String getCode() {
         return code;
     }
