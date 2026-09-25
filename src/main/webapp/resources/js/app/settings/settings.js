@@ -3,6 +3,7 @@ App.settings = (function(){
             payDay: document.getElementById('payDay'),
             payDayAdjust: document.getElementById('payDayAdjust'),
             cycleSave: document.getElementById('cycleSave'),
+            cycleExample: document.getElementById('cycleExample'),
             expenseBody: document.getElementById('expenseCategoryBody'),
             incomeBody: document.getElementById('incomeCategoryBody'),
             categoryAdd: document.getElementById('categoryAdd'),
@@ -20,6 +21,7 @@ App.settings = (function(){
         settings = { submitting: false },
         url = {
             load: contextPath + '/ledger/settings/load',
+            summary: contextPath + '/ledger/dashboard/summary',
             cycleSave: contextPath + '/ledger/settings/cycle/save',
             categorySave: contextPath + '/ledger/settings/category/save',
             categoryDelete: contextPath + '/ledger/settings/category/delete',
@@ -48,6 +50,24 @@ App.settings = (function(){
             App.post(url.load)
                 .then(function(res){
                     App.result(res, { ok: function(){ render(res.data); } });
+                })
+                .catch(function(){});
+            loadCycle();
+        },
+
+        // "2026-09-26" -> "9월 26일"
+        dayLabel = function(d){
+            var p = d.split('-');
+            return Number(p[1]) + '월 ' + Number(p[2]) + '일';
+        },
+
+        // 저장된 설정으로 계산한 현재 주기 "9월 26일~10월 25일"
+        loadCycle = function(){
+            App.post(url.summary)
+                .then(function(res){
+                    App.result(res, { ok: function(){
+                        m$.cycleExample.textContent = dayLabel(res.data.cycleStart) + '~' + dayLabel(res.data.cycleEnd);
+                    } });
                 })
                 .catch(function(){});
         },

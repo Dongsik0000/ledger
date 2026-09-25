@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.dashboard.dao.DashboardDAO">
+
+    <!-- date 전날까지의 누적 잔액(수입 − 지출) = 이월 금액 -->
+    <select id="selectBalanceBefore" parameterType="map" resultType="long">
+        SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END), 0)
+        FROM ledger_entry
+        WHERE user_id = #{userId} AND entry_date &lt; #{date}
+    </select>
+
+    <!-- 기간 수입·지출 합 -->
+    <select id="selectPeriodSum" parameterType="map" resultType="java.util.HashMap">
+        SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount END), 0) AS "income",
+               COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount END), 0) AS "expense"
+        FROM ledger_entry
+        WHERE user_id = #{userId} AND entry_date BETWEEN #{from} AND #{to}
+    </select>
+
+    <select id="selectAssetTotal" parameterType="long" resultType="long">
+        SELECT COALESCE(SUM(amount), 0) FROM asset WHERE user_id = #{userId}
+    </select>
+
+    <!-- 예정 고정지출 계산용: 활성 지출 고정 항목 -->
+    <select id="selectActiveExpenseItems" parameterType="long" resultType="java.util.HashMap">
+        SELECT id, amount, day_of_month AS "dayOfMonth", adjust
+        FROM recurring_item
+        WHERE user_id = #{userId} AND active AND type = 'EXPENSE'
+    </select>
+
+    <!-- 이미 처리된(또는 건너뛴) 결제: "고정항목id|YYYY-MM" -->
+    <select id="selectRunKeys" parameterType="map" resultType="string">
+        SELECT r.recurring_id || '|' || r.period_ym
+        FROM recurring_run r
+        JOIN recurring_item i ON i.id = r.recurring_id
+        WHERE i.user_id = #{userId}
+          AND r.period_ym IN
+        <foreach collection="months" item="m" open="(" separator="," close=")">#{m}</foreach>
+    </select>
+</mapper>

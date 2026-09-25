@@ -27,6 +27,17 @@
         ORDER BY e.entry_date DESC, e.id DESC
     </select>
 
+    <!-- 최근 거래(오늘까지, 미래 날짜로 넣은 거래는 제외) -->
+    <select id="selectRecentEntries" parameterType="map" resultType="java.util.HashMap">
+        SELECT <include refid="entryColumns"/>
+        FROM ledger_entry e
+        JOIN category c ON c.id = e.category_id
+        LEFT JOIN payment_method p ON p.id = e.payment_method_id
+        WHERE e.user_id = #{userId} AND e.entry_date &lt;= #{today}
+        ORDER BY e.entry_date DESC, e.id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectEntry" parameterType="map" resultType="java.util.HashMap">
         SELECT <include refid="entryColumns"/>
         FROM ledger_entry e

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.holiday.dao.HolidayDAO">
+
+    <!-- 주기·결제일 보정용 공휴일 날짜(전 사용자 공용) -->
+    <select id="selectHolidayDates" parameterType="map" resultType="java.time.LocalDate">
+        SELECT holiday_date
+        FROM holiday
+        WHERE holiday_date BETWEEN #{from} AND #{to}
+    </select>
+</mapper>
