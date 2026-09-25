@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.summary.dao.SummaryDAO">
+
+    <!-- 달력 월별 수입·지출 -->
+    <select id="selectMonthly" parameterType="map" resultType="java.util.HashMap">
+        SELECT to_char(entry_date, 'YYYY-MM') AS "month",
+               COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount END), 0) AS "income",
+               COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount END), 0) AS "expense"
+        FROM ledger_entry
+        WHERE user_id = #{userId} AND entry_date BETWEEN #{from} AND #{to}
+        GROUP BY to_char(entry_date, 'YYYY-MM')
+    </select>
+
+    <!-- 카테고리 × 월 지출 -->
+    <select id="selectCategoryMonthly" parameterType="map" resultType="java.util.HashMap">
+        SELECT category_id AS "id", to_char(entry_date, 'YYYY-MM') AS "month", SUM(amount) AS "amount"
+        FROM ledger_entry
+        WHERE user_id = #{userId} AND type = 'EXPENSE' AND entry_date BETWEEN #{from} AND #{to}
+        GROUP BY category_id, to_char(entry_date, 'YYYY-MM')
+    </select>
+
+    <!-- 결제수단 × 월 지출(결제수단 없음은 id NULL) -->
+    <select id="selectPaymentMonthly" parameterType="map" resultType="java.util.HashMap">
+        SELECT payment_method_id AS "id", to_char(entry_date, 'YYYY-MM') AS "month", SUM(amount) AS "amount"
+        FROM ledger_entry
+        WHERE user_id = #{userId} AND type = 'EXPENSE' AND entry_date BETWEEN #{from} AND #{to}
+        GROUP BY payment_method_id, to_char(entry_date, 'YYYY-MM')
+    </select>
+
+    <!-- 도넛: 한 달 지출을 그룹 단위로(그룹 없으면 카테고리 이름), 큰 순 -->
+    <select id="selectGroupExpense" parameterType="map" resultType="java.util.HashMap">
+        SELECT COALESCE(c.group_name, c.name) AS "label", SUM(e.amount) AS "amount"
+        FROM ledger_entry e
+        JOIN category c ON c.id = e.category_id
+        WHERE e.user_id = #{userId} AND e.type = 'EXPENSE' AND e.entry_date BETWEEN #{from} AND #{to}
+        GROUP BY COALESCE(c.group_name, c.name)
+        ORDER BY SUM(e.amount) DESC
+    </select>
+</mapper>
