@@ -6,8 +6,8 @@
         </encoder>
     </appender>
 
-    <!-- ledger 패키지(매퍼 SQL 포함) DEBUG -->
-    <logger name="ledger" level="DEBUG"/>
+    <!-- ledger 패키지(매퍼 SQL 포함). 로컬 DEBUG, 운영 이미지는 LEDGER_LOG_LEVEL=INFO (SQL 파라미터에 금액·메모가 남지 않게) -->
+    <logger name="ledger" level="${LEDGER_LOG_LEVEL:-DEBUG}"/>
     <logger name="org.springframework" level="INFO"/>
     <logger name="com.zaxxer.hikari" level="INFO"/>
 

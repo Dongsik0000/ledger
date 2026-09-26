@@ -13,6 +13,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 // 공공데이터포털 한국천문연구원 특일정보 getRestDeInfo(공휴일) 호출.
 // 명세: https://www.data.go.kr/data/15012690/openapi.do (2026-09-26 확인: solMonth 선택, 응답 XML)
@@ -22,6 +26,7 @@ public class HolidayApiClient {
 
     private static final Logger logger = LoggerFactory.getLogger(HolidayApiClient.class);
     private static final String URL = "https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo";
+    private static final long TOTAL_TIMEOUT_SECONDS = 15;
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -43,7 +48,21 @@ public class HolidayApiClient {
                     .timeout(Duration.ofSeconds(10))
                     .GET()
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            // request.timeout 은 응답 헤더까지만 적용되므로 본문 수신까지 포함한 전체 시간을 따로 제한한다
+            CompletableFuture<HttpResponse<String>> future =
+                    http.sendAsync(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            HttpResponse<String> response;
+            try {
+                response = future.get(TOTAL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+                future.cancel(true);
+                logger.warn("공휴일 API 응답 시간 초과 (year={})", year);
+                return null;
+            } catch (ExecutionException e) {
+                // 원인 메시지에 요청 URL(키 포함)이 들어갈 수 있어 종류만 남긴다
+                logger.warn("공휴일 API 호출 실패 (year={}): {}", year, e.getCause().getClass().getSimpleName());
+                return null;
+            }
             if (response.statusCode() != 200) {
                 logger.warn("공휴일 API HTTP {} (year={})", response.statusCode(), year);
                 return null;

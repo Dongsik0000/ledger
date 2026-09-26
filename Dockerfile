@@ -33,9 +33,14 @@ COPY --from=build /build/target/ledger.war /usr/local/tomcat/webapps/p3.war
 ENV TZ=Asia/Seoul \
     JAVA_OPTS="-Xms256m -Xmx512m -Duser.timezone=Asia/Seoul -Djava.security.egd=file:/dev/./urandom"
 
+# 운영 기본값: 로그 INFO, 가입 코드 없음(= 가입 불가). /etc/ledger/app.env 의 값이 이보다 우선한다
+ENV LEDGER_LOG_LEVEL=INFO \
+    LEDGER_SIGNUP_CODE=""
+
 EXPOSE 8081
 
+# 세션을 만들지 않는 정적 파일로 확인한다 (로그인 화면은 호출마다 세션이 생겨 쌓인다)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-    CMD curl -fsS http://localhost:8081/p3/login > /dev/null || exit 1
+    CMD curl -fsS http://localhost:8081/p3/manifest.json > /dev/null || exit 1
 
 CMD ["catalina.sh", "run"]
