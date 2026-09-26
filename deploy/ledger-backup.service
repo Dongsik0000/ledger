@@ -1,0 +1,7 @@
+# /etc/systemd/system/ledger-backup.service — deploy/ledger-backup.timer 가 매일 실행한다
+[Unit]
+Description=ledger PostgreSQL backup (pg_dump)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ledger-backup

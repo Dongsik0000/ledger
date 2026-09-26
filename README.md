@@ -104,7 +104,7 @@ sudo docker compose up -d --build
 ```
 
 - nginx 설정은 `deploy/nginx-ledger.conf`, `deploy/nginx-ledger-limit.conf` 파일 머리말을 따릅니다.
-- 매일 백업은 `deploy/backup.sh` 를 크론에 등록합니다.
+- 매일 백업은 `deploy/backup.sh` 를 `deploy/ledger-backup.timer`(systemd) 로 실행합니다.
 - 운영 이미지는 로그 `INFO`, 가입 코드가 없으면 가입이 막힌 상태로 뜹니다.
 
 </details>

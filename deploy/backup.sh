@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 매일 pg_dump 백업. 30일 보관.
 #   sudo install -m 750 deploy/backup.sh /usr/local/bin/ledger-backup
-#   sudo crontab -e  →  10 4 * * * /usr/local/bin/ledger-backup
+#   매일 04:10 실행은 deploy/ledger-backup.service·timer (systemd, 서버에 crontab 없음)
 set -euo pipefail
 
 BACKUP_DIR=/var/backups/ledger
