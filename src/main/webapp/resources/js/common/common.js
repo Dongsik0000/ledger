@@ -32,7 +32,11 @@ App.ajax = function (url, data, opts) {
 
     return fetch(url, fetchOpt)
         .then(function (res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
+            if (!res.ok) {
+                var err = new Error('HTTP ' + res.status);
+                err.status = res.status;
+                throw err;
+            }
             return res.json();
         })
         .then(function(data){
@@ -43,7 +47,9 @@ App.ajax = function (url, data, opts) {
             if (typeof opts.onError === 'function') {
                 opts.onError(err);
             } else if (typeof window._error === 'function') {
-                window._error('오류', '요청 처리 중 문제가 발생했습니다.');
+                // 429: nginx 요청 속도 제한(로그인·가입 시도 등)
+                if (err.status === 429) window._error('잠시 후 다시 시도해 주세요', '짧은 시간에 요청이 너무 많았어요. 1분쯤 뒤에 다시 시도해 주세요.');
+                else window._error('오류', '요청 처리 중 문제가 발생했습니다.');
             }
             throw err;
         });
@@ -112,9 +118,10 @@ App.escape = function (v) {
     });
 };
 
-// App.money(n): 1930000 -> "1,930,000원". 부호(+/−)는 화면에서 붙인다.
+// App.money(n): 1930000 -> "1,930,000원", 음수는 마이너스 기호(−)로 "−30,000원". 양수의 +는 화면에서 붙인다.
 App.money = function (n) {
-    return Number(n || 0).toLocaleString('ko-KR') + '원';
+    var v = Number(n || 0);
+    return (v < 0 ? '−' : '') + Math.abs(v).toLocaleString('ko-KR') + '원';
 };
 
 // App.h(tag, props, children): DOM 요소를 안전하게 만든다. 문자열 자식은 텍스트 노드(HTML 해석 없음).
@@ -163,12 +170,30 @@ App.parseAmount = function (s) {
     return /^\d{1,11}$/.test(t) ? Number(t) : null;
 };
 
-// App.bindAmountInput(input): 금액 칸에 입력하는 동안 쉼표 서식
+// App.bindAmountInput(input): 금액 칸에 입력하는 동안 쉼표 서식.
+// 숫자·쉼표(11자리까지)만 서식을 정리하고, 소수점·음수·문자·자리 초과는 값을 바꾸지 않고 오류로 표시한다
 App.bindAmountInput = function (input) {
     input.addEventListener('input', function () {
-        var digits = input.value.replace(/\D/g, '').slice(0, 11);
-        input.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+        var t = input.value.replace(/[,\s]/g, '');
+        if (/^\d{0,11}$/.test(t)) {
+            input.value = t ? Number(t).toLocaleString('ko-KR') : '';
+            input.removeAttribute('aria-invalid');
+        } else {
+            input.setAttribute('aria-invalid', 'true');
+        }
     });
+};
+
+// App.amountError(s, allowZero): 금액 칸 값의 오류 문구. 올바르면 null
+App.amountError = function (s, allowZero) {
+    var t = String(s === null || s === undefined ? '' : s).replace(/[,\s]/g, '');
+    if (!/^\d*$/.test(t) || t.length > 11) {
+        return '금액은 숫자만 입력해주세요. (소수점·음수 불가, 최대 11자리)';
+    }
+    if (!t || (!allowZero && Number(t) === 0)) {
+        return allowZero ? '금액을 입력해주세요.' : '금액을 1원 이상 입력해주세요.';
+    }
+    return null;
 };
 
 // App.saved(title): 저장·삭제 성공을 짧게 알린다

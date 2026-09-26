@@ -1,7 +1,24 @@
 // 거래 입력·표시 공용 도우미. 거래 내역(entry.js)과 대시보드(dashboard.js)가 같이 쓴다.
 App.entryForm = (function(){
-    var ICONS = {'식비': 'food', '배달': 'food', '카페/간식': 'coffee', '장보기': 'bag', '교통': 'train', '고정지출': 'home', '저축': 'leaf', '급여': 'wallet'},
+    // 카테고리 아이콘: 이름에 든 낱말로 고른다(사용자가 추가한 카테고리도). 앞에 있는 규칙이 우선, 없으면 book
+    var ICON_RULES = [
+            [/급여|월급|상여|성과급|수입|용돈/, 'wallet'],
+            [/저축|적금|예금|투자|주식/, 'leaf'],
+            [/카페|커피|간식/, 'coffee'],
+            [/교통|택시|주차|주유|차량/, 'train'],
+            [/장보기|생필품|쇼핑|의류|미용/, 'bag'],
+            [/식비|배달|외식|식사/, 'food'],
+            [/주거|월세|관리비|공과금|고정/, 'home'],
+            [/문화|여가|데이트|여행|취미/, 'sun']
+        ],
         WARM = {'카페/간식': true},
+
+        iconOf = function(name){
+            for (var i = 0; i < ICON_RULES.length; i++) {
+                if (ICON_RULES[i][0].test(name || '')) return ICON_RULES[i][1];
+            }
+            return 'book';
+        },
 
         pad = function(n){ return (n < 10 ? '0' : '') + n; },
 
@@ -69,7 +86,7 @@ App.entryForm = (function(){
                 info.push(App.h('span', {className: 'memo-tag', attrs: {title: e.memo}}, [App.icon('edit'), App.h('span', {text: e.memo})]));
             }
             var children = [
-                App.h('span', {className: 'category-icon' + (WARM[e.categoryName] ? ' warm' : '')}, [App.icon(ICONS[e.categoryName] || 'book')]),
+                App.h('span', {className: 'category-icon' + (WARM[e.categoryName] ? ' warm' : '')}, [App.icon(iconOf(e.categoryName))]),
                 App.h('div', {className: 'transaction-info'}, info),
                 App.h('strong', {className: 'amount ' + (e.type === 'INCOME' ? 'income' : 'expense'), text: signedMoney(e.type, e.amount)})
             ];

@@ -203,6 +203,10 @@ function _confirm(title, desc, callback){
 				modal.setAttribute('aria-hidden', 'true');
 				el.blur();
 				modal._cb = null;
+				// 취소하면 확인창을 열기 전에 초점이 있던 곳(입력 칸 등)으로 돌아간다
+				let back = modal._returnFocus;
+				modal._returnFocus = null;
+				if(back && back.isConnected && typeof back.focus === 'function') back.focus();
 			});
 		});
 
@@ -220,14 +224,18 @@ function _confirm(title, desc, callback){
 				e.preventDefault();
 				e.stopPropagation();
 				modal.querySelector('[data-confirm-close="true"]').click();
-			}else if(e.key === 'Enter'){
+			}else if(e.key === 'Enter' && e.target === modal){
+				// 버튼에 초점이 있으면 그 버튼의 기본 동작(취소면 취소)을 따른다. 창 자체에 초점이 있을 때만 확인
 				e.preventDefault();
 				e.stopPropagation();
 				modal.querySelector('.common-confirm-ok').click();
+			}else if(e.key === 'Enter'){
+				e.stopPropagation();
 			}
 		});
 	}
 
+	modal._returnFocus = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
 	if(document.activeElement) document.activeElement.blur();
 
 	modal.querySelector('.common-confirm-title').textContent = title || '';
@@ -236,5 +244,5 @@ function _confirm(title, desc, callback){
 	_modalHost(modal);
 	modal.classList.add('is-open');
 	modal.setAttribute('aria-hidden', 'false');
-	modal.focus();
+	modal.querySelector('.common-confirm-ok').focus();
 }

@@ -21,7 +21,8 @@ App.settings = (function(){
             exportTo: document.getElementById('exportTo'),
             exportButton: document.getElementById('exportButton')
         },
-        settings = { submitting: false },
+        // drafts: 아직 저장하지 않은 행 입력("c12"·"p3" → 값). 한 행을 저장하면 표 전체를 다시 그리므로 다른 행의 입력을 되살린다
+        settings = { submitting: false, drafts: {}, cycleDirty: false },
         url = {
             load: contextPath + '/ledger/settings/load',
             summary: contextPath + '/ledger/dashboard/summary',
@@ -37,6 +38,9 @@ App.settings = (function(){
 
         init = function(){
             m$.cycleSave.addEventListener('click', saveCycle);
+            [m$.payDay, m$.payDayAdjust].forEach(function(el){
+                el.addEventListener('change', function(){ settings.cycleDirty = true; });
+            });
             m$.categoryAddSave.addEventListener('click', addCategory);
             m$.categoryAddCancel.addEventListener('click', function(){
                 resetCategoryAdd();
@@ -101,8 +105,10 @@ App.settings = (function(){
         },
 
         render = function(data){
-            m$.payDay.value = String(data.payDay);
-            m$.payDayAdjust.checked = !!data.payDayAdjust;
+            if (!settings.cycleDirty) {
+                m$.payDay.value = String(data.payDay);
+                m$.payDayAdjust.checked = !!data.payDayAdjust;
+            }
             renderRows(m$.expenseBody, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryRow, 5, '지출 카테고리가 없어요.');
             renderRows(m$.incomeBody, data.categories.filter(function(c){ return c.type === 'INCOME'; }), categoryRow, 5, '수입 카테고리가 없어요.');
             renderRows(m$.paymentBody, data.paymentMethods, paymentRow, 4, '결제수단이 없어요.');
@@ -142,10 +148,11 @@ App.settings = (function(){
         },
 
         // 삭제 확인 → 사용 중(95)이면 숨기기를 제안
-        confirmDelete = function(name, u, id, hide){
+        confirmDelete = function(name, u, id, hide, key){
             _confirm('삭제할까요?', '‘' + name + '’ 항목을 삭제해요.', function(){
                 send(u, {id: id}, {
                     title: '삭제했어요',
+                    done: clearDraft(key),
                     inUse: function(res){
                         _confirm('사용 중인 항목이에요', res.message + '\n대신 숨길까요?', hide);
                     }
@@ -154,7 +161,32 @@ App.settings = (function(){
         },
 
         saveCycle = function(){
-            send(url.cycleSave, {payDay: m$.payDay.value, payDayAdjust: m$.payDayAdjust.checked});
+            send(url.cycleSave, {payDay: m$.payDay.value, payDayAdjust: m$.payDayAdjust.checked},
+                {done: function(){ settings.cycleDirty = false; }});
+        },
+
+        // 행 입력칸들을 저장 전 입력(drafts)과 연결한다. inputs: {이름: input}, original: 저장된 값
+        bindDraft = function(key, inputs, original){
+            var value = function(el){ return el.type === 'checkbox' ? el.checked : el.value; },
+                draft = settings.drafts[key];
+            Object.keys(inputs).forEach(function(k){
+                var el = inputs[k];
+                if (draft && k in draft) {
+                    if (el.type === 'checkbox') el.checked = draft[k]; else el.value = draft[k];
+                }
+                el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', function(){
+                    var now = {}, changed = false;
+                    Object.keys(inputs).forEach(function(n){
+                        now[n] = value(inputs[n]);
+                        if (String(now[n]) !== String(original[n])) changed = true;
+                    });
+                    if (changed) settings.drafts[key] = now; else delete settings.drafts[key];
+                });
+            });
+        },
+
+        clearDraft = function(key){
+            return function(){ delete settings.drafts[key]; };
         },
 
         field = function(label, input){
@@ -180,12 +212,17 @@ App.settings = (function(){
                 group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '없음'}),
                 order = App.h('input', {type: 'number', value: c.sortOrder, min: 0, max: 9999, inputMode: 'numeric'}),
                 active = App.h('input', {type: 'checkbox', checked: !!c.active, attrs: {'aria-label': c.name + ' 표시'}}),
+                key = 'c' + c.id,
                 save = function(){
-                    send(url.categorySave, {id: c.id, type: c.type, name: name.value, groupName: group.value, sortOrder: order.value, active: active.checked});
+                    send(url.categorySave, {id: c.id, type: c.type, name: name.value, groupName: group.value, sortOrder: order.value, active: active.checked},
+                        {done: clearDraft(key)});
                 },
                 move = function(direction){
                     return function(){ send(url.categoryMove, {id: c.id, direction: direction}, {title: '순서를 바꿨어요'}); };
                 };
+
+            bindDraft(key, {name: name, group: group, order: order, active: active},
+                {name: c.name, group: c.groupName || '', order: c.sortOrder, active: !!c.active});
 
             return App.h('tr', null, [
                 App.h('th', {attrs: {scope: 'row'}}, [field('이름', name)]),
@@ -204,8 +241,9 @@ App.settings = (function(){
                     smallButton('삭제', function(){
                         // 숨기기는 저장된 원래 값으로(입력칸에서 고치다 만 값까지 저장하지 않게)
                         confirmDelete(c.name, url.categoryDelete, c.id, function(){
-                            send(url.categorySave, {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', sortOrder: c.sortOrder, active: false}, {title: '숨겼어요'});
-                        });
+                            send(url.categorySave, {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', sortOrder: c.sortOrder, active: false},
+                                {title: '숨겼어요', done: clearDraft(key)});
+                        }, key);
                     }, 'danger')
                 ])
             ]);
@@ -214,12 +252,15 @@ App.settings = (function(){
         paymentRow = function(p){
             var name = App.h('input', {type: 'text', value: p.name, maxLength: 50}),
                 active = App.h('input', {type: 'checkbox', checked: !!p.active, attrs: {'aria-label': p.name + ' 표시'}}),
+                key = 'p' + p.id,
                 save = function(){
-                    send(url.paymentSave, {id: p.id, name: name.value, active: active.checked});
+                    send(url.paymentSave, {id: p.id, name: name.value, active: active.checked}, {done: clearDraft(key)});
                 },
                 move = function(direction){
                     return function(){ send(url.paymentMove, {id: p.id, direction: direction}, {title: '순서를 바꿨어요'}); };
                 };
+
+            bindDraft(key, {name: name, active: active}, {name: p.name, active: !!p.active});
 
             return App.h('tr', null, [
                 App.h('th', {attrs: {scope: 'row'}}, [field('결제수단 이름', name)]),
@@ -235,8 +276,8 @@ App.settings = (function(){
                     ' ',
                     smallButton('삭제', function(){
                         confirmDelete(p.name, url.paymentDelete, p.id, function(){
-                            send(url.paymentSave, {id: p.id, name: p.name, active: false}, {title: '숨겼어요'});
-                        });
+                            send(url.paymentSave, {id: p.id, name: p.name, active: false}, {title: '숨겼어요', done: clearDraft(key)});
+                        }, key);
                     }, 'danger')
                 ])
             ]);

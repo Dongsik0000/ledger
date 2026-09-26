@@ -271,7 +271,11 @@ App.recurring = (function(){
                     _error('알림', '개월 수는 2~60 사이로 입력해주세요.');
                     return;
                 }
-                if (!total || total < months) {
+                if (App.amountError(m$.installmentTotal.value)) {
+                    _error('알림', App.amountError(m$.installmentTotal.value));
+                    return;
+                }
+                if (total < months) {
                     _error('알림', '할부 총액을 개월 수 이상으로 입력해주세요.');
                     return;
                 }
@@ -280,7 +284,7 @@ App.recurring = (function(){
                     return;
                 }
             } else if (!amount) {
-                _error('알림', '금액을 1원 이상 입력해주세요.');
+                _error('알림', App.amountError(m$.amount.value));
                 return;
             }
             if (!(day >= 1 && day <= 31 && Math.floor(day) === day)) {

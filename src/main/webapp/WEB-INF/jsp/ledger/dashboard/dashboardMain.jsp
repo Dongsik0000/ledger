@@ -13,7 +13,7 @@
 <h1>오늘의 가계부</h1>
 <p class="page-description">오늘의 작은 소비부터 내일의 여유까지.</p>
 </div>
-<a class="button primary" href="#quick-entry">바로 기록</a>
+<a class="button primary" href="#quick-entry" id="quickJump">바로 기록</a>
 </header>
 <div class="cycle-strip">
 <span>
@@ -56,11 +56,12 @@
 </div>
 <svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg>
 </div>
+<form id="quickForm" novalidate>
 <fieldset class="form-stack">
 <legend class="sr-only">거래 입력</legend>
 <label class="field">
 <span>금액</span>
-<input type="text" id="quickAmount" inputmode="numeric" autocomplete="off" placeholder="0" class="amount-input" aria-describedby="quick-amount-help">
+<input type="text" id="quickAmount" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="0" class="amount-input" aria-describedby="quick-amount-help">
 </label>
 <p id="quick-amount-help" class="form-note">원 · 소수점 없이 입력해 주세요.</p>
 <fieldset class="choice-field">
@@ -76,7 +77,7 @@
 </fieldset>
 <label class="field">
 <span>내용</span>
-<input type="text" id="quickTitle" placeholder="어디에 사용하셨나요?" maxlength="100">
+<input type="text" id="quickTitle" enterkeyhint="done" placeholder="어디에 사용하셨나요?" maxlength="100">
 </label>
 <fieldset class="choice-field">
 <legend>결제수단</legend>
@@ -92,9 +93,10 @@
 <input type="text" id="quickMemo" placeholder="기억하고 싶은 한 줄" maxlength="500">
 </label>
 </div></details>
-<button type="button" class="button primary full-button" id="quickSave">
+<button type="submit" class="button primary full-button" id="quickSave">
 <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>기록하기</button>
 </fieldset>
+</form>
 </section>
 <section class="panel recent-panel reveal">
 <div class="panel-head">

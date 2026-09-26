@@ -42,8 +42,13 @@ App.entry = (function(){
         },
 
         init = function(){
-            settings.month = App.entryForm.today().slice(0, 7);
+            // 조회 조건은 주소(?month=&q=&type=&category=&payment=)에 남겨 새로고침·뒤로 가기에도 유지한다
+            var q = new URLSearchParams(location.search);
+            settings.month = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get('month') || '') ? q.get('month') : App.entryForm.today().slice(0, 7);
             m$.month.value = settings.month;
+            m$.keyword.value = q.get('q') || '';
+            m$.type.value = ['INCOME', 'EXPENSE'].indexOf(q.get('type')) >= 0 ? q.get('type') : '';
+            settings.editId = q.get('edit');
 
             m$.prev.addEventListener('click', function(){ moveMonth(-1); });
             m$.next.addEventListener('click', function(){ moveMonth(1); });
@@ -73,12 +78,49 @@ App.entry = (function(){
                 });
             });
             m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
-                b.addEventListener('click', function(){ m$.dialog.close(); });
+                b.addEventListener('click', requestClose);
+            });
+            // Escape 로 닫을 때도 작성 중인 내용이 있으면 먼저 묻는다. cancel 이벤트를 막는 것만으로는
+            // Chrome 이 연속된 Escape 에서 창을 그냥 닫으므로(close watcher), 키 입력 단계에서 닫기 요청 자체를 막는다.
+            // (확인창 안의 Escape 는 확인창이 전파를 끊으므로 여기로 오지 않는다)
+            m$.dialog.addEventListener('keydown', function(e){
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    requestClose();
+                }
+            });
+            m$.dialog.addEventListener('cancel', function(e){   // 휴대폰 뒤로 가기 등 키 입력이 아닌 닫기 요청
+                e.preventDefault();
+                requestClose();
+            });
+            // 금액·내용·메모에서 Enter(휴대폰 키보드의 완료)로 저장. 한글 조합 중 Enter 는 조합 완료로 둔다
+            [m$.amount, m$.title, m$.memo].forEach(function(el){
+                el.setAttribute('enterkeyhint', 'done');
+                el.addEventListener('keydown', function(e){
+                    if (e.key === 'Enter' && !e.isComposing) {
+                        e.preventDefault();
+                        save();
+                    }
+                });
             });
             m$.save.addEventListener('click', save);
             m$.del.addEventListener('click', remove);
 
-            loadMaster().then(list);
+            loadMaster().then(function(){
+                // 선택지에 없는 값(지운 항목 등)이면 select 가 빈 값으로 남는다
+                m$.category.value = q.get('category') || '';
+                m$.payment.value = q.get('payment') || '';
+                list();
+            });
+        },
+
+        saveQuery = function(){
+            var q = new URLSearchParams({month: settings.month});
+            if (m$.keyword.value.trim()) q.set('q', m$.keyword.value.trim());
+            if (m$.type.value) q.set('type', m$.type.value);
+            if (m$.category.value) q.set('category', m$.category.value);
+            if (m$.payment.value) q.set('payment', m$.payment.value);
+            history.replaceState(null, '', location.pathname + '?' + q.toString());
         },
 
         loadMaster = function(){
@@ -123,6 +165,7 @@ App.entry = (function(){
                 lastDay = new Date(Number(p[0]), Number(p[1]), 0).getDate();
             m$.monthTitle.textContent = p[0] + '년 ' + Number(p[1]) + '월';
             m$.monthRange.textContent = '달력 월 기준 · ' + Number(p[1]) + '월 1일~' + lastDay + '일';
+            saveQuery();
 
             App.post(url.list, {
                 month: settings.month,
@@ -146,6 +189,12 @@ App.entry = (function(){
                 return;
             }
             m$.list.replaceChildren.apply(m$.list, App.entryForm.grouped(rows, openEdit));
+            // 대시보드 최근 기록에서 "수정"으로 들어온 경우(?edit=id) 그 거래의 수정 창을 한 번 연다
+            if (settings.editId) {
+                var target = rows.filter(function(r){ return String(r.id) === settings.editId; })[0];
+                settings.editId = null;
+                if (target) openEdit(target);
+            }
         },
 
         setType = function(type){
@@ -166,8 +215,23 @@ App.entry = (function(){
             m$.memo.value = e && e.memo ? e.memo : '';
             m$.memoBox.open = !!(e && e.memo);
             m$.del.hidden = !e;
+            settings.snapshot = snapshot();
             m$.dialog.showModal();
             m$.amount.focus();
+        },
+
+        // 창에 입력된 값 전체(열었을 때와 비교해 작성 중인지 판단)
+        snapshot = function(){
+            return JSON.stringify([m$.amount.value, App.entryForm.checked(ED + '-type'), App.entryForm.checked(ED + '-category'),
+                m$.title.value, App.entryForm.checked(ED + '-payment'), m$.date.value, m$.memo.value]);
+        },
+
+        requestClose = function(){
+            if (snapshot() === settings.snapshot) {
+                m$.dialog.close();
+                return;
+            }
+            _confirm('작성 중인 내용을 버릴까요?', '저장하지 않은 입력은 사라져요.', function(){ m$.dialog.close(); });
         },
 
         openNew = function(){ open(null); },
@@ -180,7 +244,7 @@ App.entry = (function(){
                 categoryId = App.entryForm.checked(ED + '-category'),
                 title = m$.title.value.trim();
             if (!amount) {
-                _error('알림', '금액을 1원 이상 입력해주세요.');
+                _error('알림', App.amountError(m$.amount.value));
                 return;
             }
             if (!categoryId) {
