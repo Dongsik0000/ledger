@@ -16,7 +16,7 @@ App.signup = (function(){
             if(settings.submitting) return;
 
             var param = App.formToObject(m$.form);
-            if(App.isEmpty(param.username) || App.isEmpty(param.password) || App.isEmpty(param.signupCode)){
+            if(App.isEmpty(param.username) || App.isEmpty(param.password) || App.isEmpty(param.passwordConfirm) || App.isEmpty(param.signupCode)){
                 _error('알림', '모든 항목을 입력해주세요.');
                 return;
             }
@@ -26,6 +26,10 @@ App.signup = (function(){
             }
             if(param.password.length < 8 || new TextEncoder().encode(param.password).length > 72){
                 _error('알림', '비밀번호는 8자 이상, 72바이트 이하로 입력해주세요.\n(영문 72자, 한글 24자까지)');
+                return;
+            }
+            if(param.password !== param.passwordConfirm){
+                _error('알림', '비밀번호 확인이 일치하지 않아요.');
                 return;
             }
 

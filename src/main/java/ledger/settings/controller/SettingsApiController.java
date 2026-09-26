@@ -7,6 +7,8 @@ import ledger.cmmn.util.CsvUtil;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.OpeningBalance;
+import ledger.entry.controller.EntryApiController;
 import ledger.entry.service.EntryService;
 import ledger.settings.service.SettingsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +73,9 @@ public class SettingsApiController {
     public Response load(HttpSession session) {
         long userId = SessionUtil.getUserId(session);
         Map<String, Object> data = new HashMap<>(settingsService.selectUserSetting(userId));
+        OpeningBalance opening = OpeningBalance.of(data);   // 날짜는 JSON 에서 "yyyy-MM-dd" 로
+        data.put("openingBalance", opening.amount());
+        data.put("openingDate", opening.date() == null ? null : opening.date().toString());
         data.put("categories", settingsService.selectCategoryList(userId));
         data.put("paymentMethods", settingsService.selectPaymentList(userId));
         return Response.of(Constants.SUCCESS, data);
@@ -86,6 +91,21 @@ public class SettingsApiController {
         }
         settingsService.updateUserSetting(ParamUtil.map(
                 "userId", SessionUtil.getUserId(session), "payDay", payDay, "payDayAdjust", adjust));
+        return Response.of(Constants.SUCCESS);
+    }
+
+    // 시작 잔액: 기준일이 시작될 때의 잔액(음수 가능). 기준일을 비우면 해제(모든 거래로 잔액 계산)
+    @ResponseBody
+    @PostMapping("/opening/save")
+    public Response saveOpening(@RequestBody HashMap<String, Object> param, HttpSession session) {
+        LocalDate date = ParamUtil.date(param, "openingDate");
+        Long amount = ParamUtil.has(param, "openingBalance") ? ParamUtil.lng(param, "openingBalance") : Long.valueOf(0);
+        if ((ParamUtil.has(param, "openingDate") && date == null)
+                || amount == null || Math.abs(amount) > EntryApiController.AMOUNT_MAX) {
+            return Response.invalid("시작 잔액(999억 원 미만)과 기준일을 확인해 주세요.");
+        }
+        settingsService.updateOpening(ParamUtil.map("userId", SessionUtil.getUserId(session),
+                "openingBalance", date == null ? 0 : amount, "openingDate", date));
         return Response.of(Constants.SUCCESS);
     }
 

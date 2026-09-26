@@ -10,21 +10,37 @@
         e.memo
     </sql>
 
-    <!-- 기간·조건별 거래. 날짜 내림차순, 같은 날은 나중에 넣은 것부터. keyword 는 LikeUtil.contains 로 만든 패턴 -->
-    <select id="selectEntryList" parameterType="map" resultType="java.util.HashMap">
-        SELECT <include refid="entryColumns"/>
-        FROM ledger_entry e
-        JOIN category c ON c.id = e.category_id
-        LEFT JOIN payment_method p ON p.id = e.payment_method_id
+    <!-- 거래 조회 조건. from·to 가 없으면 그쪽 기간 제한 없음(전체 기간 검색). keyword 는 LikeUtil.contains 로 만든 패턴 -->
+    <sql id="entryWhere">
         WHERE e.user_id = #{userId}
-          AND e.entry_date BETWEEN #{from} AND #{to}
+        <if test="from != null">AND e.entry_date &gt;= #{from}</if>
+        <if test="to != null">AND e.entry_date &lt;= #{to}</if>
         <if test="type != null">AND e.type = #{type}</if>
         <if test="categoryId != null">AND e.category_id = #{categoryId}</if>
         <if test="paymentMethodId != null">AND e.payment_method_id = #{paymentMethodId}</if>
         <if test="keyword != null">
           AND (e.title ILIKE #{keyword} ESCAPE '\' OR e.memo ILIKE #{keyword} ESCAPE '\')
         </if>
+    </sql>
+
+    <!-- 기간·조건별 거래. 날짜 내림차순, 같은 날은 나중에 넣은 것부터. limit 이 있으면 그만큼만 -->
+    <select id="selectEntryList" parameterType="map" resultType="java.util.HashMap">
+        SELECT <include refid="entryColumns"/>
+        FROM ledger_entry e
+        JOIN category c ON c.id = e.category_id
+        LEFT JOIN payment_method p ON p.id = e.payment_method_id
+        <include refid="entryWhere"/>
         ORDER BY e.entry_date DESC, e.id DESC
+        <if test="limit != null">LIMIT #{limit}</if>
+    </select>
+
+    <!-- 같은 조건의 건수·수입·지출 합계(목록이 잘려도 전체 기준) -->
+    <select id="selectEntrySum" parameterType="map" resultType="java.util.HashMap">
+        SELECT COUNT(*) AS "count",
+               COALESCE(SUM(CASE WHEN e.type = 'INCOME' THEN e.amount END), 0) AS "income",
+               COALESCE(SUM(CASE WHEN e.type = 'EXPENSE' THEN e.amount END), 0) AS "expense"
+        FROM ledger_entry e
+        <include refid="entryWhere"/>
     </select>
 
     <!-- 최근 거래(오늘까지, 미래 날짜로 넣은 거래는 제외) -->

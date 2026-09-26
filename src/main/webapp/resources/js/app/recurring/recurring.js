@@ -92,7 +92,7 @@ App.recurring = (function(){
             m$.monthlyFixed.textContent = Number(data.monthlyFixed).toLocaleString('ko-KR');
             m$.recorded.textContent = Number(data.recorded).toLocaleString('ko-KR');
             if (!data.items.length) {
-                m$.body.replaceChildren(App.h('tr', null, [App.h('td', {attrs: {colspan: 8}, text: '등록한 고정 항목이 없어요. 월세·구독료·월급을 추가해 보세요.'})]));
+                m$.body.replaceChildren(App.h('tr', null, [App.h('td', {attrs: {colspan: 9}, text: '등록한 고정 항목이 없어요. 월세·구독료·월급을 추가해 보세요.'})]));
                 return;
             }
             m$.body.replaceChildren.apply(m$.body, data.items.map(row));
@@ -117,10 +117,25 @@ App.recurring = (function(){
             return App.h('span', {className: 'chip neutral', text: text});
         },
 
+        // 금액 칸에 보이는 금액: 할부는 이번 주기 회차 금액(이번 주기에 회차가 없으면 2회차 이후 금액)
+        shownAmount = function(item){
+            return item.installmentMonths && item.dueAmount ? item.dueAmount : item.amount;
+        },
+
+        // "10.1(목)" — 휴일 보정·할부 기간·처리 여부를 반영한 서버 계산값. 금액 칸과 다른 회차 금액이면 금액도
+        nextDueText = function(item){
+            if (!item.nextDue) return '—';
+            var p = item.nextDue.split('-'),
+                d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])),
+                text = Number(p[1]) + '.' + Number(p[2]) + '(' + '일월화수목금토'.charAt(d.getDay()) + ')';
+            return item.installmentMonths && item.nextAmount && item.nextAmount !== shownAmount(item)
+                ? text + ' · ' + App.money(item.nextAmount) : text;
+        },
+
         row = function(item){
             var income = item.type === 'INCOME',
                 installment = !!item.installmentMonths,
-                money = (income ? '+' : '−') + App.money(installment && item.dueAmount ? item.dueAmount : item.amount),
+                money = (income ? '+' : '−') + App.money(shownAmount(item)),
                 toggle = App.h('input', {type: 'checkbox', checked: !!item.active, attrs: {'aria-label': item.name + ' 활성'}});
 
             toggle.addEventListener('change', function(){
@@ -132,17 +147,18 @@ App.recurring = (function(){
                     item.name + ' ',
                     App.h('span', {className: 'chip ' + (!item.active ? 'neutral' : income ? '' : 'warm'), text: income ? '수입' : '지출'})
                 ].concat(installment ? [' ', installmentChip(item)] : [])),
-                App.h('td', {attrs: {'data-label': '금액'}}, [
+                App.h('td', {attrs: {'data-label': '금액', 'data-cell': 'amount'}}, [
                     item.active ? App.h('span', {className: income ? 'income' : 'expense', text: money}) : money
                 ]),
-                App.h('td', {attrs: {'data-label': '분류 / 결제수단'}, text: item.categoryName + ' / ' + (item.paymentMethodName || '없음')}),
-                App.h('td', {attrs: {'data-label': '매월 결제일'}, text: item.dayOfMonth + '일'}),
-                App.h('td', {attrs: {'data-label': '휴일 보정'}, text: ADJUST_LABEL[item.adjust] || item.adjust}),
-                App.h('td', {attrs: {'data-label': '이번 주기'}}, [statusChip(item.status)]),
-                App.h('td', {attrs: {'data-label': '활성'}}, [
+                App.h('td', {attrs: {'data-label': '분류 / 결제수단', 'data-cell': 'category'}, text: item.categoryName + ' / ' + (item.paymentMethodName || '없음')}),
+                App.h('td', {attrs: {'data-label': '매월 결제일', 'data-cell': 'day'}, text: item.dayOfMonth + '일'}),
+                App.h('td', {attrs: {'data-label': '휴일 보정', 'data-cell': 'adjust'}, text: ADJUST_LABEL[item.adjust] || item.adjust}),
+                App.h('td', {attrs: {'data-label': '다음 결제일', 'data-cell': 'next'}, text: nextDueText(item)}),
+                App.h('td', {attrs: {'data-label': '이번 주기', 'data-cell': 'status'}}, [statusChip(item.status)]),
+                App.h('td', {attrs: {'data-label': '활성', 'data-cell': 'active'}}, [
                     App.h('label', {className: 'switch'}, [toggle, App.h('span', {attrs: {'aria-hidden': 'true'}})])
                 ]),
-                App.h('td', {attrs: {'data-label': '관리'}}, [
+                App.h('td', {attrs: {'data-label': '관리', 'data-cell': 'manage'}}, [
                     App.h('button', {
                         type: 'button', className: 'button small edit-button', text: '수정',
                         attrs: {'aria-label': item.name + ' 수정'},

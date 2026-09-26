@@ -2,11 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="ledger.dashboard.dao.DashboardDAO">
 
-    <!-- date 전날까지의 누적 잔액(수입 − 지출) = 이월 금액 -->
+    <!-- date 전날까지의 거래 합(수입 − 지출). from 이 있으면 그날부터(시작 잔액 기준일 이전 거래 제외) -->
     <select id="selectBalanceBefore" parameterType="map" resultType="long">
         SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END), 0)
         FROM ledger_entry
         WHERE user_id = #{userId} AND entry_date &lt; #{date}
+        <if test="from != null">AND entry_date &gt;= #{from}</if>
     </select>
 
     <!-- 기간 수입·지출 합 -->

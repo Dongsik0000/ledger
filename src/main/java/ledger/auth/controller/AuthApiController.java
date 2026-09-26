@@ -108,6 +108,9 @@ public class AuthApiController {
                 || password.length() < PASSWORD_MIN || !fitsBcrypt(password)) {
             return Response.of(Constants.FAIL, "아이디는 50자 이하, 비밀번호는 8자 이상 72바이트 이하로 입력해주세요.", null);
         }
+        if (!password.equals(ParamUtil.raw(param, "passwordConfirm"))) {
+            return Response.of(Constants.FAIL, "비밀번호 확인이 일치하지 않아요.", null);
+        }
         if (!loginAttemptLimiter.tryAcquire(attemptKey)) {
             return Response.of(Constants.SIGNUP_BLOCKED);
         }
@@ -126,6 +129,34 @@ public class AuthApiController {
         authService.insertUser(user);                 // useGeneratedKeys → user.id
         authService.insertDefaultCategories(user);
         authService.insertDefaultPaymentMethods(user);
+        return Response.of(Constants.SUCCESS);
+    }
+
+    // 비밀번호 변경(로그인 필요: /ledger/** 인터셉터). 현재 비밀번호는 로그인처럼 5회 실패 시 잠시 차단하고, 바꾸면 세션 ID 를 교체한다
+    @ResponseBody
+    @PostMapping("/ledger/account/password")
+    public Response changePassword(@RequestBody HashMap<String, Object> param, HttpServletRequest request) {
+        long userId = SessionUtil.getUserId(request.getSession());
+        String current = ParamUtil.raw(param, "currentPassword");
+        String next = ParamUtil.raw(param, "newPassword");
+        if (next.length() < PASSWORD_MIN || !fitsBcrypt(next)) {
+            return Response.invalid("새 비밀번호는 8자 이상 72바이트 이하로 입력해주세요.");
+        }
+        if (!next.equals(ParamUtil.raw(param, "newPasswordConfirm"))) {
+            return Response.invalid("새 비밀번호 확인이 일치하지 않아요.");
+        }
+
+        String attemptKey = "password|" + userId;
+        if (!loginAttemptLimiter.tryAcquire(attemptKey)) {
+            return Response.of(Constants.LOGIN_BLOCKED);
+        }
+        if (!fitsBcrypt(current) || !passwordEncoder.matches(current, authService.selectPasswordHash(userId))) {
+            return Response.invalid("현재 비밀번호가 맞지 않아요.");
+        }
+        loginAttemptLimiter.reset(attemptKey);
+
+        authService.updatePassword(ParamUtil.map("userId", userId, "passwordHash", passwordEncoder.encode(next)));
+        request.changeSessionId();
         return Response.of(Constants.SUCCESS);
     }
 

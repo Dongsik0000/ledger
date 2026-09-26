@@ -5,6 +5,7 @@ import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.OpeningBalance;
 import ledger.dashboard.service.DashboardService;
 import ledger.settings.service.SettingsService;
 import ledger.summary.SummaryTables;
@@ -56,22 +57,27 @@ public class SummaryApiController {
         }
 
         List<String> months = SummaryTables.months(from, to);
-        Map<String, Object> range = ParamUtil.map("userId", userId, "from", from.atDay(1), "to", to.atEndOfMonth());
+        OpeningBalance opening = OpeningBalance.of(settingsService.selectUserSetting(userId));
+        Map<String, Object> range = ParamUtil.map("userId", userId, "from", from.atDay(1), "to", to.atEndOfMonth(),
+                "openingDate", opening.countFrom());
 
-        // 월별: 수입·지출·그 달 잔액·누적 잔액(시작 월 전까지의 잔액에서 이어서)
+        // 월별: 수입·지출·그 달 잔액·월말 누적 잔액(시작 월 전까지의 잔액에서 이어서).
+        // 누적은 시작 잔액 기준일 이전 거래를 빼고 세며, 기준일 전에 끝나는 달은 알 수 없어 null
         Map<String, Map<String, Object>> byMonth = new HashMap<>();
         for (Map<String, Object> m : summaryService.selectMonthly(range)) {
             byMonth.put((String) m.get("month"), m);
         }
-        long cumulative = dashboardService.selectBalanceBefore(ParamUtil.map("userId", userId, "date", from.atDay(1)));
+        long cumulative = opening.balanceAt(dashboardService.selectBalanceBefore(
+                ParamUtil.map("userId", userId, "date", from.atDay(1), "from", opening.countFrom())));
         List<Map<String, Object>> monthly = new ArrayList<>();
         for (String month : months) {
             Map<String, Object> m = byMonth.get(month);
             long income = m == null ? 0 : ((Number) m.get("income")).longValue();
             long expense = m == null ? 0 : ((Number) m.get("expense")).longValue();
-            cumulative += income - expense;
+            cumulative += m == null ? 0 : ((Number) m.get("balanceNet")).longValue();
+            boolean known = opening.known(YearMonth.parse(month).plusMonths(1).atDay(1));
             monthly.add(ParamUtil.map("month", month, "income", income, "expense", expense,
-                    "net", income - expense, "cumulative", cumulative));
+                    "net", income - expense, "cumulative", known ? cumulative : null));
         }
 
         List<Map<String, Object>> expenseCategories = new ArrayList<>();

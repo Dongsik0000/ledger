@@ -7,6 +7,10 @@ public interface AuthService {
 
     Map<String, Object> selectUserByUsername(String username);
 
+    String selectPasswordHash(long userId);
+
+    int updatePassword(Map<String, Object> param);
+
     int insertUser(Map<String, Object> param);
 
     int insertDefaultCategories(Map<String, Object> param);

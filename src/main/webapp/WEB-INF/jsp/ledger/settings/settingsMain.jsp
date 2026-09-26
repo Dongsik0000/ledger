@@ -14,7 +14,7 @@
 <p class="page-description">기록의 기준을 정하고, 익숙한 방식으로 관리해요.</p>
 </div>
 </header>
-<nav class="section-jumps" aria-label="설정 바로가기"><a href="#cycle-settings">주기</a><a href="#export-settings">기록 내보내기</a><a href="#category-settings">카테고리</a><a href="#payment-settings">결제수단</a><a href="#holiday-settings">공휴일</a></nav>
+<nav class="section-jumps" aria-label="설정 바로가기"><a href="#cycle-settings">주기</a><a href="#export-settings">기록 내보내기</a><a href="#category-settings">카테고리</a><a href="#payment-settings">결제수단</a><a href="#holiday-settings">공휴일</a><a href="#account-settings">계정</a></nav>
 <div class="settings-grid">
 <section class="panel">
 <div class="panel-head">
@@ -49,6 +49,26 @@
 <p class="section-note">현재 주기 <b id="cycleExample">—</b><br>거래 목록의 달력 월과는 다른 기준이에요.</p>
 <div class="form-actions">
 <button type="button" class="button primary" id="cycleSave">주기 설정 저장</button>
+</div>
+<div class="setting-row">
+<div>
+<strong>시작 잔액</strong>
+<p>기록을 시작한 날의 잔액이에요. 이 날짜 이전 거래는 잔액·이월 계산에서 빼고, 수입·지출 통계에는 남아요.</p>
+</div>
+</div>
+<div class="field-row">
+<label class="field">
+<span>잔액 (원)</span>
+<input type="text" id="openingBalance" autocomplete="off" placeholder="0" class="amount-input">
+</label>
+<label class="field">
+<span>기준일</span>
+<input type="date" id="openingDate">
+</label>
+</div>
+<p class="section-note">기준일을 비우고 저장하면 시작 잔액을 쓰지 않아요. 잔액이 마이너스면 앞에 -를 붙여요.</p>
+<div class="form-actions">
+<button type="button" class="button primary" id="openingSave">시작 잔액 저장</button>
 </div>
 </section>
 <section class="panel">
@@ -231,6 +251,36 @@
 </div>
 </div>
 </details>
+</section>
+<section class="panel">
+<div class="panel-head">
+<div>
+<h2 id="account-settings" tabindex="-1">계정</h2>
+<p>비밀번호를 바꿔요. 바꾼 뒤에도 지금 로그인은 유지돼요.</p>
+</div>
+<svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+</div>
+<form id="passwordForm" class="form-stack" novalidate>
+<%-- 비밀번호 관리자가 어느 계정의 비밀번호인지 알 수 있게(화면에는 보이지 않음) --%>
+<input type="text" name="username" autocomplete="username" value="<c:out value='${sessionScope.username}'/>" hidden>
+<label class="field">
+<span>현재 비밀번호</span>
+<input type="password" id="currentPassword" autocomplete="current-password">
+</label>
+<div class="field-row">
+<label class="field">
+<span>새 비밀번호 · 8자 이상</span>
+<input type="password" id="newPassword" autocomplete="new-password" minlength="8">
+</label>
+<label class="field">
+<span>새 비밀번호 확인</span>
+<input type="password" id="newPasswordConfirm" autocomplete="new-password" minlength="8">
+</label>
+</div>
+<div class="form-actions">
+<button type="submit" class="button primary">비밀번호 변경</button>
+</div>
+</form>
 </section>
 </jsp:body>
 </t:layout>

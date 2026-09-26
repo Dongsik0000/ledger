@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,6 +34,10 @@ public class EntryApiController {
     private static final int MEMO_MAX = 500;    // ledger_entry.memo VARCHAR(500)
     private static final int KEYWORD_MAX = 50;
     private static final Set<String> TYPES = Set.of("EXPENSE", "INCOME");
+    // 조회 기간: 이 달 / 최근 12개월(11개월 전 1일부터) / 전체. 넓은 기간은 최근 거래부터 WIDE_LIMIT 건까지만 보낸다
+    private static final Set<String> PERIODS = Set.of("MONTH", "RECENT12", "ALL");
+    private static final int WIDE_LIMIT = 500;
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired
     private EntryService entryService;
@@ -47,25 +53,44 @@ public class EntryApiController {
     @ResponseBody
     @PostMapping("/list")
     public Response list(@RequestBody HashMap<String, Object> param, HttpSession session) {
+        String period = ParamUtil.has(param, "period") ? ParamUtil.str(param, "period") : "MONTH";
         YearMonth month = ParamUtil.month(param, "month");
         String type = ParamUtil.str(param, "type");
         Long categoryId = ParamUtil.lng(param, "categoryId");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
         String keyword = ParamUtil.str(param, "keyword");
 
-        if (month == null || (!type.isEmpty() && !TYPES.contains(type))
+        if (!PERIODS.contains(period) || ("MONTH".equals(period) && month == null) || (!type.isEmpty() && !TYPES.contains(type))
                 || (ParamUtil.has(param, "categoryId") && categoryId == null)
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
                 || keyword.length() > KEYWORD_MAX) {
             return Response.invalid("조회 조건을 확인해 주세요.");
         }
 
-        return Response.of(Constants.SUCCESS, entryService.selectEntryList(ParamUtil.map(
-                "userId", SessionUtil.getUserId(session),
-                "from", month.atDay(1), "to", month.atEndOfMonth(),
+        LocalDate from = null;
+        LocalDate to = null;
+        if ("MONTH".equals(period)) {
+            from = month.atDay(1);
+            to = month.atEndOfMonth();
+        } else if ("RECENT12".equals(period)) {
+            from = YearMonth.now(SEOUL).minusMonths(11).atDay(1);
+        }
+        Map<String, Object> query = ParamUtil.map(
+                "userId", SessionUtil.getUserId(session), "from", from, "to", to,
                 "type", type.isEmpty() ? null : type,
                 "categoryId", categoryId, "paymentMethodId", paymentMethodId,
-                "keyword", LikeUtil.contains(keyword))));
+                "keyword", LikeUtil.contains(keyword),
+                "limit", "MONTH".equals(period) ? null : WIDE_LIMIT + 1);
+
+        // 합계는 잘리지 않은 전체 조건 기준
+        List<Map<String, Object>> rows = entryService.selectEntryList(query);
+        boolean truncated = rows.size() > WIDE_LIMIT;
+        Map<String, Object> data = new HashMap<>();
+        data.put("rows", truncated ? rows.subList(0, WIDE_LIMIT) : rows);
+        data.put("truncated", truncated);
+        data.put("totals", entryService.selectEntrySum(query));
+        data.put("from", from == null ? null : from.toString());
+        return Response.of(Constants.SUCCESS, data);
     }
 
     @ResponseBody

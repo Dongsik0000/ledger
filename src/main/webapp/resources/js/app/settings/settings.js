@@ -4,6 +4,13 @@ App.settings = (function(){
             payDayAdjust: document.getElementById('payDayAdjust'),
             cycleSave: document.getElementById('cycleSave'),
             cycleExample: document.getElementById('cycleExample'),
+            openingBalance: document.getElementById('openingBalance'),
+            openingDate: document.getElementById('openingDate'),
+            openingSave: document.getElementById('openingSave'),
+            passwordForm: document.getElementById('passwordForm'),
+            currentPassword: document.getElementById('currentPassword'),
+            newPassword: document.getElementById('newPassword'),
+            newPasswordConfirm: document.getElementById('newPasswordConfirm'),
             expenseBody: document.getElementById('expenseCategoryBody'),
             incomeBody: document.getElementById('incomeCategoryBody'),
             categoryAdd: document.getElementById('categoryAdd'),
@@ -22,11 +29,13 @@ App.settings = (function(){
             exportButton: document.getElementById('exportButton')
         },
         // drafts: 아직 저장하지 않은 행 입력("c12"·"p3" → 값). 한 행을 저장하면 표 전체를 다시 그리므로 다른 행의 입력을 되살린다
-        settings = { submitting: false, drafts: {}, cycleDirty: false },
+        settings = { submitting: false, drafts: {}, cycleDirty: false, openingDirty: false },
         url = {
             load: contextPath + '/ledger/settings/load',
             summary: contextPath + '/ledger/dashboard/summary',
             cycleSave: contextPath + '/ledger/settings/cycle/save',
+            openingSave: contextPath + '/ledger/settings/opening/save',
+            password: contextPath + '/ledger/account/password',
             categorySave: contextPath + '/ledger/settings/category/save',
             categoryDelete: contextPath + '/ledger/settings/category/delete',
             categoryMove: contextPath + '/ledger/settings/category/move',
@@ -38,6 +47,16 @@ App.settings = (function(){
 
         init = function(){
             m$.cycleSave.addEventListener('click', saveCycle);
+            m$.openingSave.addEventListener('click', saveOpening);
+            m$.passwordForm.addEventListener('submit', function(e){
+                e.preventDefault();
+                changePassword();
+            });
+            m$.openingBalance.addEventListener('input', function(){
+                settings.openingDirty = true;
+                formatSigned(m$.openingBalance);
+            });
+            m$.openingDate.addEventListener('change', function(){ settings.openingDirty = true; });
             [m$.payDay, m$.payDayAdjust].forEach(function(el){
                 el.addEventListener('change', function(){ settings.cycleDirty = true; });
             });
@@ -109,6 +128,10 @@ App.settings = (function(){
                 m$.payDay.value = String(data.payDay);
                 m$.payDayAdjust.checked = !!data.payDayAdjust;
             }
+            if (!settings.openingDirty) {
+                m$.openingBalance.value = data.openingDate ? signedNumber(data.openingBalance) : '';
+                m$.openingDate.value = data.openingDate || '';
+            }
             renderRows(m$.expenseBody, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryRow, 5, '지출 카테고리가 없어요.');
             renderRows(m$.incomeBody, data.categories.filter(function(c){ return c.type === 'INCOME'; }), categoryRow, 5, '수입 카테고리가 없어요.');
             renderRows(m$.paymentBody, data.paymentMethods, paymentRow, 4, '결제수단이 없어요.');
@@ -158,6 +181,67 @@ App.settings = (function(){
                     }
                 });
             });
+        },
+
+        // 시작 잔액 칸: 앞의 -(음수)와 숫자·쉼표만 서식 정리, 그 밖의 입력은 값을 두고 오류 표시
+        signedNumber = function(n){ return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR'); },
+
+        parseSigned = function(s){
+            var t = String(s).replace(/[,\s]/g, '').replace('−', '-');
+            return /^-?\d{1,11}$/.test(t) ? Number(t) : null;
+        },
+
+        formatSigned = function(input){
+            var t = input.value.replace(/[,\s]/g, '').replace('−', '-');
+            if (t === '' || t === '-') {
+                input.removeAttribute('aria-invalid');
+            } else if (/^-?\d{1,11}$/.test(t)) {
+                input.value = signedNumber(Number(t));
+                input.removeAttribute('aria-invalid');
+            } else {
+                input.setAttribute('aria-invalid', 'true');
+            }
+        },
+
+        saveOpening = function(){
+            var date = m$.openingDate.value,
+                amount = m$.openingBalance.value.trim() ? parseSigned(m$.openingBalance.value) : 0;
+            if (date && amount === null) {
+                _error('알림', '시작 잔액은 숫자만 입력해주세요. (음수는 앞에 -, 소수점 불가, 최대 11자리)');
+                return;
+            }
+            send(url.openingSave, {openingBalance: date ? amount : 0, openingDate: date},
+                {title: date ? '저장했어요' : '시작 잔액을 해제했어요', done: function(){ settings.openingDirty = false; }});
+        },
+
+        // 비밀번호 변경은 표를 다시 그릴 필요가 없어 send() 대신 직접 보낸다
+        changePassword = function(){
+            var next = m$.newPassword.value;
+            if (!m$.currentPassword.value || !next || !m$.newPasswordConfirm.value) {
+                _error('알림', '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.');
+                return;
+            }
+            if (next.length < 8 || new TextEncoder().encode(next).length > 72) {
+                _error('알림', '새 비밀번호는 8자 이상, 72바이트 이하로 입력해주세요.');
+                return;
+            }
+            if (next !== m$.newPasswordConfirm.value) {
+                _error('알림', '새 비밀번호 확인이 일치하지 않아요.');
+                return;
+            }
+            if (settings.submitting) return;
+            settings.submitting = true;
+            var handlers = {ok: function(){
+                m$.passwordForm.reset();
+                _alert('비밀번호를 바꿨어요', '다음 로그인부터 새 비밀번호를 써 주세요.');
+            }};
+            handlers[App.CODE.LOGIN_BLOCKED] = function(){
+                _error('잠시 후 다시 시도해 주세요', '현재 비밀번호를 여러 번 틀렸어요. 5분 뒤에 다시 시도해 주세요.');
+            };
+            App.post(url.password, {currentPassword: m$.currentPassword.value, newPassword: next, newPasswordConfirm: m$.newPasswordConfirm.value})
+                .then(function(res){ App.result(res, handlers); })
+                .catch(function(){})
+                .then(function(){ settings.submitting = false; });
         },
 
         saveCycle = function(){

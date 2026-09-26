@@ -472,5 +472,18 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
   .mobile-record-table .order-control input[type=number] { width: 58px; }
   .mobile-record-table input[type=text] { min-width: 0; }
   .table-scroll:has(.mobile-record-table) { overflow: visible; margin: 0; }
+  /* 고정 항목: 4줄 카드(이름 / 분류·결제수단 / 금액·다음 결제일 / 상태·활성·수정). 매월 결제일·휴일 보정은 다음 결제일로 대신 */
+  .recurring-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 10px; row-gap: 6px; }
+  .recurring-table tbody th:first-child { grid-column: 1 / -1; grid-row: 1; padding-bottom: 2px; }
+  .recurring-table tbody td { padding: 0; }
+  .recurring-table tbody td::before { content: none; }
+  .recurring-table td[data-cell=day], .recurring-table td[data-cell=adjust] { display: none; }
+  .recurring-table td[data-cell=category] { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; color: var(--color-text-secondary); font-size: 12px; }
+  .recurring-table td[data-cell=amount] { grid-column: 1; grid-row: 3; justify-content: flex-start; font-weight: 700; }
+  .recurring-table td[data-cell=next] { grid-column: 2 / -1; grid-row: 3; justify-content: flex-end; font-size: 13px; }
+  .recurring-table td[data-cell=next]::before { content: "다음"; margin-right: 6px; color: var(--color-text-secondary); font-size: 12px; }
+  .recurring-table td[data-cell=status] { grid-column: 1; grid-row: 4; justify-content: flex-start; }
+  .recurring-table td[data-cell=active] { grid-column: 2; grid-row: 4; }
+  .recurring-table td[data-cell=manage] { grid-column: 3; grid-row: 4; }
 }
 @media (prefers-reduced-motion: reduce) { .editor-dialog[open] { animation: none; } }

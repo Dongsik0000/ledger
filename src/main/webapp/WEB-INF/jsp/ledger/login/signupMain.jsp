@@ -84,6 +84,10 @@
 <span>비밀번호 · 8자 이상</span>
 <input id="password" name="password" type="password" placeholder="8자 이상의 비밀번호" autocomplete="new-password" minlength="8" required>
 </label>
+<label class="login-field" for="passwordConfirm">
+<span>비밀번호 확인</span>
+<input id="passwordConfirm" name="passwordConfirm" type="password" placeholder="비밀번호를 한 번 더 입력해 주세요" autocomplete="new-password" minlength="8" required>
+</label>
 <label class="login-field" for="signupCode">
 <span>가입 코드</span>
 <input id="signupCode" name="signupCode" type="text" placeholder="전달받은 가입 코드" aria-describedby="signup-code-help" autocomplete="off" required>

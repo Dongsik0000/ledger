@@ -10,6 +10,8 @@ public interface SettingsService {
 
     int updateUserSetting(Map<String, Object> param);
 
+    int updateOpening(Map<String, Object> param);
+
     List<Map<String, Object>> selectCategoryList(long userId);
 
     Map<String, Object> selectCategory(Map<String, Object> param);

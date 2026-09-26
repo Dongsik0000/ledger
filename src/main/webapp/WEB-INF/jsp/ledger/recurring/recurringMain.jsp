@@ -46,7 +46,7 @@
 </div>
 </div>
 <div class="table-scroll" tabindex="0" role="region" aria-label="고정 항목 목록">
-<table class="mobile-record-table data-table">
+<table class="mobile-record-table data-table recurring-table">
 <caption class="sr-only">고정 항목 목록</caption>
 <thead>
 <tr>
@@ -55,6 +55,7 @@
 <th scope="col">분류 / 결제수단</th>
 <th scope="col">매월 결제일</th>
 <th scope="col">휴일 보정</th>
+<th scope="col">다음 결제일</th>
 <th scope="col">이번 주기</th>
 <th scope="col">활성</th>
 <th scope="col">관리</th>

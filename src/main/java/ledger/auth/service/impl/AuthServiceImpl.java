@@ -19,6 +19,16 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public String selectPasswordHash(long userId) {
+        return authDAO.selectPasswordHash(userId);
+    }
+
+    @Override
+    public int updatePassword(Map<String, Object> param) {
+        return authDAO.updatePassword(param);
+    }
+
+    @Override
     public int insertUser(Map<String, Object> param) {
         return authDAO.insertUser(param);
     }

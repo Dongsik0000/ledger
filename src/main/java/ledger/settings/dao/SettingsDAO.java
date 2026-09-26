@@ -23,6 +23,10 @@ public class SettingsDAO {
         return sqlSession.update(SQL_PATH + ".updateUserSetting", param);
     }
 
+    public int updateOpening(Map<String, Object> param) {
+        return sqlSession.update(SQL_PATH + ".updateOpening", param);
+    }
+
     public List<Map<String, Object>> selectCategoryList(long userId) {
         return sqlSession.selectList(SQL_PATH + ".selectCategoryList", userId);
     }

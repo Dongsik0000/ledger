@@ -210,11 +210,11 @@ App.result = function (res, handlers) {
     handlers = handlers || {};
     var code = res && res.code;
     if (code === App.CODE.SUCCESS) {
-        if (handlers.ok) handlers.ok(res);
+        if (handlers.ok) App.guard(handlers.ok, res);
         return;
     }
     if (handlers[code]) {
-        handlers[code](res);
+        App.guard(handlers[code], res);
         return;
     }
     if (code === App.CODE.INVALID || code === App.CODE.DUPLICATE) {
@@ -223,6 +223,17 @@ App.result = function (res, handlers) {
         _error('찾을 수 없어요', '이미 삭제되었거나 권한이 없는 항목이에요.');
     } else {
         App.fail(res);
+    }
+};
+
+// App.guard(fn, res): 결과 처리(화면 그리기) 중 예외를 조용히 삼키지 않고 알린다.
+// 화면 코드의 .catch(function(){}) 는 통신 오류(이미 안내됨)용이라, 여기서 먼저 잡아야 빈 화면으로 멈추지 않는다
+App.guard = function (fn, res) {
+    try {
+        fn(res);
+    } catch (e) {
+        if (window.console) console.error(e);
+        _error('화면을 그리지 못했어요', '새로고침해 주세요. 계속되면 서버와 화면 버전이 다른지(배포 직후 등) 확인해 주세요.');
     }
 };
 

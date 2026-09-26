@@ -25,6 +25,11 @@ public class SettingsServiceImpl implements SettingsService {
     }
 
     @Override
+    public int updateOpening(Map<String, Object> param) {
+        return settingsDAO.updateOpening(param);
+    }
+
+    @Override
     public List<Map<String, Object>> selectCategoryList(long userId) {
         return settingsDAO.selectCategoryList(userId);
     }

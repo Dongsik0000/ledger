@@ -4,7 +4,8 @@
 
     <!-- 주기 설정 -->
     <select id="selectUserSetting" parameterType="long" resultType="java.util.HashMap">
-        SELECT pay_day AS "payDay", pay_day_adjust AS "payDayAdjust"
+        SELECT pay_day AS "payDay", pay_day_adjust AS "payDayAdjust",
+               opening_balance AS "openingBalance", opening_date AS "openingDate"
         FROM app_user
         WHERE id = #{userId}
     </select>
@@ -12,6 +13,13 @@
     <update id="updateUserSetting" parameterType="map">
         UPDATE app_user
         SET pay_day = #{payDay}, pay_day_adjust = #{payDayAdjust}
+        WHERE id = #{userId}
+    </update>
+
+    <!-- 시작 잔액. openingDate 가 null 이면 해제(금액도 0) -->
+    <update id="updateOpening" parameterType="map">
+        UPDATE app_user
+        SET opening_balance = #{openingBalance}, opening_date = #{openingDate}
         WHERE id = #{userId}
     </update>
 

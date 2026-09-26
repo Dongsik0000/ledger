@@ -8,6 +8,14 @@
         WHERE username = #{username}
     </select>
 
+    <select id="selectPasswordHash" parameterType="long" resultType="string">
+        SELECT password_hash FROM app_user WHERE id = #{userId}
+    </select>
+
+    <update id="updatePassword" parameterType="map">
+        UPDATE app_user SET password_hash = #{passwordHash} WHERE id = #{userId}
+    </update>
+
     <insert id="insertUser" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO app_user (username, password_hash)
         VALUES (#{username}, #{passwordHash})

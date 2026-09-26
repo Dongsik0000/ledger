@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 // 고정 항목: 목록(이번 주기 상태)·추가·수정·활성 전환·삭제. 저장·활성화 직후 RecurringGenerator 로 결제일 처리.
 @Controller
@@ -85,6 +86,12 @@ public class RecurringApiController {
             duesByItem.put(id(item), dues);
             dues.forEach(d -> months.add(d.month().toString()));
         }
+        // 다음 결제일 계산에 쓰는 달(지난달~다다음 달)의 처리 기록도 함께 읽는다
+        if (!items.isEmpty()) {
+            for (int i = -1; i <= 2; i++) {
+                months.add(YearMonth.from(today).plusMonths(i).toString());
+            }
+        }
 
         // "항목id|YYYY-MM" → 연결된 거래 금액(건너뜀·거래 삭제면 null)
         Map<String, Object> runs = new HashMap<>();
@@ -127,6 +134,10 @@ public class RecurringApiController {
             }
             item.put("dueAmount", dueAmount);
             item.put("dueDates", dueDates);
+            // 다음 결제일(휴일 보정·할부 기간·처리 여부 반영). 비활성이거나 더 없으면 null
+            PayCycle.Due next = active ? nextDue(item, today, holidays, p -> runs.containsKey(id(item) + "|" + p)) : null;
+            item.put("nextDue", next == null ? null : next.date().toString());
+            item.put("nextAmount", next == null ? null : Installment.amountFor(item, next.month()));
             item.put("status", !active ? "INACTIVE" : dues.isEmpty() ? "NONE"
                     : !allHandled ? "PLANNED" : skipped ? "SKIPPED" : "DONE");
         }
@@ -260,6 +271,26 @@ public class RecurringApiController {
             return Response.of(Constants.NOT_FOUND);
         }
         return Response.of(Constants.SUCCESS);
+    }
+
+    // 오늘 이후(오늘 포함) 아직 처리하지 않은 첫 결제일. 할부는 기간 안에서만 찾고, 마지막 회차가 지났으면 null.
+    // 보정(PREV_BIZ)으로 다음 달분이 이번 달로 당겨질 수 있어 지난달분부터 본다
+    static PayCycle.Due nextDue(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays, Predicate<YearMonth> handled) {
+        boolean installment = Installment.isInstallment(item);
+        YearMonth m = YearMonth.from(today).minusMonths(1);
+        if (installment && Installment.start(item).isAfter(m)) {
+            m = Installment.start(item);
+        }
+        for (int i = 0; i < 24; i++, m = m.plusMonths(1)) {
+            if (installment && m.isAfter(Installment.lastMonth(Installment.start(item), Installment.months(item)))) {
+                return null;
+            }
+            LocalDate date = PayCycle.dueDate(m, ((Number) item.get("dayOfMonth")).intValue(), (String) item.get("adjust"), holidays);
+            if (!date.isBefore(today) && !handled.test(m)) {
+                return new PayCycle.Due(m, date);
+            }
+        }
+        return null;
     }
 
     // 지난 결제일 건너뛰기는 신규·결제일/보정 변경·할부 일정 변경·재활성화일 때만.

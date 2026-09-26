@@ -110,7 +110,8 @@ App.summary = (function(){
                     App.h('td', {text: App.money(r.income)}),
                     App.h('td', {text: App.money(r.expense)}),
                     App.h('td', null, [App.h('span', {className: r.net < 0 ? 'expense' : '', text: (r.net < 0 ? '−' : '+') + App.money(Math.abs(r.net))})]),
-                    App.h('td', {text: (r.cumulative < 0 ? '−' : '') + App.money(Math.abs(r.cumulative))})
+                    // 시작 잔액 기준일 전에 끝나는 달은 누적 잔액을 알 수 없어 null
+                    App.h('td', {text: r.cumulative === null ? '—' : App.money(r.cumulative)})
                 ]);
             }));
 

@@ -5,6 +5,7 @@ import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.OpeningBalance;
 import ledger.cycle.PayCycle;
 import ledger.dashboard.service.DashboardService;
 import ledger.entry.service.EntryService;
@@ -68,9 +69,12 @@ public class DashboardApiController {
                 "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
 
         PayCycle.Cycle cycle = PayCycle.cycleOf(today, payDay, adjust, holidays);
-        long carryOver = dashboardService.selectBalanceBefore(ParamUtil.map("userId", userId, "date", cycle.start()));
+        // 시작 잔액이 있으면 기준일 이전 거래를 빼고 그 금액부터 센다(기준일이 이번 주기 안이면 이월로 본다)
+        OpeningBalance opening = OpeningBalance.of(setting);
+        long carryOver = opening.balanceAt(dashboardService.selectBalanceBefore(
+                ParamUtil.map("userId", userId, "date", cycle.start(), "from", opening.countFrom())));
         Map<String, Object> sum = dashboardService.selectPeriodSum(
-                ParamUtil.map("userId", userId, "from", cycle.start(), "to", cycle.end()));
+                ParamUtil.map("userId", userId, "from", opening.periodFrom(cycle.start()), "to", cycle.end()));
         long income = ((Number) sum.get("income")).longValue();
         long expense = ((Number) sum.get("expense")).longValue();
         long balance = carryOver + income - expense;

@@ -18,6 +18,15 @@ public class AuthDAO {
         return sqlSession.selectOne(SQL_PATH + ".selectUserByUsername", username);
     }
 
+    public String selectPasswordHash(long userId) {
+        return sqlSession.selectOne(SQL_PATH + ".selectPasswordHash", userId);
+    }
+
+    // param: userId, passwordHash
+    public int updatePassword(Map<String, Object> param) {
+        return sqlSession.update(SQL_PATH + ".updatePassword", param);
+    }
+
     // param: username, passwordHash. 실행 후 param.id 에 생성된 키가 들어간다
     public int insertUser(Map<String, Object> param) {
         return sqlSession.insert(SQL_PATH + ".insertUser", param);

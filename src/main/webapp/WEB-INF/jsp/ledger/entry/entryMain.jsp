@@ -23,10 +23,18 @@
 <p id="monthRange">달력 월 기준</p>
 </div>
 <div class="period-control">
+<label class="field">
+<span>기간</span>
+<select id="period">
+<option value="MONTH">달력 월</option>
+<option value="RECENT12">최근 12개월</option>
+<option value="ALL">전체</option>
+</select>
+</label>
 <button type="button" class="button" id="prevMonth" aria-label="이전 달">
 <svg class="icon" aria-hidden="true"><use href="#i-left"></use></svg>
 </button>
-<label class="field">
+<label class="field" id="monthField">
 <span>조회 월</span>
 <input type="month" id="month" name="month">
 </label>
@@ -65,8 +73,9 @@
 </div></details>
 <div class="list-heading">
 <span id="listCount">—</span>
-<span>수입 <b class="income">+</b> · 지출 <b class="expense">−</b></span>
+<span id="listTotals" aria-live="polite"></span>
 </div>
+<p class="form-note" id="listTruncated" hidden>최근 500건까지만 보여요. 검색어나 필터로 좁혀 보세요. 위 합계는 조건에 맞는 전체 거래 기준이에요.</p>
 <div id="entryList"></div>
 </section>
 

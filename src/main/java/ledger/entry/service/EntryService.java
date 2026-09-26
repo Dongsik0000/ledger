@@ -8,6 +8,8 @@ public interface EntryService {
 
     List<Map<String, Object>> selectEntryList(Map<String, Object> param);
 
+    Map<String, Object> selectEntrySum(Map<String, Object> param);
+
     List<Map<String, Object>> selectRecentEntries(Map<String, Object> param);
 
     Map<String, Object> selectEntry(Map<String, Object> param);

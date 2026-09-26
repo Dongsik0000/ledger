@@ -14,6 +14,10 @@ App.entry = (function(){
             reset: document.getElementById('filterReset'),
             search: document.getElementById('filterSearch'),
             count: document.getElementById('listCount'),
+            totals: document.getElementById('listTotals'),
+            truncated: document.getElementById('listTruncated'),
+            period: document.getElementById('period'),
+            monthField: document.getElementById('monthField'),
             list: document.getElementById('entryList'),
             dialog: document.getElementById(ED),
             heading: document.getElementById(ED + '-heading'),
@@ -42,10 +46,16 @@ App.entry = (function(){
         },
 
         init = function(){
-            // 조회 조건은 주소(?month=&q=&type=&category=&payment=)에 남겨 새로고침·뒤로 가기에도 유지한다
+            // 조회 조건은 주소(?period=&month=&q=&type=&category=&payment=)에 남겨 새로고침·뒤로 가기에도 유지한다
             var q = new URLSearchParams(location.search);
             settings.month = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get('month') || '') ? q.get('month') : App.entryForm.today().slice(0, 7);
             m$.month.value = settings.month;
+            m$.period.value = ['RECENT12', 'ALL'].indexOf(q.get('period')) >= 0 ? q.get('period') : 'MONTH';
+            showPeriod();
+            m$.period.addEventListener('change', function(){
+                showPeriod();
+                list();
+            });
             m$.keyword.value = q.get('q') || '';
             m$.type.value = ['INCOME', 'EXPENSE'].indexOf(q.get('type')) >= 0 ? q.get('type') : '';
             settings.editId = q.get('edit');
@@ -114,8 +124,15 @@ App.entry = (function(){
             });
         },
 
+        // 달력 월일 때만 이전·다음 달과 조회 월을 보인다
+        showPeriod = function(){
+            var month = m$.period.value === 'MONTH';
+            [m$.prev, m$.next, m$.monthField].forEach(function(el){ el.hidden = !month; });
+        },
+
         saveQuery = function(){
             var q = new URLSearchParams({month: settings.month});
+            if (m$.period.value !== 'MONTH') q.set('period', m$.period.value);
             if (m$.keyword.value.trim()) q.set('q', m$.keyword.value.trim());
             if (m$.type.value) q.set('type', m$.type.value);
             if (m$.category.value) q.set('category', m$.category.value);
@@ -163,11 +180,17 @@ App.entry = (function(){
         list = function(){
             var p = settings.month.split('-'),
                 lastDay = new Date(Number(p[0]), Number(p[1]), 0).getDate();
-            m$.monthTitle.textContent = p[0] + '년 ' + Number(p[1]) + '월';
-            m$.monthRange.textContent = '달력 월 기준 · ' + Number(p[1]) + '월 1일~' + lastDay + '일';
+            if (m$.period.value === 'MONTH') {
+                m$.monthTitle.textContent = p[0] + '년 ' + Number(p[1]) + '월';
+                m$.monthRange.textContent = '달력 월 기준 · ' + Number(p[1]) + '월 1일~' + lastDay + '일';
+            } else {
+                m$.monthTitle.textContent = m$.period.value === 'ALL' ? '전체 기간' : '최근 12개월';
+                m$.monthRange.textContent = '';
+            }
             saveQuery();
 
             App.post(url.list, {
+                period: m$.period.value,
                 month: settings.month,
                 type: m$.type.value,
                 categoryId: m$.category.value,
@@ -180,8 +203,18 @@ App.entry = (function(){
                 .catch(function(){});
         },
 
-        render = function(rows){
-            m$.count.textContent = rows.length + '건';
+        render = function(data){
+            var rows = data.rows, t = data.totals, net = t.income - t.expense;
+            if (m$.period.value === 'RECENT12' && data.from) {
+                m$.monthRange.textContent = data.from.split('-').join('.') + '부터';
+            }
+            // 합계: 목록이 잘려도 조건에 맞는 전체 거래 기준
+            m$.totals.replaceChildren(
+                '수입 ', App.h('b', {className: 'income', text: (t.income ? '+' : '') + App.money(t.income)}),
+                ' · 지출 ', App.h('b', {className: 'expense', text: (t.expense ? '−' : '') + App.money(t.expense)}),
+                ' · 차이 ', App.h('b', {text: (net > 0 ? '+' : '') + App.money(net)}));
+            m$.truncated.hidden = !data.truncated;
+            m$.count.textContent = data.truncated ? t.count + '건 중 ' + rows.length + '건' : rows.length + '건';
             if (!rows.length) {
                 m$.list.replaceChildren(filtered()
                     ? App.entryForm.empty('조건에 맞는 거래가 없어요', '검색어나 필터를 바꿔 보세요.')

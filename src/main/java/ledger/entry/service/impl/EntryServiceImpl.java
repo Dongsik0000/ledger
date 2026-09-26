@@ -20,6 +20,11 @@ public class EntryServiceImpl implements EntryService {
     }
 
     @Override
+    public Map<String, Object> selectEntrySum(Map<String, Object> param) {
+        return entryDAO.selectEntrySum(param);
+    }
+
+    @Override
     public List<Map<String, Object>> selectRecentEntries(Map<String, Object> param) {
         return entryDAO.selectRecentEntries(param);
     }
