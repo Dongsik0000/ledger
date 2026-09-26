@@ -3,6 +3,8 @@ App.summary = (function(){
         EXPENSE_COLOR = '#bc9856',
         DONUT_COLORS = ['#547851', '#bc9856', '#879975', '#a27560', '#6f8f9c', '#c9b98a', '#8a6f8f', '#9aa98a'],
         m$ = {
+            basis: document.getElementById('basis'),
+            basisNote: document.getElementById('basisNote'),
             from: document.getElementById('rangeFrom'),
             to: document.getElementById('rangeTo'),
             search: document.getElementById('rangeSearch'),
@@ -59,6 +61,10 @@ App.summary = (function(){
                 }
             });
             m$.categoryMonth.addEventListener('change', loadDonut);
+            m$.basis.addEventListener('change', function(){
+                load();
+                loadDonut();
+            });
 
             loadCycle();
             load();
@@ -88,7 +94,7 @@ App.summary = (function(){
                 _error('알림', '시작 월과 종료 월을 골라주세요.');
                 return;
             }
-            App.post(url.load, {from: m$.from.value, to: m$.to.value})
+            App.post(url.load, {from: m$.from.value, to: m$.to.value, basis: m$.basis.value})
                 .then(function(res){
                     App.result(res, {ok: function(){ render(res.data); }});
                 })
@@ -102,14 +108,22 @@ App.summary = (function(){
         },
 
         render = function(data){
-            var labels = monthLabels(data.months);
+            var labels = monthLabels(data.months),
+                cycle = data.basis === 'CYCLE';
+
+            // 주기 기준: "9월" = 9월 급여일부터 10월 급여일 전날까지. 공휴일이 없는 해는 주말만 보정했다고 알린다
+            m$.basisNote.textContent = cycle
+                ? '아래 표·차트는 주기 기준입니다. "9월"은 9월 급여일부터 다음 급여일 전날까지예요(최대 24개월).'
+                    + (data.holidayMissingYears.length ? ' ' + data.holidayMissingYears.join('·') + '년은 공휴일이 등록되지 않아 주말만 반영했어요.' : '')
+                : '아래 월별 표·차트는 달력 월 기준입니다(최대 24개월). 현재 주기 잔액은 별도로 표시합니다.';
 
             m$.monthlyBody.replaceChildren.apply(m$.monthlyBody, data.monthly.map(function(r){
                 return App.h('tr', null, [
-                    App.h('th', {attrs: {scope: 'row'}, text: dotted(r.month)}),
+                    App.h('th', {attrs: {scope: 'row'}, text: cycle
+                        ? dotted(r.month) + ' 주기 · ' + shortDate(r.from) + '~' + shortDate(r.to) : dotted(r.month)}),
                     App.h('td', {text: App.money(r.income)}),
                     App.h('td', {text: App.money(r.expense)}),
-                    App.h('td', null, [App.h('span', {className: r.net < 0 ? 'expense' : '', text: (r.net < 0 ? '−' : '+') + App.money(Math.abs(r.net))})]),
+                    App.h('td', null, [App.h('span', {className: r.net < 0 ? 'expense' : '', text: (r.net > 0 ? '+' : '') + App.money(r.net)})]),
                     // 시작 잔액 기준일 전에 끝나는 달은 누적 잔액을 알 수 없어 null
                     App.h('td', {text: r.cumulative === null ? '—' : App.money(r.cumulative)})
                 ]);
@@ -163,7 +177,7 @@ App.summary = (function(){
 
         loadDonut = function(){
             if (!m$.categoryMonth.value) return;
-            App.post(url.donut, {month: m$.categoryMonth.value})
+            App.post(url.donut, {month: m$.categoryMonth.value, basis: m$.basis.value})
                 .then(function(res){
                     App.result(res, {ok: function(){ renderDonut(res.data); }});
                 })

@@ -110,4 +110,23 @@ class PayCycleTest {
                         new PayCycle.Due(YearMonth.of(2026, 11), d("2026-11-30"))),
                 PayCycle.duesInCycle(nov, 31, "NEXT_BIZ", NONE));
     }
+
+    // ---- cycleStarting / baseMonth: "m월 주기" = m월 급여일 ~ 다음 달 급여일 전날 ----
+
+    // 26일·보정: 9/26(토)·9/24~26 추석 → 9/23, 10/26(월) 그대로 → 9월 주기 9/23~10/25
+    @Test
+    void cycleStartingUsesAdjustedPayDates() {
+        Set<LocalDate> chuseok = Set.of(d("2026-09-24"), d("2026-09-25"), d("2026-09-26"));
+        assertEquals(cycle("2026-09-23", "2026-10-25"), PayCycle.cycleStarting(YearMonth.of(2026, 9), 26, true, chuseok));
+        assertEquals(cycle("2026-09-01", "2026-09-30"), PayCycle.cycleStarting(YearMonth.of(2026, 9), 1, false, NONE));
+    }
+
+    // 보정으로 시작일이 전달로 넘어가도(11/1 일 → 10/30) 그 주기는 11월 주기
+    @Test
+    void baseMonthFollowsPayDateNotStartMonth() {
+        PayCycle.Cycle c = PayCycle.cycleStarting(YearMonth.of(2026, 11), 1, true, NONE);
+        assertEquals(d("2026-10-30"), c.start());
+        assertEquals(YearMonth.of(2026, 11), PayCycle.baseMonth(c, 1, true, NONE));
+        assertEquals(YearMonth.of(2026, 9), PayCycle.baseMonth(cycle("2026-09-01", "2026-09-30"), 1, false, NONE));
+    }
 }

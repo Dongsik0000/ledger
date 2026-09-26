@@ -50,7 +50,9 @@ App.entry = (function(){
             var q = new URLSearchParams(location.search);
             settings.month = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get('month') || '') ? q.get('month') : App.entryForm.today().slice(0, 7);
             m$.month.value = settings.month;
-            m$.period.value = ['RECENT12', 'ALL'].indexOf(q.get('period')) >= 0 ? q.get('period') : 'MONTH';
+            m$.period.value = ['CYCLE', 'RECENT12', 'ALL'].indexOf(q.get('period')) >= 0 ? q.get('period') : 'MONTH';
+            // 주기 보기: 이 날짜가 속한 주기(없으면 오늘)
+            settings.cycleDate = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : '';
             showPeriod();
             m$.period.addEventListener('change', function(){
                 showPeriod();
@@ -125,14 +127,26 @@ App.entry = (function(){
         },
 
         // 달력 월일 때만 이전·다음 달과 조회 월을 보인다
+        // 이전·다음은 달력 월(한 달씩)·주기(한 주기씩)에서, 조회 월 칸은 달력 월에서만 보인다
         showPeriod = function(){
-            var month = m$.period.value === 'MONTH';
-            [m$.prev, m$.next, m$.monthField].forEach(function(el){ el.hidden = !month; });
+            var period = m$.period.value;
+            m$.prev.hidden = m$.next.hidden = period !== 'MONTH' && period !== 'CYCLE';
+            m$.monthField.hidden = period !== 'MONTH';
+            m$.prev.setAttribute('aria-label', period === 'CYCLE' ? '이전 주기' : '이전 달');
+            m$.next.setAttribute('aria-label', period === 'CYCLE' ? '다음 주기' : '다음 달');
+        },
+
+        // "2026-09-23" 에서 n일 옮긴 날짜
+        shiftDate = function(iso, n){
+            var d = new Date(iso + 'T00:00:00');
+            d.setDate(d.getDate() + n);
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         },
 
         saveQuery = function(){
             var q = new URLSearchParams({month: settings.month});
             if (m$.period.value !== 'MONTH') q.set('period', m$.period.value);
+            if (m$.period.value === 'CYCLE' && settings.cycleDate) q.set('date', settings.cycleDate);
             if (m$.keyword.value.trim()) q.set('q', m$.keyword.value.trim());
             if (m$.type.value) q.set('type', m$.type.value);
             if (m$.category.value) q.set('category', m$.category.value);
@@ -166,6 +180,13 @@ App.entry = (function(){
         },
 
         moveMonth = function(delta){
+            if (m$.period.value === 'CYCLE') {
+                // 이전 주기는 시작일 전날, 다음 주기는 종료일 다음 날이 속한 주기
+                if (!settings.cycle) return;
+                settings.cycleDate = delta < 0 ? shiftDate(settings.cycle.from, -1) : shiftDate(settings.cycle.to, 1);
+                list();
+                return;
+            }
             var p = settings.month.split('-'),
                 d = new Date(Number(p[0]), Number(p[1]) - 1 + delta, 1);
             settings.month = d.getFullYear() + '-' + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1);
@@ -183,6 +204,9 @@ App.entry = (function(){
             if (m$.period.value === 'MONTH') {
                 m$.monthTitle.textContent = p[0] + '년 ' + Number(p[1]) + '월';
                 m$.monthRange.textContent = '달력 월 기준 · ' + Number(p[1]) + '월 1일~' + lastDay + '일';
+            } else if (m$.period.value === 'CYCLE') {
+                m$.monthTitle.textContent = '주기';        // 응답을 받으면 "2026년 9월 주기"와 기간으로 바꾼다
+                m$.monthRange.textContent = '';
             } else {
                 m$.monthTitle.textContent = m$.period.value === 'ALL' ? '전체 기간' : '최근 12개월';
                 m$.monthRange.textContent = '';
@@ -192,6 +216,7 @@ App.entry = (function(){
             App.post(url.list, {
                 period: m$.period.value,
                 month: settings.month,
+                date: m$.period.value === 'CYCLE' ? settings.cycleDate : '',
                 type: m$.type.value,
                 categoryId: m$.category.value,
                 paymentMethodId: m$.payment.value,
@@ -208,6 +233,13 @@ App.entry = (function(){
             if (m$.period.value === 'RECENT12' && data.from) {
                 m$.monthRange.textContent = data.from.split('-').join('.') + '부터';
             }
+            if (m$.period.value === 'CYCLE') {
+                var cm = data.cycleMonth.split('-');
+                settings.cycle = {from: data.from, to: data.to};
+                m$.monthTitle.textContent = cm[0] + '년 ' + Number(cm[1]) + '월 주기';
+                m$.monthRange.textContent = '주기 기준 · ' + data.from.split('-').join('.') + ' ~ ' + data.to.slice(5).split('-').join('.')
+                    + (data.holidayMissing ? ' · 이 해의 공휴일이 없어 주말만 반영' : '');
+            }
             // 합계: 목록이 잘려도 조건에 맞는 전체 거래 기준
             m$.totals.replaceChildren(
                 '수입 ', App.h('b', {className: 'income', text: (t.income ? '+' : '') + App.money(t.income)}),
@@ -218,7 +250,7 @@ App.entry = (function(){
             if (!rows.length) {
                 m$.list.replaceChildren(filtered()
                     ? App.entryForm.empty('조건에 맞는 거래가 없어요', '검색어나 필터를 바꿔 보세요.')
-                    : App.entryForm.empty('이 달의 첫 기록을 남겨볼까요?', '작은 지출부터 하나씩 기록하면 나의 소비가 보이기 시작해요.'));
+                    : App.entryForm.empty((m$.period.value === 'MONTH' ? '이 달' : '이 기간') + '의 첫 기록을 남겨볼까요?', '작은 지출부터 하나씩 기록하면 나의 소비가 보이기 시작해요.'));
                 return;
             }
             m$.list.replaceChildren.apply(m$.list, App.entryForm.grouped(rows, openEdit));

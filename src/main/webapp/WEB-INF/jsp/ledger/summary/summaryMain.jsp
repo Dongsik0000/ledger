@@ -16,6 +16,13 @@
 <section class="panel range-panel">
 <div class="range-fields">
 <label class="field">
+<span>기준</span>
+<select id="basis">
+<option value="MONTH">달력 월</option>
+<option value="CYCLE">주기</option>
+</select>
+</label>
+<label class="field">
 <span>시작 월</span>
 <input type="month" id="rangeFrom">
 </label>
@@ -26,7 +33,7 @@
 </label>
 <button type="button" class="button primary" id="rangeSearch">조회</button>
 </div>
-<p class="form-note">아래 월별 표·차트는 달력 월 기준입니다(최대 24개월). 현재 주기 잔액은 별도로 표시합니다.</p>
+<p class="form-note" id="basisNote">아래 월별 표·차트는 달력 월 기준입니다(최대 24개월). 현재 주기 잔액은 별도로 표시합니다.</p>
 </section>
 <div class="cycle-strip">
 <span>

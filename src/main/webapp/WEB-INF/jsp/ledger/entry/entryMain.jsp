@@ -27,6 +27,7 @@
 <span>기간</span>
 <select id="period">
 <option value="MONTH">달력 월</option>
+<option value="CYCLE">주기</option>
 <option value="RECENT12">최근 12개월</option>
 <option value="ALL">전체</option>
 </select>

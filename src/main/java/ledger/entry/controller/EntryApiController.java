@@ -6,7 +6,9 @@ import ledger.cmmn.util.LikeUtil;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.PayCycle;
 import ledger.entry.service.EntryService;
+import ledger.holiday.service.HolidayService;
 import ledger.settings.service.SettingsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,8 +37,9 @@ public class EntryApiController {
     private static final int MEMO_MAX = 500;    // ledger_entry.memo VARCHAR(500)
     private static final int KEYWORD_MAX = 50;
     private static final Set<String> TYPES = Set.of("EXPENSE", "INCOME");
-    // 조회 기간: 이 달 / 최근 12개월(11개월 전 1일부터) / 전체. 넓은 기간은 최근 거래부터 WIDE_LIMIT 건까지만 보낸다
-    private static final Set<String> PERIODS = Set.of("MONTH", "RECENT12", "ALL");
+    // 조회 기간: 달력 월 / 주기(date 가 속한 급여 주기) / 최근 12개월(11개월 전 1일부터) / 전체.
+    // 넓은 기간(최근 12개월·전체)은 최근 거래부터 WIDE_LIMIT 건까지만 보낸다
+    private static final Set<String> PERIODS = Set.of("MONTH", "CYCLE", "RECENT12", "ALL");
     private static final int WIDE_LIMIT = 500;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
@@ -44,6 +48,9 @@ public class EntryApiController {
 
     @Autowired
     private SettingsService settingsService;
+
+    @Autowired
+    private HolidayService holidayService;
 
     @GetMapping
     public String entry() {
@@ -55,12 +62,13 @@ public class EntryApiController {
     public Response list(@RequestBody HashMap<String, Object> param, HttpSession session) {
         String period = ParamUtil.has(param, "period") ? ParamUtil.str(param, "period") : "MONTH";
         YearMonth month = ParamUtil.month(param, "month");
+        LocalDate date = ParamUtil.has(param, "date") ? ParamUtil.date(param, "date") : LocalDate.now(SEOUL);
         String type = ParamUtil.str(param, "type");
         Long categoryId = ParamUtil.lng(param, "categoryId");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
         String keyword = ParamUtil.str(param, "keyword");
 
-        if (!PERIODS.contains(period) || ("MONTH".equals(period) && month == null) || (!type.isEmpty() && !TYPES.contains(type))
+        if (!PERIODS.contains(period) || ("MONTH".equals(period) && month == null) || date == null || (!type.isEmpty() && !TYPES.contains(type))
                 || (ParamUtil.has(param, "categoryId") && categoryId == null)
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
                 || keyword.length() > KEYWORD_MAX) {
@@ -75,21 +83,36 @@ public class EntryApiController {
         } else if ("RECENT12".equals(period)) {
             from = YearMonth.now(SEOUL).minusMonths(11).atDay(1);
         }
+        Map<String, Object> data = new HashMap<>();
+        if ("CYCLE".equals(period)) {
+            long userId = SessionUtil.getUserId(session);
+            Map<String, Object> setting = settingsService.selectUserSetting(userId);
+            int payDay = ((Number) setting.get("payDay")).intValue();
+            boolean adjust = Boolean.TRUE.equals(setting.get("payDayAdjust"));
+            Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
+                    "from", date.minusMonths(3).withDayOfMonth(1), "to", date.plusMonths(3))));
+            PayCycle.Cycle cycle = PayCycle.cycleOf(date, payDay, adjust, holidays);
+            from = cycle.start();
+            to = cycle.end();
+            data.put("cycleMonth", PayCycle.baseMonth(cycle, payDay, adjust, holidays).toString());
+            // 보정은 등록된 공휴일만 안다. 주기 연도의 공휴일이 하나도 없으면 주말만 반영됐다고 알린다
+            data.put("holidayMissing", adjust && holidays.stream().noneMatch(d -> d.getYear() == cycle.start().getYear()));
+        }
         Map<String, Object> query = ParamUtil.map(
                 "userId", SessionUtil.getUserId(session), "from", from, "to", to,
                 "type", type.isEmpty() ? null : type,
                 "categoryId", categoryId, "paymentMethodId", paymentMethodId,
                 "keyword", LikeUtil.contains(keyword),
-                "limit", "MONTH".equals(period) ? null : WIDE_LIMIT + 1);
+                "limit", "MONTH".equals(period) || "CYCLE".equals(period) ? null : WIDE_LIMIT + 1);
 
         // 합계는 잘리지 않은 전체 조건 기준
         List<Map<String, Object>> rows = entryService.selectEntryList(query);
         boolean truncated = rows.size() > WIDE_LIMIT;
-        Map<String, Object> data = new HashMap<>();
         data.put("rows", truncated ? rows.subList(0, WIDE_LIMIT) : rows);
         data.put("truncated", truncated);
         data.put("totals", entryService.selectEntrySum(query));
         data.put("from", from == null ? null : from.toString());
+        data.put("to", to == null ? null : to.toString());
         return Response.of(Constants.SUCCESS, data);
     }
 

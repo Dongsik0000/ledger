@@ -53,6 +53,18 @@ public final class PayCycle {
         return new Cycle(start, end);
     }
 
+    // "m월 주기": m월 급여일부터 다음 달 급여일 전날까지(요약·거래 내역의 주기 보기)
+    public static Cycle cycleStarting(YearMonth month, int payDay, boolean adjust, Set<LocalDate> holidays) {
+        return new Cycle(payDate(month, payDay, adjust, holidays),
+                payDate(month.plusMonths(1), payDay, adjust, holidays).minusDays(1));
+    }
+
+    // 주기의 기준 월(그 주기가 "몇 월 주기"인지). 보정으로 시작일이 전달로 당겨질 수 있어 다음 달도 확인한다
+    public static YearMonth baseMonth(Cycle cycle, int payDay, boolean adjust, Set<LocalDate> holidays) {
+        YearMonth m = YearMonth.from(cycle.start());
+        return payDate(m, payDay, adjust, holidays).equals(cycle.start()) ? m : m.plusMonths(1);
+    }
+
     // 주기 안에 드는 결제일들. 보정으로 앞뒤 달로 넘어오는 경우를 위해 시작 월 전달부터 끝 월 다음 달까지 본다
     public static List<Due> duesInCycle(Cycle cycle, int day, String adjust, Set<LocalDate> holidays) {
         List<Due> dues = new ArrayList<>();
