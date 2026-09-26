@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-// 주기(급여일 기준)와 고정 항목 결제일 계산. DB 없이 날짜만 다루는 순수 계산(plan.md "핵심 계산").
+// 주기(급여일 기준)와 고정 항목 결제일 계산. DB 없이 날짜만 다루는 순수 계산.
 public final class PayCycle {
 
     // 주기: start ~ end (양 끝 포함)

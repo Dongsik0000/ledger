@@ -1,91 +1,110 @@
-# ledger — 개인 가계부
+# 🌿 Ledger — 월급날 기준으로 흐르는 가계부
 
-Spring Framework 6 (XML 설정) + MyBatis + PostgreSQL + JSP, Tomcat 10.1 / Java 17.
-Oracle Cloud 서버의 nginx `/p3/` → Docker Tomcat `127.0.0.1:8081` 로 서비스한다.
+> 작은 기록이 모여, 한 달의 흐름이 됩니다.
 
-- 다른 PC에서 이어서 하기: [docs/HANDOFF.md](docs/HANDOFF.md)
-- 설계·기능 계획: [docs/plan.md](docs/plan.md)
-- 서버 운영: [deploy/OPERATIONS.md](deploy/OPERATIONS.md)
+구글 시트로 쓰던 가계부를 웹으로 옮기며, 시트에서 늘 불편했던 세 가지를 해결했습니다.
 
-## 로컬 실행
+| 시트에서의 불편 | Ledger 에서는 |
+|---|---|
+| 달이 바뀌면 남은 돈을 손으로 옮겨 적어야 했다 | **이월이 자동**입니다. 저장하지 않고 매번 계산하므로 과거 기록을 고쳐도 어긋나지 않습니다 |
+| 월세·통신비·월급을 매달 다시 입력했다 | **고정 항목**을 한 번 등록하면 결제일에 알아서 기록됩니다 |
+| 한 달의 기준이 1일이라 월급 흐름과 맞지 않았다 | **주기 시작일**(예: 25일)을 정하면 요약·잔액·일일 예산이 그 주기로 계산됩니다 |
 
-**1) DB** (로컬 PostgreSQL). `.sql` 은 UTF-8 이므로 Windows 에서는 먼저 `$env:PGCLIENTENCODING="UTF8"` 을 지정한다.
+PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
+
+---
+
+## 주요 기능
+
+**오늘의 가계부 (대시보드)**
+- 이번 주기의 이월 · 수입 · 지출 · 잔액을 한눈에
+- **오늘 쓸 수 있는 돈** = (주기 잔액 − 아직 나가지 않은 고정지출) ÷ 남은 날
+- 빠른 거래 입력과 최근 기록
+
+**거래 내역**
+- 달 단위로 넘겨 보며 추가 · 수정 · 삭제
+- 내용·메모 검색, 카테고리 · 결제수단 구분
+
+**고정 항목**
+- 수입과 지출 모두 등록, 결제일에 일반 거래로 자동 기록
+- 결제일이 주말·공휴일이면 그대로 / 직전 영업일 / 다음 영업일 중 선택
+- 서버가 잠시 꺼져 있었어도 다시 켜질 때 지난달 · 이번 달 결제일 중 빠진 것을 채우고, 같은 달에 두 번 기록되지 않습니다
+
+**요약 / 통계**
+- 월별 수입 · 지출 · 잔액 표와 막대 차트
+- 카테고리 비중 도넛 차트, 그룹 소계가 있는 카테고리별 지출
+- 결제수단별 월 지출
+
+**자산**
+- 통장 · 적금 · 주식 등의 잔액을 직접 적어 두는 잔액표
+- 총 잔액 = 가계부 누적 잔액 + 자산 합
+
+**설정**
+- 수입 · 지출 카테고리(그룹 묶기)와 결제수단 관리 — 쓰고 있는 항목은 지우는 대신 숨김
+- 주기 시작일(1~31일)과 주말 · 공휴일 보정
+- 공휴일: 공공데이터포털 특일정보 API 로 연도별 가져오기 + 직접 추가
+- 거래 내역 CSV 내보내기 (엑셀에서 바로 열리고, 수식 주입을 막습니다)
+
+---
+
+## 이렇게 만들었습니다
+
+| 영역 | 사용 기술 |
+|---|---|
+| 서버 | Java 17, Spring Framework 6.2 (XML 설정), MyBatis 3.5, HikariCP |
+| 화면 | JSP / JSTL 3.0, 순수 JavaScript (Ajax), Chart.js 4.4 |
+| 데이터베이스 | PostgreSQL 16 |
+| 실행 · 배포 | Tomcat 10.1, Docker Compose, nginx 리버스 프록시, Oracle Cloud (ARM64) |
+
+**안전하게**
+- 비밀번호는 BCrypt 로 저장하고, 로그인 5회 실패 시 5분 차단 · 로그인 후 세션 ID 교체
+- 모든 데이터 조회에 사용자 조건을 걸어 다른 사람의 기록에 접근할 수 없습니다
+- 데이터를 바꾸는 요청은 Ajax + JSON 만 받아 CSRF 를 막고, 화면에는 사용자 입력을 글자로만 넣어 XSS 를 막습니다
+- 가입은 초대 코드가 있어야 가능합니다
+- Tomcat 과 DB 는 서버 내부에만 열고, 외부 요청은 nginx 만 받습니다 (요청 크기 · 로그인 시도 속도 제한, 보안 헤더)
+
+**정확하게**
+- 주기 · 결제일 계산은 DB 와 분리된 순수 함수로 두고, 짧은 달 · 윤년 · 연속 공휴일 같은 경계 사례를 JUnit 으로 검증했습니다
+
+---
+
+## 직접 실행하기
+
+<details>
+<summary>로컬 실행</summary>
+
+1. PostgreSQL 에 `db/` 의 SQL 을 번호 순서대로 적용합니다.
+   ```bash
+   psql -U postgres -f db/000_create_db.sql
+   psql -U ledger_app -d ledger -f db/001_schema.sql
+   psql -U ledger_app -d ledger -f db/002_seed_holiday_2026.sql
+   psql -U ledger_app -d ledger -f db/003_comments.sql
+   ```
+2. `mvn package` 로 만든 `target/ledger.war` 를 Tomcat 10.1 에 컨텍스트 `/p3` 로 배포합니다.
+3. http://localhost:8081/p3/ 에 접속합니다.
+
+설정은 환경변수로 바꿉니다.
+
+| 변수 | 용도 | 로컬 기본값 |
+|---|---|---|
+| `LEDGER_DB_URL` / `LEDGER_DB_USER` / `LEDGER_DB_PASSWORD` | DB 연결 | `localhost:5432/ledger`, `ledger_app` |
+| `LEDGER_SIGNUP_CODE` | 가입 코드 | `dev-signup` |
+| `LEDGER_HOLIDAY_API_KEY` | [공공데이터포털 특일정보](https://www.data.go.kr/data/15012690/openapi.do) 인증키 | 없음 (공휴일 직접 추가만 가능) |
+| `LEDGER_LOG_LEVEL` | 앱 로그 수준 | `DEBUG` |
+
+</details>
+
+<details>
+<summary>서버 배포 (Docker)</summary>
 
 ```bash
-psql -U postgres -f db/000_create_db.sql
-psql -U ledger_app -d ledger -f db/001_schema.sql
-psql -U ledger_app -d ledger -f db/002_seed_holiday_2026.sql
-psql -U ledger_app -d ledger -f db/003_comments.sql
+sudo mkdir -p /etc/ledger
+sudo install -m 600 deploy/app.env.example /etc/ledger/app.env   # 값 입력
+sudo docker compose up -d --build
 ```
 
-Docker 컨테이너에 DB 를 만들 때는 `docker exec -i <컨테이너> psql -U <슈퍼유저> -d postgres < db/000_create_db.sql` 처럼 컨테이너 안에서 실행하면 비밀번호 없이 된다.
+- nginx 설정은 `deploy/nginx-ledger.conf`, `deploy/nginx-ledger-limit.conf` 파일 머리말을 따릅니다.
+- 매일 백업은 `deploy/backup.sh` 를 크론에 등록합니다.
+- 운영 이미지는 로그 `INFO`, 가입 코드가 없으면 가입이 막힌 상태로 뜹니다.
 
-**2) 기동** 아래 "IntelliJ IDEA Ultimate 로 실행" → http://localhost:8081/p3/ (가입 코드 기본값: dev-signup, globals.properties 참고)
-
-환경변수 `LEDGER_DB_URL`, `LEDGER_DB_USER`, `LEDGER_DB_PASSWORD`, `LEDGER_SIGNUP_CODE`, `LEDGER_HOLIDAY_API_KEY` 로 설정을 덮어쓸 수 있다.
-예: Docker PostgreSQL 을 다른 포트로 띄웠다면 실행 구성의 `Startup/Connection` 탭 → Environment variables 에 `LEDGER_DB_URL=jdbc:postgresql://localhost:5434/ledger` 를 넣는다.
-
-## IntelliJ IDEA Ultimate 로 실행
-
-JSP·CSS·JS 를 저장하는 즉시 반영되고 중단점 디버깅도 된다.
-
-**1) Tomcat 등록** (PC 당 1회)
-`File → Settings → Build, Execution, Deployment → Application Servers` → `+` → Tomcat Server →
-Tomcat Home 에 Tomcat 10.1 경로 입력. 없으면 https://tomcat.apache.org/download-10.cgi 에서 10.1.x 의 `64-bit Windows zip` 을 받아 압축을 푼 폴더를 지정한다.
-Tomcat 9 이하(`javax`)는 Spring 6(`jakarta`)과 맞지 않아 쓸 수 없다.
-
-**2) 실행 구성** `Run → Edit Configurations` → `+` → Tomcat Server → **Local**
-
-| 탭 | 항목 | 값 |
-|---|---|---|
-| Server | URL (Open browser) | `http://localhost:8081/p3/` — 브라우저를 열 주소 |
-| Server | On 'Update' action | `Update classes and resources` — 저장 시 즉시 반영 |
-| Server | Tomcat Server Settings > **HTTP port** | **`8081`** — 실제 서버 포트. URL 과 별개 항목이다 |
-| Deployment | Artifact | `ledger:war exploded` (`+` → Artifact 로 추가) |
-| Deployment | **Application context** | **`/p3`** — 끝에 슬래시를 붙이면 배포가 실패한다 |
-
-`ledger:war exploded` 가 목록에 없으면 Maven 창에서 Reload All Maven Projects 후 다시 연다.
-
-**자주 나는 오류**
-
-| 메시지 | 원인 |
-|---|---|
-| `Error during artifact deployment` | Application context 에 끝 슬래시(`/p3/`) |
-| `Address localhost:1099 is already in use` | 이전 Tomcat 이 안 죽음. `netstat -ano -p tcp \| findstr :1099` 로 PID 확인 후 `taskkill /F /PID <PID>` |
-| `Cannot open URL` | URL 만 바꾸고 HTTP port 를 안 바꿈 |
-
-## 구조
-
-```
-src/main/java/ledger/
-  cmmn/        공통 (Response, Constants, SessionUtil, ParamUtil, LikeUtil, CsvUtil, RequestUtil, LoginAttemptLimiter, CmmnExceptionHandler)
-  interceptor/ ApiRequestInterceptor — POST 는 Ajax+JSON 만 / LoginPageInterceptor — /ledger/** 는 세션 userId 필수
-  auth/        로그인·가입·로그아웃. AuthApiController 에 로직, AuthServiceImpl 은 DAO 연결만 (→ sqlmap/mappers/ledger/auth/auth.xml)
-  settings/ entry/ dashboard/ recurring/ holiday/ summary/ asset/   각 기능, 같은 계층 구조(XxxApiController → XxxService → impl → XxxDAO → mapper)
-  cycle/PayCycle                  주기·결제일 계산(순수, JUnit)
-  recurring/RecurringGenerator    고정 항목 거래 생성(저장 직후·RecurringScheduler 매일 00:05·기동 시)
-  holiday/HolidayApiClient, HolidayXmlParser   공공데이터포털 특일정보(XXE 차단)
-  summary/SummaryTables           요약 표(카테고리 그룹 소계·결제수단)
-src/main/resources/
-  spring/context-datasource.xml   HikariCP, MyBatis, 트랜잭션, BCrypt
-  sqlmap/mybatis-config.xml, sqlmap/mappers/ledger/<기능>/*.xml
-  egovProps/globals.properties    ${ENV:기본값} 형태
-src/main/webapp/
-  WEB-INF/web.xml, WEB-INF/config/dispatcher-servlet.xml
-  WEB-INF/tags/layout.tag         Tiles 대체 레이아웃. 화면 JSP 는 <t:layout title="">본문</t:layout>
-  WEB-INF/layout/ledgerMenu.jsp   사이드 메뉴
-  WEB-INF/jsp/ledger/<기능>/*.jsp
-  resources/js/app/<기능>/*.js    App.xxx = (function(){ ... return {init} }()) 패턴
-  resources/js/common/            common.js (App.post/get, App.h 안전한 DOM 생성, App.result 결과 코드 분기, 금액 입력), modal.js (_alert/_error/_confirm, 열린 dialog 위에 표시)
-  resources/js/lib/chartjs/       Chart.js 4.4.6
-db/                               번호 순서 SQL
-deploy/                           nginx, app.env 예시, 백업, 운영 가이드
-```
-
-## 규칙
-
-- 모든 사용자 데이터 쿼리는 `AND user_id = #{userId}` 를 건다. userId 는 `SessionUtil.getUserId(session)`.
-- 금액은 원 단위 `bigint` 양수, 수입/지출은 `type` 컬럼으로 구분.
-- 주기(급여일 기준)와 이월은 저장하지 않고 계산한다 — docs/plan.md "핵심 계산" 참고.
-- 로직(검증·분기·계산·세션·`@Transactional`)은 `XxxApiController`, `ServiceImpl` 은 DAO 호출만. 컨트롤러에서 try/catch 금지(CmmnExceptionHandler 가 처리).
-- 화면 데이터는 Ajax 로 그린다. 사용자 값은 `textContent`/`App.escape` 로만 HTML 에 넣는다. 결과 코드는 `App.CODE`.
+</details>

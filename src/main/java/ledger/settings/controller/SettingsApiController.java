@@ -138,7 +138,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS);
     }
 
-    // 쓰는 거래·고정 항목이 없을 때만 삭제(plan.md: 참조 중이면 삭제 불가 → 숨김)
+    // 쓰는 거래·고정 항목이 없을 때만 삭제(참조 중이면 삭제 불가 → 숨김)
     @Transactional
     @ResponseBody
     @PostMapping("/category/delete")

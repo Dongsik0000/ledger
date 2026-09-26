@@ -52,7 +52,7 @@ public class DashboardApiController {
         return "dashboard/dashboardMain";
     }
 
-    // plan.md "핵심 계산": 이월 + 주기 수입 − 주기 지출 = 주기 잔액, (주기 잔액 − 예정 고정지출) ÷ 남은 일수 = 오늘 쓸 수 있는 돈
+    // 이월 + 주기 수입 − 주기 지출 = 주기 잔액, (주기 잔액 − 예정 고정지출) ÷ 남은 일수 = 오늘 쓸 수 있는 돈
     @ResponseBody
     @PostMapping("/summary")
     public Response summary(HttpSession session) {
