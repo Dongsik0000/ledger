@@ -19,8 +19,12 @@ RUN mvn -B clean package -DskipTests
 FROM tomcat:10.1-jdk17-temurin
 
 # 포트 8081, 서버에서는 loopback 에만 바인딩 (docker-compose 의 CATALINA_OPTS 로 지정)
+# 종료 포트(8005)는 끈다 — host 네트워크라 같은 서버의 다른 Tomcat(p1)과 겹치고, 컨테이너는 신호로 종료한다
 ENV CATALINA_OPTS="-Dtomcat.address=0.0.0.0"
-RUN sed -i 's/<Connector port="8080"/<Connector address="${tomcat.address}" port="8081"/' /usr/local/tomcat/conf/server.xml
+RUN sed -i -e 's/<Connector port="8080"/<Connector address="${tomcat.address}" port="8081"/' \
+           -e 's/<Server port="8005"/<Server port="-1"/' /usr/local/tomcat/conf/server.xml \
+    && grep -q '<Server port="-1"' /usr/local/tomcat/conf/server.xml \
+    && grep -q 'port="8081"' /usr/local/tomcat/conf/server.xml
 
 # 기본 웹앱(manager, examples) 제거 — 운영에 불필요하고 공격면만 넓힌다
 RUN rm -rf /usr/local/tomcat/webapps/*
