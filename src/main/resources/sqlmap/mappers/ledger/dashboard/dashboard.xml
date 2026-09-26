@@ -23,7 +23,9 @@
 
     <!-- 예정 고정지출 계산용: 활성 지출 고정 항목 -->
     <select id="selectActiveExpenseItems" parameterType="long" resultType="java.util.HashMap">
-        SELECT id, amount, day_of_month AS "dayOfMonth", adjust
+        SELECT id, amount, day_of_month AS "dayOfMonth", adjust,
+               installment_total AS "installmentTotal", installment_months AS "installmentMonths",
+               installment_start AS "installmentStart"
         FROM recurring_item
         WHERE user_id = #{userId} AND active AND type = 'EXPENSE'
     </select>

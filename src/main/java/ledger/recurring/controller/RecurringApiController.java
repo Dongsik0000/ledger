@@ -8,6 +8,7 @@ import ledger.cmmn.util.SessionUtil;
 import ledger.cycle.PayCycle;
 import ledger.entry.controller.EntryApiController;
 import ledger.holiday.service.HolidayService;
+import ledger.recurring.Installment;
 import ledger.recurring.RecurringGenerator;
 import ledger.recurring.service.RecurringService;
 import ledger.settings.service.SettingsService;
@@ -21,12 +22,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -78,6 +81,7 @@ public class RecurringApiController {
         for (Map<String, Object> item : items) {
             List<PayCycle.Due> dues = PayCycle.duesInCycle(cycle,
                     ((Number) item.get("dayOfMonth")).intValue(), (String) item.get("adjust"), holidays);
+            dues.removeIf(d -> Installment.amountFor(item, d.month()) == null);   // 할부 기간 밖
             duesByItem.put(id(item), dues);
             dues.forEach(d -> months.add(d.month().toString()));
         }
@@ -110,9 +114,18 @@ public class RecurringApiController {
                     recorded += ((Number) runs.get(key)).longValue();
                 }
             }
-            if (active && expense) {
-                monthlyFixed += ((Number) item.get("amount")).longValue();
+            // 이번 주기 결제 금액: 할부는 이번 주기 회차 금액(기간 밖이면 0), 일반 항목은 amount
+            long dueAmount = ((Number) item.get("amount")).longValue();
+            if (Installment.isInstallment(item)) {
+                YearMonth first = dues.isEmpty() ? null : dues.get(0).month();
+                dueAmount = first == null ? 0 : Installment.amountFor(item, first);
+                item.put("installmentRound", first == null ? 0
+                        : Installment.roundOf(Installment.start(item), Installment.months(item), first));
             }
+            if (active && expense) {
+                monthlyFixed += dueAmount;
+            }
+            item.put("dueAmount", dueAmount);
             item.put("dueDates", dueDates);
             item.put("status", !active ? "INACTIVE" : dues.isEmpty() ? "NONE"
                     : !allHandled ? "PLANNED" : skipped ? "SKIPPED" : "DONE");
@@ -140,12 +153,29 @@ public class RecurringApiController {
         String adjust = ParamUtil.has(param, "adjust") ? ParamUtil.str(param, "adjust") : "NONE";
         String memo = ParamUtil.str(param, "memo");
         Boolean active = ParamUtil.has(param, "active") ? ParamUtil.bool(param, "active") : Boolean.TRUE;
+        Boolean installment = ParamUtil.has(param, "installment") ? ParamUtil.bool(param, "installment") : Boolean.FALSE;
+
+        // 할부: 총액·개월 수·첫 결제월을 받고, amount 는 2회차 이후 금액으로 계산한다
+        Long installmentTotal = null;
+        Integer installmentMonths = null;
+        YearMonth installmentStart = null;
+        if (Boolean.TRUE.equals(installment)) {
+            installmentTotal = ParamUtil.lng(param, "installmentTotal");
+            installmentMonths = ParamUtil.integer(param, "installmentMonths");
+            installmentStart = ParamUtil.month(param, "installmentStart");
+            if (!"EXPENSE".equals(type) || installmentTotal == null || installmentMonths == null || installmentStart == null
+                    || installmentMonths < Installment.MONTHS_MIN || installmentMonths > Installment.MONTHS_MAX
+                    || installmentTotal < installmentMonths || installmentTotal > EntryApiController.AMOUNT_MAX) {
+                return Response.invalid("할부는 지출만 가능해요. 총액·개월 수(2~60개월)·첫 결제월을 확인해 주세요.");
+            }
+            amount = Installment.baseAmount(installmentTotal, installmentMonths);
+        }
 
         if ((ParamUtil.has(param, "id") && id == null) || name.isEmpty() || name.length() > NAME_MAX
                 || !TYPES.contains(type) || amount == null || amount < 1 || amount > EntryApiController.AMOUNT_MAX
                 || categoryId == null || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
                 || dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31 || !ADJUSTS.contains(adjust)
-                || memo.length() > MEMO_MAX || active == null) {
+                || memo.length() > MEMO_MAX || active == null || installment == null) {
             return Response.invalid("항목명(100자 이하)·금액(1원~999억 원 미만)·결제일(1~31일)·카테고리를 확인해 주세요.");
         }
 
@@ -168,7 +198,13 @@ public class RecurringApiController {
 
         Map<String, Object> item = ParamUtil.map("userId", userId, "id", id, "name", name, "type", type,
                 "amount", amount, "categoryId", categoryId, "paymentMethodId", paymentMethodId,
-                "dayOfMonth", dayOfMonth, "adjust", adjust, "active", active, "memo", memo.isEmpty() ? null : memo);
+                "dayOfMonth", dayOfMonth, "adjust", adjust, "active", active, "memo", memo.isEmpty() ? null : memo,
+                "installmentTotal", installmentTotal, "installmentMonths", installmentMonths,
+                "installmentStart", installmentStart == null ? null : installmentStart.toString());
+        LocalDate today = LocalDate.now(SEOUL);
+        if (recurringGenerator.isFinished(item, today)) {
+            return Response.invalid("마지막 회차 결제일이 이미 지났어요. 지난 회차는 거래 내역에 직접 기록해 주세요.");
+        }
         if (id == null) {
             recurringService.insertItem(item);            // item.id 에 새 키
         } else {
@@ -176,8 +212,7 @@ public class RecurringApiController {
         }
 
         if (active) {
-            LocalDate today = LocalDate.now(SEOUL);
-            if (shouldSkipPassed(saved, dayOfMonth, adjust)) {
+            if (shouldSkipPassed(saved, item)) {
                 recurringGenerator.skipPassed(item, today);
             }
             recurringGenerator.generate(item, today);
@@ -227,13 +262,25 @@ public class RecurringApiController {
         return Response.of(Constants.SUCCESS);
     }
 
-    // 지난 결제일 건너뛰기는 신규·결제일/보정 변경·재활성화일 때만(spec 3.4).
+    // 지난 결제일 건너뛰기는 신규·결제일/보정 변경·할부 일정 변경·재활성화일 때만.
     // 금액·이름만 바꾼 수정에서 건너뛰면, 스케줄러 실패로 누락된 결제가 조용히 "건너뜀"으로 가려진다
-    static boolean shouldSkipPassed(Map<String, Object> saved, int dayOfMonth, String adjust) {
+    static boolean shouldSkipPassed(Map<String, Object> saved, Map<String, Object> item) {
         if (saved == null || !Boolean.TRUE.equals(saved.get("active"))) {
             return true;
         }
-        return ((Number) saved.get("dayOfMonth")).intValue() != dayOfMonth || !adjust.equals(saved.get("adjust"));
+        return !Objects.equals(number(saved.get("dayOfMonth")), number(item.get("dayOfMonth")))
+                || !Objects.equals(saved.get("adjust"), item.get("adjust"))
+                || !Objects.equals(text(saved.get("installmentStart")), text(item.get("installmentStart")))
+                || !Objects.equals(number(saved.get("installmentMonths")), number(item.get("installmentMonths")));
+    }
+
+    // DB(Short·Integer)와 요청 값(Integer)의 타입 차이, CHAR 공백을 무시하고 비교
+    private static Long number(Object v) {
+        return v == null ? null : ((Number) v).longValue();
+    }
+
+    private static String text(Object v) {
+        return v == null ? null : v.toString().trim();
     }
 
     private static long id(Map<String, Object> item) {

@@ -18,6 +18,10 @@ App.recurring = (function(){
             category: document.getElementById(ED + '-category'),
             payment: document.getElementById(ED + '-payment'),
             memo: document.getElementById(ED + '-memo'),
+            installment: document.getElementById(ED + '-installment'),
+            installmentTotal: document.getElementById(ED + '-installment-total'),
+            installmentMonths: document.getElementById(ED + '-installment-months'),
+            installmentStart: document.getElementById(ED + '-installment-start'),
             active: document.getElementById(ED + '-active'),
             del: document.getElementById(ED + '-delete'),
             save: document.getElementById(ED + '-save')
@@ -35,8 +39,13 @@ App.recurring = (function(){
         init = function(){
             m$.newButton.addEventListener('click', function(){ open(null); });
             App.bindAmountInput(m$.amount);
+            App.bindAmountInput(m$.installmentTotal);
             m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
                 r.addEventListener('change', function(){ fillCategories(r.value, null); });
+            });
+            m$.installment.addEventListener('change', function(){
+                showInstallment(m$.installment.checked);
+                if (m$.installment.checked) installmentDefaults();
             });
             m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
                 b.addEventListener('click', function(){ m$.dialog.close(); });
@@ -100,9 +109,18 @@ App.recurring = (function(){
             return App.h('span', {className: map[0], text: map[1]});
         },
 
+        // 할부: "할부 2/3" (이번 주기 회차), 이번 주기에 회차가 없으면 "할부 3개월 · 2026.10부터"
+        installmentChip = function(item){
+            var text = item.installmentRound
+                ? '할부 ' + item.installmentRound + '/' + item.installmentMonths
+                : '할부 ' + item.installmentMonths + '개월 · ' + item.installmentStart.trim().replace('-', '.') + '부터';
+            return App.h('span', {className: 'chip neutral', text: text});
+        },
+
         row = function(item){
             var income = item.type === 'INCOME',
-                money = (income ? '+' : '−') + App.money(item.amount),
+                installment = !!item.installmentMonths,
+                money = (income ? '+' : '−') + App.money(installment && item.dueAmount ? item.dueAmount : item.amount),
                 toggle = App.h('input', {type: 'checkbox', checked: !!item.active, attrs: {'aria-label': item.name + ' 활성'}});
 
             toggle.addEventListener('change', function(){
@@ -113,7 +131,7 @@ App.recurring = (function(){
                 App.h('th', {attrs: {scope: 'row'}}, [
                     item.name + ' ',
                     App.h('span', {className: 'chip ' + (!item.active ? 'neutral' : income ? '' : 'warm'), text: income ? '수입' : '지출'})
-                ]),
+                ].concat(installment ? [' ', installmentChip(item)] : [])),
                 App.h('td', {attrs: {'data-label': '금액'}}, [
                     item.active ? App.h('span', {className: income ? 'income' : 'expense', text: money}) : money
                 ]),
@@ -187,7 +205,34 @@ App.recurring = (function(){
             return el ? el.value : '';
         },
 
+        // 할부면 금액 칸 대신 총액·개월 수·첫 결제월. 할부는 지출만
+        showInstallment = function(on){
+            m$.dialog.querySelectorAll('[data-installment]').forEach(function(el){ el.hidden = !on; });
+            m$.dialog.querySelectorAll('[data-regular]').forEach(function(el){ el.hidden = on; });
+            var income = m$.dialog.querySelector('input[name="' + ED + '-type"][value="INCOME"]');
+            income.disabled = on;
+            if (on && income.checked) {
+                setRadio(ED + '-type', 'EXPENSE');
+                fillCategories('EXPENSE', null);
+            }
+        },
+
+        // 할부를 새로 켤 때: 카드 결제일 1일·휴일이면 다음 평일(카드사 출금 규칙)·신용카드·다음 달부터
+        installmentDefaults = function(){
+            var card = settings.master.paymentMethods.filter(function(p){ return p.active && p.name === '신용카드'; })[0],
+                next = new Date();
+            next.setDate(1);
+            next.setMonth(next.getMonth() + 1);
+            m$.day.value = 1;
+            setRadio(ED + '-adjust', 'NEXT_BIZ');
+            if (card) m$.payment.value = String(card.id);
+            if (!m$.installmentStart.value) {
+                m$.installmentStart.value = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0');
+            }
+        },
+
         open = function(item){
+            var installment = !!(item && item.installmentMonths);
             settings.editing = item;
             m$.heading.textContent = item ? '고정 항목 수정' : '고정 항목 등록';
             m$.subtitle.textContent = item ? item.name : '필요한 내용을 입력해 주세요.';
@@ -200,6 +245,11 @@ App.recurring = (function(){
             setRadio(ED + '-adjust', item ? item.adjust : 'NONE');
             m$.memo.value = item && item.memo ? item.memo : '';
             m$.active.checked = item ? !!item.active : true;
+            m$.installment.checked = installment;
+            m$.installmentTotal.value = installment ? Number(item.installmentTotal).toLocaleString('ko-KR') : '';
+            m$.installmentMonths.value = installment ? item.installmentMonths : '';
+            m$.installmentStart.value = installment ? item.installmentStart.trim() : '';
+            showInstallment(installment);
             m$.del.hidden = !item;
             m$.dialog.showModal();
             m$.name.focus();
@@ -207,13 +257,29 @@ App.recurring = (function(){
 
         save = function(){
             if (settings.submitting) return;
-            var amount = App.parseAmount(m$.amount.value),
+            var installment = m$.installment.checked,
+                amount = App.parseAmount(m$.amount.value),
+                total = App.parseAmount(m$.installmentTotal.value),
+                months = Number(m$.installmentMonths.value),
                 day = Number(m$.day.value);
             if (!m$.name.value.trim()) {
                 _error('알림', '항목명을 입력해주세요.');
                 return;
             }
-            if (!amount) {
+            if (installment) {
+                if (!(months >= 2 && months <= 60 && Math.floor(months) === months)) {
+                    _error('알림', '개월 수는 2~60 사이로 입력해주세요.');
+                    return;
+                }
+                if (!total || total < months) {
+                    _error('알림', '할부 총액을 개월 수 이상으로 입력해주세요.');
+                    return;
+                }
+                if (!/^\d{4}-\d{2}$/.test(m$.installmentStart.value)) {
+                    _error('알림', '첫 결제월을 골라주세요.');
+                    return;
+                }
+            } else if (!amount) {
                 _error('알림', '금액을 1원 이상 입력해주세요.');
                 return;
             }
@@ -231,7 +297,11 @@ App.recurring = (function(){
                 id: settings.editing ? settings.editing.id : '',
                 name: m$.name.value.trim(),
                 type: checked(ED + '-type'),
-                amount: amount,
+                amount: installment ? '' : amount,
+                installment: installment,
+                installmentTotal: installment ? total : '',
+                installmentMonths: installment ? months : '',
+                installmentStart: installment ? m$.installmentStart.value : '',
                 dayOfMonth: day,
                 categoryId: m$.category.value,
                 paymentMethodId: m$.payment.value,

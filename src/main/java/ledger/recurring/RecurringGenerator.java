@@ -26,6 +26,7 @@ import java.util.Set;
 public class RecurringGenerator {
 
     private static final Logger logger = LoggerFactory.getLogger(RecurringGenerator.class);
+    private static final int TITLE_MAX = 100;   // ledger_entry.title VARCHAR(100)
 
     @Autowired
     private RecurringService recurringService;
@@ -58,9 +59,12 @@ public class RecurringGenerator {
     }
 
     // 신규·결제일 변경·재활성화 직후: 이미 지난 결제일은 건너뜀(entry_id 없는 기록)으로 둔다.
-    // item: id, userId, name, type, amount, categoryId, paymentMethodId, dayOfMonth, adjust, memo
+    // item: id, userId, name, type, amount, categoryId, paymentMethodId, dayOfMonth, adjust, memo, installment*
     public void skipPassed(Map<String, Object> item, LocalDate today) {
         for (PayCycle.Due due : duesBefore(day(item), (String) item.get("adjust"), today, holidays(today))) {
+            if (Installment.amountFor(item, due.month()) == null) {
+                continue;   // 할부 기간 밖
+            }
             recurringService.insertRun(ParamUtil.map(
                     "recurringId", item.get("id"), "periodYm", due.month().toString(), "entryId", null));
         }
@@ -69,6 +73,20 @@ public class RecurringGenerator {
     // 저장 직후: 결제일이 오늘까지인데 아직 처리되지 않은 분을 바로 기록(오늘이 결제일이면 오늘 기록)
     public void generate(Map<String, Object> item, LocalDate today) {
         generate(item, today, holidays(today));
+    }
+
+    // 저장 전 확인용: 할부 마지막 회차 결제일이 이미 왔는지
+    public boolean isFinished(Map<String, Object> item, LocalDate today) {
+        return isFinished(item, today, holidays(today));
+    }
+
+    // 할부의 마지막 회차 결제일이 오늘까지 왔으면 끝(그 회차는 기록 또는 건너뜀 처리됨). 일반 항목은 끝나지 않는다
+    static boolean isFinished(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
+        if (!Installment.isInstallment(item)) {
+            return false;
+        }
+        YearMonth last = Installment.lastMonth(Installment.start(item), Installment.months(item));
+        return !PayCycle.dueDate(last, day(item), (String) item.get("adjust"), holidays).isAfter(today);
     }
 
     // 지난달·이번 달 결제일 중 today 이하(생성 대상)
@@ -103,27 +121,36 @@ public class RecurringGenerator {
         return dues;
     }
 
+    // 할부는 마지막 회차 결제일이 지나면 항목을 지운다(기록된 거래는 남는다)
     private int generate(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
         int created = 0;
         for (PayCycle.Due due : duesUpTo(day(item), (String) item.get("adjust"), today, holidays)) {
-            Boolean done = tx.execute(status -> generateOne(item, due));
+            Long amount = Installment.amountFor(item, due.month());
+            if (amount == null) {
+                continue;   // 할부 기간 밖
+            }
+            Boolean done = tx.execute(status -> generateOne(item, due, amount));
             if (Boolean.TRUE.equals(done)) {
                 created++;
             }
+        }
+        if (isFinished(item, today, holidays)) {
+            recurringService.deleteItem(ParamUtil.map("id", item.get("id"), "userId", item.get("userId")));
+            logger.info("할부 마지막 회차 이후 고정 항목 삭제: id={}", item.get("id"));
         }
         return created;
     }
 
     // 한 트랜잭션: 처리 기록 → 거래 → 기록에 거래 연결. 기록이 이미 있으면(처리됨·건너뜀) 아무것도 하지 않는다
-    private boolean generateOne(Map<String, Object> item, PayCycle.Due due) {
+    private boolean generateOne(Map<String, Object> item, PayCycle.Due due, long amount) {
         String periodYm = due.month().toString();
         if (recurringService.insertRun(ParamUtil.map(
                 "recurringId", item.get("id"), "periodYm", periodYm, "entryId", null)) == 0) {
             return false;
         }
         Map<String, Object> entry = ParamUtil.map("userId", item.get("userId"), "entryDate", due.date(),
-                "type", item.get("type"), "categoryId", item.get("categoryId"), "title", item.get("name"),
-                "amount", item.get("amount"), "paymentMethodId", item.get("paymentMethodId"), "memo", item.get("memo"));
+                "type", item.get("type"), "categoryId", item.get("categoryId"), "title", title(item, due.month()),
+                "amount", amount, "paymentMethodId", item.get("paymentMethodId"), "memo", item.get("memo"));
         entryService.insertEntry(entry);
         recurringService.updateRunEntry(ParamUtil.map("recurringId", item.get("id"), "periodYm", periodYm, "entryId", entry.get("id")));
         return true;
@@ -132,6 +159,17 @@ public class RecurringGenerator {
     private Set<LocalDate> holidays(LocalDate today) {
         return new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
                 "from", today.minusMonths(2).withDayOfMonth(1), "to", today.plusMonths(1))));
+    }
+
+    // 할부 거래는 "이름 (1/3)". 거래 내용은 100자까지라 이름을 줄인다
+    static String title(Map<String, Object> item, YearMonth period) {
+        String name = (String) item.get("name");
+        if (!Installment.isInstallment(item)) {
+            return name;
+        }
+        int months = Installment.months(item);
+        String suffix = " (" + Installment.roundOf(Installment.start(item), months, period) + "/" + months + ")";
+        return name.length() + suffix.length() > TITLE_MAX ? name.substring(0, TITLE_MAX - suffix.length()) + suffix : name + suffix;
     }
 
     private static int day(Map<String, Object> item) {

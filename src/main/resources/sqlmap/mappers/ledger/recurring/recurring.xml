@@ -6,7 +6,9 @@
         i.id, i.name, i.type, i.amount,
         i.category_id AS "categoryId", c.name AS "categoryName",
         i.payment_method_id AS "paymentMethodId", p.name AS "paymentMethodName",
-        i.day_of_month AS "dayOfMonth", i.adjust, i.active, i.memo
+        i.day_of_month AS "dayOfMonth", i.adjust, i.active, i.memo,
+        i.installment_total AS "installmentTotal", i.installment_months AS "installmentMonths",
+        i.installment_start AS "installmentStart"
     </sql>
 
     <!-- 활성 먼저, 결제일 순 -->
@@ -31,21 +33,27 @@
     <select id="selectActiveItems" resultType="java.util.HashMap">
         SELECT id, user_id AS "userId", name, type, amount,
                category_id AS "categoryId", payment_method_id AS "paymentMethodId",
-               day_of_month AS "dayOfMonth", adjust, memo
+               day_of_month AS "dayOfMonth", adjust, memo,
+               installment_total AS "installmentTotal", installment_months AS "installmentMonths",
+               installment_start AS "installmentStart"
         FROM recurring_item
         WHERE active
     </select>
 
     <insert id="insertItem" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO recurring_item (user_id, name, type, amount, category_id, payment_method_id, day_of_month, adjust, active, memo)
-        VALUES (#{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{paymentMethodId}, #{dayOfMonth}, #{adjust}, #{active}, #{memo})
+        INSERT INTO recurring_item (user_id, name, type, amount, category_id, payment_method_id, day_of_month, adjust, active, memo,
+                                    installment_total, installment_months, installment_start)
+        VALUES (#{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{paymentMethodId}, #{dayOfMonth}, #{adjust}, #{active}, #{memo},
+                #{installmentTotal}, #{installmentMonths}, #{installmentStart})
     </insert>
 
     <update id="updateItem" parameterType="map">
         UPDATE recurring_item
         SET name = #{name}, type = #{type}, amount = #{amount}, category_id = #{categoryId},
             payment_method_id = #{paymentMethodId}, day_of_month = #{dayOfMonth}, adjust = #{adjust},
-            active = #{active}, memo = #{memo}
+            active = #{active}, memo = #{memo},
+            installment_total = #{installmentTotal}, installment_months = #{installmentMonths},
+            installment_start = #{installmentStart}
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 

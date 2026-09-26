@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,5 +64,59 @@ class RecurringGeneratorTest {
         assertEquals(List.of(), RecurringGenerator.duesUpTo(31, "NEXT_BIZ", LocalDate.parse("2026-11-01"), NONE));
         assertEquals(List.of(due(2026, 10, "2026-11-02")),
                 RecurringGenerator.duesUpTo(31, "NEXT_BIZ", LocalDate.parse("2026-11-02"), NONE));
+    }
+
+    private static Map<String, Object> installment(int day, String adjust, int months, String start) {
+        Map<String, Object> item = new HashMap<>();
+        item.put("dayOfMonth", day);
+        item.put("adjust", adjust);
+        item.put("amount", 109_140L);
+        item.put("installmentTotal", 327_420L);
+        item.put("installmentMonths", months);
+        item.put("installmentStart", start);
+        return item;
+    }
+
+    // 할부 3회(10·11·12월분): 마지막 결제일(12/1) 전에는 계속, 당일부터 끝
+    @Test
+    void installmentFinishesOnLastDueDate() {
+        Map<String, Object> item = installment(1, "NEXT_BIZ", 3, "2026-10");
+        assertEquals(false, RecurringGenerator.isFinished(item, LocalDate.parse("2026-11-30"), NONE));
+        assertEquals(true, RecurringGenerator.isFinished(item, LocalDate.parse("2026-12-01"), NONE));
+    }
+
+    // 마지막 결제일이 휴일로 밀리면(2027-08-01 일 → 8/2) 밀린 날까지 기다린다
+    @Test
+    void installmentFinishWaitsForAdjustedDate() {
+        Map<String, Object> item = installment(1, "NEXT_BIZ", 2, "2027-07");
+        assertEquals(false, RecurringGenerator.isFinished(item, LocalDate.parse("2027-08-01"), NONE));
+        assertEquals(true, RecurringGenerator.isFinished(item, LocalDate.parse("2027-08-02"), NONE));
+    }
+
+    // 일반 고정 항목은 끝나지 않는다
+    @Test
+    void regularItemNeverFinishes() {
+        Map<String, Object> item = new HashMap<>();
+        item.put("dayOfMonth", 1);
+        item.put("adjust", "NONE");
+        item.put("amount", 20_000L);
+        assertEquals(false, RecurringGenerator.isFinished(item, LocalDate.parse("2030-01-01"), NONE));
+    }
+
+    // 할부 거래 내용에는 회차를 붙이고, 100자를 넘지 않게 이름을 줄인다
+    @Test
+    void installmentTitleHasRound() {
+        Map<String, Object> item = installment(1, "NEXT_BIZ", 3, "2026-10");
+        item.put("name", "노트북");
+        assertEquals("노트북 (2/3)", RecurringGenerator.title(item, YearMonth.of(2026, 11)));
+
+        item.put("name", "가".repeat(100));
+        String title = RecurringGenerator.title(item, YearMonth.of(2026, 12));
+        assertEquals(100, title.length());
+        assertEquals(true, title.endsWith(" (3/3)"));
+
+        Map<String, Object> regular = new HashMap<>();
+        regular.put("name", "넷플릭스");
+        assertEquals("넷플릭스", RecurringGenerator.title(regular, YearMonth.of(2026, 11)));
     }
 }

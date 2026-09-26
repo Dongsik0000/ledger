@@ -9,6 +9,7 @@ import ledger.cycle.PayCycle;
 import ledger.dashboard.service.DashboardService;
 import ledger.entry.service.EntryService;
 import ledger.holiday.service.HolidayService;
+import ledger.recurring.Installment;
 import ledger.settings.service.SettingsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -100,7 +101,8 @@ public class DashboardApiController {
                 "userId", SessionUtil.getUserId(session), "today", LocalDate.now(SEOUL), "limit", RECENT_LIMIT)));
     }
 
-    // 예정 고정지출: 활성 지출 고정 항목의 이번 주기 결제일 중 오늘 이후(오늘 포함)이고 아직 처리(run)되지 않은 것의 합
+    // 예정 고정지출: 활성 지출 고정 항목의 이번 주기 결제일 중 오늘 이후(오늘 포함)이고 아직 처리(run)되지 않은 것의 합.
+    // 할부는 기간 안의 달만, 그 회차 금액으로
     private long pendingFixed(long userId, PayCycle.Cycle cycle, LocalDate today, Set<LocalDate> holidays) {
         List<Map<String, Object>> items = dashboardService.selectActiveExpenseItems(userId);
         Map<Long, List<PayCycle.Due>> duesByItem = new HashMap<>();
@@ -108,6 +110,7 @@ public class DashboardApiController {
         for (Map<String, Object> item : items) {
             List<PayCycle.Due> dues = PayCycle.duesInCycle(cycle,
                     ((Number) item.get("dayOfMonth")).intValue(), (String) item.get("adjust"), holidays);
+            dues.removeIf(d -> Installment.amountFor(item, d.month()) == null);   // 할부 기간 밖
             duesByItem.put(((Number) item.get("id")).longValue(), dues);
             dues.forEach(d -> months.add(d.month().toString()));
         }
@@ -122,7 +125,7 @@ public class DashboardApiController {
             long id = ((Number) item.get("id")).longValue();
             for (PayCycle.Due due : duesByItem.get(id)) {
                 if (!due.date().isBefore(today) && !runs.contains(id + "|" + due.month())) {
-                    pending += ((Number) item.get("amount")).longValue();
+                    pending += Installment.amountFor(item, due.month());
                 }
             }
         }

@@ -23,8 +23,27 @@
 <label><input type="radio" name="${id}-type" value="INCOME"><span>수입</span></label>
 </div>
 </fieldset>
-<div class="field-row">
+<label class="checkbox-field">
+<input type="checkbox" id="${id}-installment">
+<span>할부 (카드 결제일에 회차별로 기록)</span>
+</label>
+<div class="field-row" data-installment hidden>
 <label class="field">
+<span>할부 총액 (원)</span>
+<input type="text" id="${id}-installment-total" inputmode="numeric" autocomplete="off" placeholder="0" class="amount-input">
+</label>
+<label class="field">
+<span>개월 수</span>
+<input type="number" id="${id}-installment-months" min="2" max="60" inputmode="numeric" placeholder="3">
+</label>
+</div>
+<label class="field" data-installment hidden>
+<span>첫 결제월</span>
+<input type="month" id="${id}-installment-start">
+</label>
+<p class="form-note" data-installment hidden>산 날에는 기록하지 않고, 첫 결제월부터 개월 수만큼 매달 결제일에 지출로 기록해요. 나누어 떨어지지 않는 금액은 1회차에 더하고, 마지막 회차가 기록되면 이 항목은 자동으로 삭제돼요.</p>
+<div class="field-row">
+<label class="field" data-regular>
 <span>금액 (원)</span>
 <input type="text" id="${id}-amount" inputmode="numeric" autocomplete="off" placeholder="0" class="amount-input">
 </label>
