@@ -85,6 +85,10 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
    psql -U ledger_app -d ledger -f db/001_schema.sql
    psql -U ledger_app -d ledger -f db/002_seed_holiday_2026.sql
    psql -U ledger_app -d ledger -f db/003_comments.sql
+   psql -U ledger_app -d ledger -f db/004_recurring_installment.sql
+   psql -U ledger_app -d ledger -f db/005_opening_balance.sql
+   psql -U ledger_app -d ledger -f db/006_market_valuation.sql
+   psql -U ledger_app -d ledger -f db/007_asset_transfers.sql
    ```
 2. `mvn package` 로 만든 `target/ledger.war` 를 Tomcat 10.1 에 컨텍스트 `/p3` 로 배포합니다.
 3. http://localhost:8081/p3/ 에 접속합니다.
@@ -96,9 +100,26 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
 | `LEDGER_DB_URL` / `LEDGER_DB_USER` / `LEDGER_DB_PASSWORD` | DB 연결 | `localhost:5432/ledger`, `ledger_app` |
 | `LEDGER_SIGNUP_CODE` | 가입 코드 | `dev-signup` |
 | `LEDGER_HOLIDAY_API_KEY` | [공공데이터포털 특일정보](https://www.data.go.kr/data/15012690/openapi.do) 인증키 | 없음 (공휴일 직접 추가만 가능) |
+| `LEDGER_MARKET_API_KEY` | [Alpha Vantage](https://www.alphavantage.co/documentation/) 환율·미국 주식 시세 키 | 없음 (달러 결제·주식 자동 평가 사용 불가) |
+| `LEDGER_MARKET_REALTIME` | 실시간 미국 주식 시세 이용권이 있는 키에서 `true`로 설정 | `false` (최근 거래일 종가) |
 | `LEDGER_LOG_LEVEL` | 앱 로그 수준 | `DEBUG` |
 
 </details>
+
+### 적금·예금 자동 이체
+
+- 먼저 자산 화면에서 적금·예금 자산을 현재 실제 잔액으로 만듭니다. 이후 고정 항목이나 수동 지출에서 `적금·예금 자산으로 이체`를 선택하면, 지출 거래가 기록될 때 같은 금액이 선택한 자산에 더해집니다. 주식 자산은 대상에서 제외됩니다.
+- 고정 항목은 결제일에 거래와 자산 증가를 한 번에 기록합니다. 거래 금액을 수정하면 차액만 반영하고, 거래를 삭제하면 해당 금액을 자산에서 뺍니다. 이미 지난 거래는 자동으로 소급 연결하지 않습니다.
+- 자산의 시작 잔액에 이미 납입된 금액을 넣었다면, 과거 거래를 이체로 다시 연결할 때 이중 합산되지 않도록 확인해 주세요.
+
+### 달러 결제와 미국 주식 평가
+
+- 고정 항목에서 `달러 결제`를 선택하고 USD 20을 입력하면 저장 시 예상 원화액을 표시합니다. 결제일에 USD/KRW 환율을 다시 조회해 원화 거래를 기록하고 적용한 환율·기준 시각을 `recurring_run`에 남깁니다. 서버가 멈춰 결제일을 놓쳤으면 해당 날짜 이전 최근 영업일 환율 종가를 사용합니다. 카드 청구액은 카드사 환율·수수료 때문에 다를 수 있으며 거래 내역에서 수정할 수 있습니다.
+- 자산에서 `미국 주식 시세로 평가`를 선택한 뒤 회사·ETF 영문명이나 종목 코드로 검색합니다. 검색 결과에서 **미국 상장·USD** 종목을 확인해 선택하면 코드가 자동으로 채워집니다. 종목 코드를 알고 있으면 직접 입력할 수도 있습니다. `TSLA` 2주, `SPYM` 1주처럼 보유 수량을 적으면 최근 제공 주가 × 수량 × USD/KRW 환율을 원 단위 반올림해 자산 합계에 포함합니다. 목록에 주가 기준일과 평가 시각을 표시합니다.
+- 무료 시세는 API 요청을 줄이기 위해 서버에서 최대 4시간 재사용하고, 실시간 시세 이용권을 켜면 1분 동안 재사용합니다. 조회에 실패하면 마지막 평가액을 유지하고 화면에 갱신 실패를 표시합니다. 키가 없거나 처음 시세 조회가 실패하면 달러·주식 항목 등록을 막습니다.
+- [Alpha Vantage 무료 키 발급](https://www.alphavantage.co/support/#api-key) 페이지에서 이용 목적과 이메일을 입력해 키를 받습니다. 무료 기본 한도는 하루 25회 요청입니다. 이 앱은 기본적으로 환율·종목별 시세·동일 검색어 결과를 최대 4시간 캐시하지만, 재시작이나 다른 사용자의 조회로 한도를 넘을 수 있습니다.
+- Alpha Vantage 무료 주식 시세는 장중 실시간 시세가 아니라 최근 거래일 기준입니다. 실시간 미국 주식 시세 이용권이 있으면 `LEDGER_MARKET_REALTIME=true`로 설정합니다. 실시간 또는 15분 지연 시세는 제공업체의 유료 이용 조건을 확인해야 합니다.
+- 기존 서버를 올릴 때는 **새 WAR를 배포하기 전에** `db/006_market_valuation.sql`과 `db/007_asset_transfers.sql`을 순서대로 적용하고 `/etc/ledger/app.env`에 `LEDGER_MARKET_API_KEY`를 설정합니다. 키를 저장소에 넣지 않습니다.
 
 <details>
 <summary>서버 배포 (Docker)</summary>

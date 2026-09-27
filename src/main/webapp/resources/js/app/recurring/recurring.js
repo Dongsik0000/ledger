@@ -14,9 +14,13 @@ App.recurring = (function(){
             subtitle: document.getElementById(ED + '-subtitle'),
             name: document.getElementById(ED + '-name'),
             amount: document.getElementById(ED + '-amount'),
+            usd: document.getElementById(ED + '-usd'),
+            usdAmount: document.getElementById(ED + '-usd-amount'),
             day: document.getElementById(ED + '-day'),
             category: document.getElementById(ED + '-category'),
             payment: document.getElementById(ED + '-payment'),
+            transferField: document.getElementById(ED + '-transfer-field'),
+            transferAsset: document.getElementById(ED + '-transfer-asset'),
             memo: document.getElementById(ED + '-memo'),
             installment: document.getElementById(ED + '-installment'),
             installmentTotal: document.getElementById(ED + '-installment-total'),
@@ -26,9 +30,10 @@ App.recurring = (function(){
             del: document.getElementById(ED + '-delete'),
             save: document.getElementById(ED + '-save')
         },
-        settings = { submitting: false, master: {categories: [], paymentMethods: []}, editing: null },
+        settings = { submitting: false, master: {categories: [], paymentMethods: []}, editing: null, assetLoadToken: 0 },
         url = {
             master: contextPath + '/ledger/settings/master',
+            cashAssets: contextPath + '/ledger/asset/cash-list',
             summary: contextPath + '/ledger/dashboard/summary',
             list: contextPath + '/ledger/recurring/list',
             save: contextPath + '/ledger/recurring/save',
@@ -41,11 +46,16 @@ App.recurring = (function(){
             App.bindAmountInput(m$.amount);
             App.bindAmountInput(m$.installmentTotal);
             m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
-                r.addEventListener('change', function(){ fillCategories(r.value, null); });
+                r.addEventListener('change', function(){ fillCategories(r.value, null); showTransfer(); });
             });
             m$.installment.addEventListener('change', function(){
                 showInstallment(m$.installment.checked);
-                if (m$.installment.checked) installmentDefaults();
+                if (m$.installment.checked) { m$.usd.checked = false; installmentDefaults(); }
+                showMoneyMode();
+            });
+            m$.usd.addEventListener('change', function(){
+                if (m$.usd.checked) m$.installment.checked = false;
+                showMoneyMode();
             });
             m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
                 b.addEventListener('click', function(){ m$.dialog.close(); });
@@ -135,7 +145,7 @@ App.recurring = (function(){
         row = function(item){
             var income = item.type === 'INCOME',
                 installment = !!item.installmentMonths,
-                money = (income ? '+' : '−') + App.money(shownAmount(item)),
+                money = (income ? '+' : '−') + App.money(shownAmount(item)) + (item.usdAmount ? ' · $' + Number(item.usdAmount).toFixed(2) : ''),
                 toggle = App.h('input', {type: 'checkbox', checked: !!item.active, attrs: {'aria-label': item.name + ' 활성'}});
 
             toggle.addEventListener('change', function(){
@@ -150,7 +160,9 @@ App.recurring = (function(){
                 App.h('td', {attrs: {'data-label': '금액', 'data-cell': 'amount'}}, [
                     item.active ? App.h('span', {className: income ? 'income' : 'expense', text: money}) : money
                 ]),
-                App.h('td', {attrs: {'data-label': '분류 / 결제수단', 'data-cell': 'category'}, text: item.categoryName + ' / ' + (item.paymentMethodName || '없음')}),
+                App.h('td', {attrs: {'data-label': '분류 / 결제수단', 'data-cell': 'category'},
+                    text: item.categoryName + ' / ' + (item.paymentMethodName || '없음')
+                        + (item.transferAssetName ? ' → ' + item.transferAssetName : '')}),
                 App.h('td', {attrs: {'data-label': '매월 결제일', 'data-cell': 'day'}, text: item.dayOfMonth + '일'}),
                 App.h('td', {attrs: {'data-label': '휴일 보정', 'data-cell': 'adjust'}, text: ADJUST_LABEL[item.adjust] || item.adjust}),
                 App.h('td', {attrs: {'data-label': '다음 결제일', 'data-cell': 'next'}, text: nextDueText(item)}),
@@ -233,6 +245,51 @@ App.recurring = (function(){
             }
         },
 
+        showMoneyMode = function(){
+            var usd = m$.usd.checked;
+            showInstallment(m$.installment.checked);
+            m$.dialog.querySelectorAll('[data-regular]').forEach(function(el){ el.hidden = usd || m$.installment.checked; });
+            m$.dialog.querySelectorAll('[data-usd]').forEach(function(el){ el.hidden = !usd; });
+            var income = m$.dialog.querySelector('input[name="' + ED + '-type"][value="INCOME"]');
+            income.disabled = usd || m$.installment.checked;
+            if (income.disabled && income.checked) {
+                setRadio(ED + '-type', 'EXPENSE');
+                fillCategories('EXPENSE', null);
+            }
+            showTransfer();
+        },
+
+        showTransfer = function(){
+            var expense = checked(ED + '-type') === 'EXPENSE';
+            m$.transferField.hidden = !expense;
+            if (!expense) m$.transferAsset.value = '';
+        },
+
+        loadTransferAssets = function(selectedId){
+            var token = ++settings.assetLoadToken;
+            m$.save.disabled = true;
+            m$.transferAsset.disabled = true;
+            m$.transferAsset.replaceChildren(option('', '자산 불러오는 중…', true));
+            App.post(url.cashAssets)
+                .then(function(res){
+                    if (token !== settings.assetLoadToken) return;
+                    App.result(res, {ok: function(){
+                        var assets = res.data || [],
+                            options = [option('', assets.length ? '연결 안 함' : '연결할 자산이 없어요 · 자산 화면에서 추가해 주세요', !selectedId)];
+                        assets.forEach(function(a){ options.push(option(a.id, a.name, a.id === selectedId)); });
+                        m$.transferAsset.replaceChildren.apply(m$.transferAsset, options);
+                        m$.transferAsset.value = selectedId ? String(selectedId) : '';
+                        m$.transferAsset.disabled = false;
+                        m$.save.disabled = false;
+                    }});
+                })
+                .catch(function(){
+                    if (token === settings.assetLoadToken) {
+                        m$.transferAsset.replaceChildren(option('', '자산 목록을 불러오지 못했어요', true));
+                    }
+                });
+        },
+
         // 할부를 새로 켤 때: 카드 결제일 1일·휴일이면 다음 평일(카드사 출금 규칙)·신용카드·다음 달부터
         installmentDefaults = function(){
             var card = settings.master.paymentMethods.filter(function(p){ return p.active && p.name === '신용카드'; })[0],
@@ -255,6 +312,8 @@ App.recurring = (function(){
             m$.name.value = item ? item.name : '';
             setRadio(ED + '-type', item ? item.type : 'EXPENSE');
             m$.amount.value = item ? Number(item.amount).toLocaleString('ko-KR') : '';
+            m$.usd.checked = !!(item && item.usdAmount);
+            m$.usdAmount.value = item && item.usdAmount ? Number(item.usdAmount).toFixed(2) : '';
             m$.day.value = item ? item.dayOfMonth : 1;
             fillCategories(item ? item.type : 'EXPENSE', item ? item.categoryId : null);
             fillPayments(item ? item.paymentMethodId : null);
@@ -265,7 +324,8 @@ App.recurring = (function(){
             m$.installmentTotal.value = installment ? Number(item.installmentTotal).toLocaleString('ko-KR') : '';
             m$.installmentMonths.value = installment ? item.installmentMonths : '';
             m$.installmentStart.value = installment ? item.installmentStart.trim() : '';
-            showInstallment(installment);
+            showMoneyMode();
+            loadTransferAssets(item ? item.transferAssetId : null);
             m$.del.hidden = !item;
             m$.dialog.showModal();
             m$.name.focus();
@@ -299,6 +359,11 @@ App.recurring = (function(){
                     _error('알림', '첫 결제월을 골라주세요.');
                     return;
                 }
+            } else if (m$.usd.checked) {
+                if (!/^[0-9]{1,10}(\.[0-9]{1,2})?$/.test(m$.usdAmount.value) || Number(m$.usdAmount.value) <= 0) {
+                    _error('알림', '달러 금액을 0.01달러 이상 입력해주세요.');
+                    return;
+                }
             } else if (!amount) {
                 _error('알림', App.amountError(m$.amount.value));
                 return;
@@ -317,7 +382,8 @@ App.recurring = (function(){
                 id: settings.editing ? settings.editing.id : '',
                 name: m$.name.value.trim(),
                 type: checked(ED + '-type'),
-                amount: installment ? '' : amount,
+                amount: installment || m$.usd.checked ? '' : amount,
+                usdAmount: m$.usd.checked ? m$.usdAmount.value : '',
                 installment: installment,
                 installmentTotal: installment ? total : '',
                 installmentMonths: installment ? months : '',
@@ -325,6 +391,7 @@ App.recurring = (function(){
                 dayOfMonth: day,
                 categoryId: m$.category.value,
                 paymentMethodId: m$.payment.value,
+                transferAssetId: m$.transferField.hidden ? '' : m$.transferAsset.value,
                 adjust: checked(ED + '-adjust'),
                 memo: m$.memo.value.trim(),
                 active: m$.active.checked

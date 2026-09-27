@@ -8,6 +8,12 @@ public interface AssetService {
 
     List<Map<String, Object>> selectAssetList(long userId);
 
+    Map<String, Object> selectCashAsset(Map<String, Object> param);
+
+    boolean hasTransfers(Map<String, Object> param);
+
+    boolean refreshStocks(long userId);
+
     int insertAsset(Map<String, Object> param);
 
     int updateAsset(Map<String, Object> param);

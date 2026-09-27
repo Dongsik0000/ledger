@@ -1,6 +1,7 @@
 package ledger.entry.controller;
 
 import jakarta.servlet.http.HttpSession;
+import ledger.asset.service.AssetService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.LikeUtil;
 import ledger.cmmn.util.ParamUtil;
@@ -45,6 +46,9 @@ public class EntryApiController {
 
     @Autowired
     private EntryService entryService;
+
+    @Autowired
+    private AssetService assetService;
 
     @Autowired
     private SettingsService settingsService;
@@ -127,12 +131,15 @@ public class EntryApiController {
         String title = ParamUtil.str(param, "title");
         Long amount = ParamUtil.lng(param, "amount");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
+        Long transferAssetId = ParamUtil.lng(param, "transferAssetId");
         String memo = ParamUtil.str(param, "memo");
 
         if ((ParamUtil.has(param, "id") && id == null) || entryDate == null || !TYPES.contains(type)
                 || categoryId == null || title.isEmpty() || title.length() > TITLE_MAX
                 || amount == null || amount < 1 || amount > AMOUNT_MAX
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
+                || (ParamUtil.has(param, "transferAssetId") && transferAssetId == null)
+                || (transferAssetId != null && !"EXPENSE".equals(type))
                 || memo.length() > MEMO_MAX) {
             return Response.invalid("날짜·금액(1원~999억 원 미만)·카테고리·내용(100자 이하)·메모(500자 이하)를 확인해 주세요.");
         }
@@ -147,14 +154,22 @@ public class EntryApiController {
             return Response.invalid("결제수단을 다시 골라 주세요.");
         }
 
+        if (transferAssetId != null && assetService.selectCashAsset(ParamUtil.map("id", transferAssetId, "userId", userId)) == null) {
+            return Response.invalid("이체할 적금·예금 자산을 다시 골라 주세요.");
+        }
         Map<String, Object> entry = ParamUtil.map("userId", userId, "id", id, "entryDate", entryDate, "type", type,
                 "categoryId", categoryId, "title", title, "amount", amount,
-                "paymentMethodId", paymentMethodId, "memo", memo.isEmpty() ? null : memo);
+                "paymentMethodId", paymentMethodId, "memo", memo.isEmpty() ? null : memo,
+                "transferAssetId", transferAssetId);
 
-        if (id == null) {
-            entryService.insertEntry(entry);
-        } else if (entryService.updateEntry(entry) == 0) {
-            return Response.of(Constants.NOT_FOUND);
+        try {
+            if (id == null) {
+                entryService.insertEntry(entry);
+            } else if (entryService.updateEntry(entry) == 0) {
+                return Response.of(Constants.NOT_FOUND);
+            }
+        } catch (IllegalStateException e) {
+            return Response.invalid("자산 잔액을 반영할 수 없어요. 연결된 자산과 금액을 확인해 주세요.");
         }
         return Response.of(Constants.SUCCESS);
     }
@@ -167,8 +182,12 @@ public class EntryApiController {
             return Response.invalid("삭제할 거래를 확인해 주세요.");
         }
         // 고정 항목이 만든 거래면 recurring_run.entry_id 는 FK 로 NULL 이 되어 그 달은 다시 생성되지 않는다(건너뛰기)
-        if (entryService.deleteEntry(ParamUtil.map("id", id, "userId", SessionUtil.getUserId(session))) == 0) {
-            return Response.of(Constants.NOT_FOUND);
+        try {
+            if (entryService.deleteEntry(ParamUtil.map("id", id, "userId", SessionUtil.getUserId(session))) == 0) {
+                return Response.of(Constants.NOT_FOUND);
+            }
+        } catch (IllegalStateException e) {
+            return Response.invalid("연결된 자산 잔액을 되돌릴 수 없어요. 자산 잔액을 확인해 주세요.");
         }
         return Response.of(Constants.SUCCESS);
     }

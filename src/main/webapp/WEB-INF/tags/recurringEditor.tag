@@ -27,6 +27,10 @@
 <input type="checkbox" id="${id}-installment">
 <span>할부 (카드 결제일에 회차별로 기록)</span>
 </label>
+<label class="checkbox-field">
+<input type="checkbox" id="${id}-usd">
+<span>달러 결제 (결제일 환율로 원화 예상액 자동 기록)</span>
+</label>
 <div class="field-row" data-installment hidden>
 <label class="field">
 <span>할부 총액 (원)</span>
@@ -47,6 +51,10 @@
 <span>금액 (원)</span>
 <input type="text" id="${id}-amount" inputmode="numeric" autocomplete="off" placeholder="0" class="amount-input">
 </label>
+<label class="field" data-usd hidden>
+<span>달러 금액 (USD)</span>
+<input type="number" id="${id}-usd-amount" min="0.01" step="0.01" inputmode="decimal" placeholder="20.00">
+</label>
 <label class="field">
 <span>매월 결제일</span>
 <input type="number" id="${id}-day" min="1" max="31" inputmode="numeric">
@@ -62,6 +70,11 @@
 <select id="${id}-payment"></select>
 </label>
 </div>
+<label class="field" id="${id}-transfer-field" hidden>
+<span>적금·예금 자산으로 이체 (선택)</span>
+<select id="${id}-transfer-asset"><option value="">연결 안 함</option></select>
+<small class="form-note">결제일에 지출을 기록하면서 선택한 자산 잔액에도 같은 금액을 더해요.</small>
+</label>
 <fieldset class="choice-field">
 <legend>주말·공휴일인 경우</legend>
 <div class="choice-buttons">
@@ -70,6 +83,7 @@
 <label><input type="radio" name="${id}-adjust" value="NEXT_BIZ"><span>다음 평일</span></label>
 </div>
 </fieldset>
+<p class="form-note" data-usd hidden>표시 금액은 시세 기준 예상액이에요. 실제 카드 청구액에는 카드사 환율·수수료가 반영될 수 있어요.</p>
 <p class="form-note">해당 날짜가 없는 달은 그 달의 마지막 날을 기준으로 해요. 이번 달 결제일이 이미 지났다면 이번 달은 건너뛰고 다음 결제일부터 기록해요.</p>
 <label class="field">
 <span>메모 (선택)</span>

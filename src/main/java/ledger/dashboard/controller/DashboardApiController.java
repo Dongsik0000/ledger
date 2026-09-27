@@ -1,6 +1,7 @@
 package ledger.dashboard.controller;
 
 import jakarta.servlet.http.HttpSession;
+import ledger.asset.service.AssetService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
@@ -39,6 +40,9 @@ public class DashboardApiController {
 
     @Autowired
     private DashboardService dashboardService;
+
+    @Autowired
+    private AssetService assetService;
 
     @Autowired
     private SettingsService settingsService;
@@ -80,6 +84,7 @@ public class DashboardApiController {
         long balance = carryOver + income - expense;
         long pending = pendingFixed(userId, cycle, today, holidays);
         long daysLeft = ChronoUnit.DAYS.between(today, cycle.end()) + 1;
+        boolean marketUpdated = assetService.refreshStocks(userId);
         long assetTotal = dashboardService.selectAssetTotal(userId);
 
         Map<String, Object> data = new HashMap<>();
@@ -94,6 +99,7 @@ public class DashboardApiController {
         data.put("pendingFixed", pending);
         data.put("dailyBudget", Math.floorDiv(balance - pending, daysLeft));
         data.put("assetTotal", assetTotal);
+        data.put("marketUpdated", marketUpdated);
         data.put("totalBalance", balance + assetTotal);
         return Response.of(Constants.SUCCESS, data);
     }

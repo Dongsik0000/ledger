@@ -111,7 +111,8 @@ App.dashboard = (function(){
             m$.cycleExpense.textContent = (s.cycleExpense ? '−' : '') + App.money(s.cycleExpense);
             m$.cycleBalance.textContent = App.money(s.cycleBalance);
             m$.totalBalance.textContent = App.money(s.totalBalance);
-            m$.totalDetail.textContent = '가계부 ' + App.money(s.cycleBalance) + ' + 자산 ' + App.money(s.assetTotal);
+            m$.totalDetail.textContent = '가계부 ' + App.money(s.cycleBalance) + ' + 자산 ' + App.money(s.assetTotal)
+                + (s.marketUpdated ? '' : ' · 주식 시세 갱신 실패: 마지막 평가액');
             m$.formula.textContent = '(이월 ' + App.money(s.carryOver) + ' + 수입 ' + App.money(s.cycleIncome)
                 + ' − 지출 ' + App.money(s.cycleExpense) + ' − 예정 고정지출 ' + App.money(s.pendingFixed)
                 + ') ÷ 남은 ' + s.daysLeft + '일 = ' + App.money(s.dailyBudget);

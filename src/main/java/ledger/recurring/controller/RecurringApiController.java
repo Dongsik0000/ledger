@@ -1,6 +1,7 @@
 package ledger.recurring.controller;
 
 import jakarta.servlet.http.HttpSession;
+import ledger.asset.service.AssetService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
@@ -8,6 +9,8 @@ import ledger.cmmn.util.SessionUtil;
 import ledger.cycle.PayCycle;
 import ledger.entry.controller.EntryApiController;
 import ledger.holiday.service.HolidayService;
+import ledger.market.MarketDataClient;
+import ledger.market.MarketValue;
 import ledger.recurring.Installment;
 import ledger.recurring.RecurringGenerator;
 import ledger.recurring.service.RecurringService;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -49,6 +53,9 @@ public class RecurringApiController {
     private RecurringService recurringService;
 
     @Autowired
+    private AssetService assetService;
+
+    @Autowired
     private RecurringGenerator recurringGenerator;
 
     @Autowired
@@ -56,6 +63,9 @@ public class RecurringApiController {
 
     @Autowired
     private HolidayService holidayService;
+
+    @Autowired
+    private MarketDataClient marketData;
 
     @GetMapping
     public String recurring() {
@@ -158,8 +168,23 @@ public class RecurringApiController {
         String name = ParamUtil.str(param, "name");
         String type = ParamUtil.str(param, "type");
         Long amount = ParamUtil.lng(param, "amount");
+        BigDecimal usdAmount = null;
+        String usdText = ParamUtil.str(param, "usdAmount");
+        if (!usdText.isEmpty()) {
+            if (!usdText.matches("[0-9]{1,10}(\\.[0-9]{1,2})?") || !"EXPENSE".equals(type)) {
+                return Response.invalid("달러 금액은 지출에만 0.01달러 이상 입력해 주세요.");
+            }
+            usdAmount = new BigDecimal(usdText);
+            if (usdAmount.signum() <= 0) return Response.invalid("달러 금액을 확인해 주세요.");
+            try {
+                amount = MarketValue.krw(usdAmount, marketData.usdKrw(false).rate());
+            } catch (MarketDataClient.MarketDataException | ArithmeticException e) {
+                return Response.invalid("환율을 조회하지 못했어요. API 키와 시세 제공 상태를 확인해 주세요.");
+            }
+        }
         Long categoryId = ParamUtil.lng(param, "categoryId");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
+        Long transferAssetId = ParamUtil.lng(param, "transferAssetId");
         Integer dayOfMonth = ParamUtil.integer(param, "dayOfMonth");
         String adjust = ParamUtil.has(param, "adjust") ? ParamUtil.str(param, "adjust") : "NONE";
         String memo = ParamUtil.str(param, "memo");
@@ -171,6 +196,7 @@ public class RecurringApiController {
         Integer installmentMonths = null;
         YearMonth installmentStart = null;
         if (Boolean.TRUE.equals(installment)) {
+            if (usdAmount != null) return Response.invalid("달러 결제와 할부를 함께 설정할 수 없어요.");
             installmentTotal = ParamUtil.lng(param, "installmentTotal");
             installmentMonths = ParamUtil.integer(param, "installmentMonths");
             installmentStart = ParamUtil.month(param, "installmentStart");
@@ -185,6 +211,8 @@ public class RecurringApiController {
         if ((ParamUtil.has(param, "id") && id == null) || name.isEmpty() || name.length() > NAME_MAX
                 || !TYPES.contains(type) || amount == null || amount < 1 || amount > EntryApiController.AMOUNT_MAX
                 || categoryId == null || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
+                || (ParamUtil.has(param, "transferAssetId") && transferAssetId == null)
+                || (transferAssetId != null && !"EXPENSE".equals(type))
                 || dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31 || !ADJUSTS.contains(adjust)
                 || memo.length() > MEMO_MAX || active == null || installment == null) {
             return Response.invalid("항목명(100자 이하)·금액(1원~999억 원 미만)·결제일(1~31일)·카테고리를 확인해 주세요.");
@@ -199,6 +227,10 @@ public class RecurringApiController {
             return Response.invalid("결제수단을 다시 골라 주세요.");
         }
 
+        if (transferAssetId != null && assetService.selectCashAsset(ParamUtil.map("id", transferAssetId, "userId", userId)) == null) {
+            return Response.invalid("이체할 적금·예금 자산을 다시 골라 주세요.");
+        }
+
         Map<String, Object> saved = null;
         if (id != null) {
             saved = recurringService.selectItem(ParamUtil.map("id", id, "userId", userId));
@@ -211,7 +243,8 @@ public class RecurringApiController {
                 "amount", amount, "categoryId", categoryId, "paymentMethodId", paymentMethodId,
                 "dayOfMonth", dayOfMonth, "adjust", adjust, "active", active, "memo", memo.isEmpty() ? null : memo,
                 "installmentTotal", installmentTotal, "installmentMonths", installmentMonths,
-                "installmentStart", installmentStart == null ? null : installmentStart.toString());
+                "installmentStart", installmentStart == null ? null : installmentStart.toString(),
+                "usdAmount", usdAmount, "transferAssetId", transferAssetId);
         LocalDate today = LocalDate.now(SEOUL);
         if (recurringGenerator.isFinished(item, today)) {
             return Response.invalid("마지막 회차 결제일이 이미 지났어요. 지난 회차는 거래 내역에 직접 기록해 주세요.");
