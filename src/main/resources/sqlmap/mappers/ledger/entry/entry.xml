@@ -7,7 +7,7 @@
         e.category_id AS "categoryId", c.name AS "categoryName",
         e.title, e.amount,
         e.payment_method_id AS "paymentMethodId", p.name AS "paymentMethodName",
-        e.memo
+        e.transfer_asset_id AS "transferAssetId", a.name AS "transferAssetName", e.memo
     </sql>
 
     <!-- 거래 조회 조건. from·to 가 없으면 그쪽 기간 제한 없음(전체 기간 검색). keyword 는 LikeUtil.contains 로 만든 패턴 -->
@@ -29,6 +29,7 @@
         FROM ledger_entry e
         JOIN category c ON c.id = e.category_id
         LEFT JOIN payment_method p ON p.id = e.payment_method_id
+        LEFT JOIN asset a ON a.id = e.transfer_asset_id
         <include refid="entryWhere"/>
         ORDER BY e.entry_date DESC, e.id DESC
         <if test="limit != null">LIMIT #{limit}</if>
@@ -49,6 +50,7 @@
         FROM ledger_entry e
         JOIN category c ON c.id = e.category_id
         LEFT JOIN payment_method p ON p.id = e.payment_method_id
+        LEFT JOIN asset a ON a.id = e.transfer_asset_id
         WHERE e.user_id = #{userId} AND e.entry_date &lt;= #{today}
         ORDER BY e.entry_date DESC, e.id DESC
         LIMIT #{limit}
@@ -59,18 +61,25 @@
         FROM ledger_entry e
         JOIN category c ON c.id = e.category_id
         LEFT JOIN payment_method p ON p.id = e.payment_method_id
+        LEFT JOIN asset a ON a.id = e.transfer_asset_id
         WHERE e.id = #{id} AND e.user_id = #{userId}
     </select>
 
+    <select id="selectEntryForUpdate" parameterType="map" resultType="java.util.HashMap">
+        SELECT id, amount, transfer_asset_id AS "transferAssetId"
+        FROM ledger_entry WHERE id = #{id} AND user_id = #{userId} FOR UPDATE
+    </select>
+
     <insert id="insertEntry" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO ledger_entry (user_id, entry_date, type, category_id, title, amount, payment_method_id, memo)
-        VALUES (#{userId}, #{entryDate}, #{type}, #{categoryId}, #{title}, #{amount}, #{paymentMethodId}, #{memo})
+        INSERT INTO ledger_entry (user_id, entry_date, type, category_id, title, amount, payment_method_id, memo, transfer_asset_id)
+        VALUES (#{userId}, #{entryDate}, #{type}, #{categoryId}, #{title}, #{amount}, #{paymentMethodId}, #{memo}, #{transferAssetId})
     </insert>
 
     <update id="updateEntry" parameterType="map">
         UPDATE ledger_entry
         SET entry_date = #{entryDate}, type = #{type}, category_id = #{categoryId}, title = #{title},
-            amount = #{amount}, payment_method_id = #{paymentMethodId}, memo = #{memo}
+            amount = #{amount}, payment_method_id = #{paymentMethodId}, memo = #{memo},
+            transfer_asset_id = #{transferAssetId}
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 

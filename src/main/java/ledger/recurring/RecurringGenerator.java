@@ -4,6 +4,9 @@ import ledger.cmmn.util.ParamUtil;
 import ledger.cycle.PayCycle;
 import ledger.entry.service.EntryService;
 import ledger.holiday.service.HolidayService;
+import ledger.market.MarketDataClient;
+import ledger.market.MarketValue;
+import ledger.entry.controller.EntryApiController;
 import ledger.recurring.service.RecurringService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -36,6 +40,9 @@ public class RecurringGenerator {
 
     @Autowired
     private HolidayService holidayService;
+
+    @Autowired
+    private MarketDataClient marketData;
 
     private final TransactionTemplate tx;
 
@@ -124,12 +131,35 @@ public class RecurringGenerator {
     // 할부는 마지막 회차 결제일이 지나면 항목을 지운다(기록된 거래는 남는다)
     private int generate(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
         int created = 0;
-        for (PayCycle.Due due : duesUpTo(day(item), (String) item.get("adjust"), today, holidays)) {
+        List<PayCycle.Due> dueDates = duesUpTo(day(item), (String) item.get("adjust"), today, holidays);
+        Set<String> handled = new HashSet<>();
+        if (!dueDates.isEmpty()) {
+            List<String> months = dueDates.stream().map(d -> d.month().toString()).toList();
+            for (Map<String, Object> run : recurringService.selectRuns(ParamUtil.map(
+                    "userId", item.get("userId"), "months", months))) {
+                if (((Number) run.get("recurringId")).longValue() == ((Number) item.get("id")).longValue()) {
+                    handled.add((String) run.get("periodYm"));
+                }
+            }
+        }
+        for (PayCycle.Due due : dueDates) {
+            if (handled.contains(due.month().toString())) continue;
             Long amount = Installment.amountFor(item, due.month());
             if (amount == null) {
                 continue;   // 할부 기간 밖
             }
-            Boolean done = tx.execute(status -> generateOne(item, due, amount));
+            MarketDataClient.FxQuote fx = null;
+            if (item.get("usdAmount") != null) {
+                BigDecimal dollars = (BigDecimal) item.get("usdAmount");
+                fx = marketData.usdKrwAt(due.date(), today);
+                amount = MarketValue.krw(dollars, fx.rate());
+                if (amount < 1 || amount > EntryApiController.AMOUNT_MAX) {
+                    throw new IllegalStateException("외화 고정지출 계산 금액이 허용 범위를 넘었습니다");
+                }
+            }
+            long recordedAmount = amount;
+            MarketDataClient.FxQuote usedFx = fx;
+            Boolean done = tx.execute(status -> generateOne(item, due, recordedAmount, usedFx));
             if (Boolean.TRUE.equals(done)) {
                 created++;
             }
@@ -142,15 +172,18 @@ public class RecurringGenerator {
     }
 
     // 한 트랜잭션: 처리 기록 → 거래 → 기록에 거래 연결. 기록이 이미 있으면(처리됨·건너뜀) 아무것도 하지 않는다
-    private boolean generateOne(Map<String, Object> item, PayCycle.Due due, long amount) {
+    private boolean generateOne(Map<String, Object> item, PayCycle.Due due, long amount,
+                                MarketDataClient.FxQuote fx) {
         String periodYm = due.month().toString();
         if (recurringService.insertRun(ParamUtil.map(
-                "recurringId", item.get("id"), "periodYm", periodYm, "entryId", null)) == 0) {
+                "recurringId", item.get("id"), "periodYm", periodYm, "entryId", null,
+                "fxRate", fx == null ? null : fx.rate(), "fxAsOf", fx == null ? null : fx.asOf())) == 0) {
             return false;
         }
         Map<String, Object> entry = ParamUtil.map("userId", item.get("userId"), "entryDate", due.date(),
                 "type", item.get("type"), "categoryId", item.get("categoryId"), "title", title(item, due.month()),
-                "amount", amount, "paymentMethodId", item.get("paymentMethodId"), "memo", item.get("memo"));
+                "amount", amount, "paymentMethodId", item.get("paymentMethodId"), "memo", item.get("memo"),
+                "transferAssetId", item.get("transferAssetId"));
         entryService.insertEntry(entry);
         recurringService.updateRunEntry(ParamUtil.map("recurringId", item.get("id"), "periodYm", periodYm, "entryId", entry.get("id")));
         return true;

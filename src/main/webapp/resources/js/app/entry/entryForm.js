@@ -80,7 +80,8 @@ App.entryForm = (function(){
         row = function(e, onEdit){
             var info = [
                 App.h('strong', {text: e.title}),
-                App.h('small', {text: e.categoryName + (e.paymentMethodName ? ' · ' + e.paymentMethodName : '')})
+                App.h('small', {text: e.categoryName + (e.paymentMethodName ? ' · ' + e.paymentMethodName : '')
+                    + (e.transferAssetName ? ' · → ' + e.transferAssetName : '')})
             ];
             if (e.memo) {
                 info.push(App.h('span', {className: 'memo-tag', attrs: {title: e.memo}}, [App.icon('edit'), App.h('span', {text: e.memo})]));

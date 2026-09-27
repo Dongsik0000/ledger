@@ -24,7 +24,7 @@
 <article class="panel metric sage">
 <div class="metric-label">자산 합계<svg class="icon" aria-hidden="true"><use href="#i-leaf"></use></svg></div>
 <p class="metric-value"><span id="assetTotal">—</span><small>원</small></p>
-<p class="metric-foot">직접 기록한 잔액의 합</p>
+<p class="metric-foot">직접 기록한 잔액 + 미국 주식 평가액</p>
 </article>
 <article class="panel metric">
 <div class="metric-label">가계부 잔액<svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg></div>
@@ -36,7 +36,7 @@
 <div class="panel-head">
 <div>
 <h2>나의 자산</h2>
-<p>잔액은 직접 입력하고 갱신해요.</p>
+<p>원화 잔액을 기록하거나 미국 주식 종목·수량으로 평가해요.</p>
 </div>
 </div>
 <div class="table-scroll" tabindex="0" role="region" aria-label="자산 이름, 잔액, 갱신일">
@@ -53,10 +53,11 @@
 <tbody id="assetBody"></tbody>
 </table>
 </div>
+<p class="form-note" id="assetMarketStatus" role="status"></p>
 </section>
 <aside class="section-note">
 <strong>
-<svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>적금으로 옮긴 돈은 지출로도 기록해 주세요.</strong>가계부에서 적금·주식 등으로 옮긴 금액은 ‘저축’ 카테고리의 지출로 기록하고, 자산 잔액에도 반영해 주세요. 같은 돈이 가계부와 자산에 중복 합산되지 않게 하기 위한 규칙이에요.</aside>
+<svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>적금 납입은 자산으로 이체해 주세요.</strong>고정 항목이나 지출 거래에서 적금 자산을 선택하면, 지출 기록과 자산 잔액 증가가 함께 처리돼요. 연결한 납입액을 자산 잔액에 다시 수동으로 더하지 마세요.</aside>
 
 <t:assetEditor id="assetEditor"/>
 </jsp:body>

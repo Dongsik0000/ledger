@@ -3,9 +3,10 @@
 <mapper namespace="ledger.recurring.dao.RecurringDAO">
 
     <sql id="itemColumns">
-        i.id, i.name, i.type, i.amount,
+        i.id, i.name, i.type, i.amount, i.usd_amount AS "usdAmount",
         i.category_id AS "categoryId", c.name AS "categoryName",
         i.payment_method_id AS "paymentMethodId", p.name AS "paymentMethodName",
+        i.transfer_asset_id AS "transferAssetId", a.name AS "transferAssetName",
         i.day_of_month AS "dayOfMonth", i.adjust, i.active, i.memo,
         i.installment_total AS "installmentTotal", i.installment_months AS "installmentMonths",
         i.installment_start AS "installmentStart"
@@ -17,6 +18,7 @@
         FROM recurring_item i
         JOIN category c ON c.id = i.category_id
         LEFT JOIN payment_method p ON p.id = i.payment_method_id
+        LEFT JOIN asset a ON a.id = i.transfer_asset_id
         WHERE i.user_id = #{userId}
         ORDER BY i.active DESC, i.day_of_month, i.id
     </select>
@@ -26,13 +28,15 @@
         FROM recurring_item i
         JOIN category c ON c.id = i.category_id
         LEFT JOIN payment_method p ON p.id = i.payment_method_id
+        LEFT JOIN asset a ON a.id = i.transfer_asset_id
         WHERE i.id = #{id} AND i.user_id = #{userId}
     </select>
 
     <!-- 스케줄러: 모든 사용자의 활성 항목(거래는 각 항목의 user_id 로 만든다) -->
     <select id="selectActiveItems" resultType="java.util.HashMap">
-        SELECT id, user_id AS "userId", name, type, amount,
+        SELECT id, user_id AS "userId", name, type, amount, usd_amount AS "usdAmount",
                category_id AS "categoryId", payment_method_id AS "paymentMethodId",
+               transfer_asset_id AS "transferAssetId",
                day_of_month AS "dayOfMonth", adjust, memo,
                installment_total AS "installmentTotal", installment_months AS "installmentMonths",
                installment_start AS "installmentStart"
@@ -42,9 +46,9 @@
 
     <insert id="insertItem" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO recurring_item (user_id, name, type, amount, category_id, payment_method_id, day_of_month, adjust, active, memo,
-                                    installment_total, installment_months, installment_start)
+                                    installment_total, installment_months, installment_start, usd_amount, transfer_asset_id)
         VALUES (#{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{paymentMethodId}, #{dayOfMonth}, #{adjust}, #{active}, #{memo},
-                #{installmentTotal}, #{installmentMonths}, #{installmentStart})
+                #{installmentTotal}, #{installmentMonths}, #{installmentStart}, #{usdAmount}, #{transferAssetId})
     </insert>
 
     <update id="updateItem" parameterType="map">
@@ -53,7 +57,8 @@
             payment_method_id = #{paymentMethodId}, day_of_month = #{dayOfMonth}, adjust = #{adjust},
             active = #{active}, memo = #{memo},
             installment_total = #{installmentTotal}, installment_months = #{installmentMonths},
-            installment_start = #{installmentStart}
+            installment_start = #{installmentStart}, usd_amount = #{usdAmount},
+            transfer_asset_id = #{transferAssetId}
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 
@@ -69,8 +74,8 @@
 
     <!-- 그 달 처리 기록. 이미 있으면 아무것도 하지 않는다(중복 생성 방지). 영향 행 수 1 = 새로 처리 -->
     <insert id="insertRun" parameterType="map">
-        INSERT INTO recurring_run (recurring_id, period_ym, entry_id)
-        VALUES (#{recurringId}, #{periodYm}, #{entryId})
+        INSERT INTO recurring_run (recurring_id, period_ym, entry_id, fx_rate, fx_as_of)
+        VALUES (#{recurringId}, #{periodYm}, #{entryId}, #{fxRate}, #{fxAsOf})
         ON CONFLICT (recurring_id, period_ym) DO NOTHING
     </insert>
 

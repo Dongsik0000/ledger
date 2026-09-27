@@ -26,6 +26,8 @@ App.entry = (function(){
             categories: document.getElementById(ED + '-categories'),
             title: document.getElementById(ED + '-title'),
             payments: document.getElementById(ED + '-payments'),
+            transferField: document.getElementById(ED + '-transfer-field'),
+            transferAsset: document.getElementById(ED + '-transfer-asset'),
             date: document.getElementById(ED + '-date'),
             memoBox: document.getElementById(ED + '-memoBox'),
             memo: document.getElementById(ED + '-memo'),
@@ -36,10 +38,12 @@ App.entry = (function(){
             submitting: false,
             month: '',                                        // yyyy-MM
             master: {categories: [], paymentMethods: []},
-            editing: null                                     // 수정 중인 거래(추가면 null)
+            editing: null,                                    // 수정 중인 거래(추가면 null)
+            assetLoadToken: 0
         },
         url = {
             master: contextPath + '/ledger/settings/master',
+            cashAssets: contextPath + '/ledger/asset/cash-list',
             list: contextPath + '/ledger/entry/list',
             save: contextPath + '/ledger/entry/save',
             del: contextPath + '/ledger/entry/delete'
@@ -87,6 +91,7 @@ App.entry = (function(){
             m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
                 r.addEventListener('change', function(){
                     App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, r.value, null);
+                    showTransfer();
                 });
             });
             m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
@@ -266,6 +271,41 @@ App.entry = (function(){
             m$.dialog.querySelector('input[name="' + ED + '-type"][value="' + type + '"]').checked = true;
         },
 
+        showTransfer = function(){
+            var expense = App.entryForm.checked(ED + '-type') === 'EXPENSE';
+            m$.transferField.hidden = !expense;
+            if (!expense) m$.transferAsset.value = '';
+        },
+
+        loadTransferAssets = function(selectedId){
+            var token = ++settings.assetLoadToken;
+            m$.save.disabled = true;
+            m$.transferAsset.disabled = true;
+            m$.transferAsset.replaceChildren(App.h('option', {value: '', text: '자산 불러오는 중…'}));
+            App.post(url.cashAssets)
+                .then(function(res){
+                    if (token !== settings.assetLoadToken) return;
+                    App.result(res, {ok: function(){
+                        var assets = res.data || [],
+                            options = [App.h('option', {value: '', text: assets.length ? '연결 안 함' : '연결할 자산이 없어요 · 자산 화면에서 추가해 주세요'})];
+                        assets.forEach(function(a){ options.push(App.h('option', {value: String(a.id), text: a.name})); });
+                        m$.transferAsset.replaceChildren.apply(m$.transferAsset, options);
+                        m$.transferAsset.value = selectedId ? String(selectedId) : '';
+                        m$.transferAsset.disabled = false;
+                        m$.save.disabled = false;
+                        // 비동기 목록 표시만으로 작성 중 변경 경고가 생기지 않도록 초기 선택값만 갱신
+                        var baseline = JSON.parse(settings.snapshot);
+                        baseline[baseline.length - 1] = m$.transferAsset.value;
+                        settings.snapshot = JSON.stringify(baseline);
+                    }});
+                })
+                .catch(function(){
+                    if (token === settings.assetLoadToken) {
+                        m$.transferAsset.replaceChildren(App.h('option', {value: '', text: '자산 목록을 불러오지 못했어요'}));
+                    }
+                });
+        },
+
         open = function(e){
             settings.editing = e;
             m$.heading.textContent = e ? '거래 수정' : '거래 추가';
@@ -279,8 +319,10 @@ App.entry = (function(){
                 : (settings.month === App.entryForm.today().slice(0, 7) ? App.entryForm.today() : settings.month + '-01');
             m$.memo.value = e && e.memo ? e.memo : '';
             m$.memoBox.open = !!(e && e.memo);
+            showTransfer();
             m$.del.hidden = !e;
             settings.snapshot = snapshot();
+            loadTransferAssets(e ? e.transferAssetId : null);
             m$.dialog.showModal();
             m$.amount.focus();
         },
@@ -288,7 +330,8 @@ App.entry = (function(){
         // 창에 입력된 값 전체(열었을 때와 비교해 작성 중인지 판단)
         snapshot = function(){
             return JSON.stringify([m$.amount.value, App.entryForm.checked(ED + '-type'), App.entryForm.checked(ED + '-category'),
-                m$.title.value, App.entryForm.checked(ED + '-payment'), m$.date.value, m$.memo.value]);
+                m$.title.value, App.entryForm.checked(ED + '-payment'), m$.date.value, m$.memo.value,
+                m$.transferAsset.value]);
         },
 
         requestClose = function(){
@@ -334,6 +377,7 @@ App.entry = (function(){
                 title: title,
                 amount: amount,
                 paymentMethodId: App.entryForm.checked(ED + '-payment'),
+                transferAssetId: m$.transferField.hidden ? '' : m$.transferAsset.value,
                 memo: m$.memo.value.trim()
             })
                 .then(function(res){

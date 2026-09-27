@@ -31,6 +31,10 @@ public class EntryDAO {
         return sqlSession.selectOne(SQL_PATH + ".selectEntry", param);
     }
 
+    public Map<String, Object> selectEntryForUpdate(Map<String, Object> param) {
+        return sqlSession.selectOne(SQL_PATH + ".selectEntryForUpdate", param);
+    }
+
     // 실행 후 param.id 에 생성된 키
     public int insertEntry(Map<String, Object> param) {
         return sqlSession.insert(SQL_PATH + ".insertEntry", param);

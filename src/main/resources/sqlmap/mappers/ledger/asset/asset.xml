@@ -3,19 +3,62 @@
 <mapper namespace="ledger.asset.dao.AssetDAO">
 
     <select id="selectAssetList" parameterType="long" resultType="java.util.HashMap">
-        SELECT id, name, amount, to_char(updated_at, 'YYYY-MM-DD') AS "updatedAt"
+        SELECT id, name, amount, stock_symbol AS "stockSymbol", stock_quantity AS "stockQuantity",
+               stock_price_usd AS "stockPriceUsd", stock_usd_krw AS "stockUsdKrw",
+               to_char(stock_quote_date, 'YYYY-MM-DD') AS "stockQuoteDate",
+               to_char(stock_valued_at, 'YYYY-MM-DD HH24:MI') AS "stockValuedAt",
+               to_char(updated_at, 'YYYY-MM-DD') AS "updatedAt"
         FROM asset
         WHERE user_id = #{userId}
         ORDER BY id
     </select>
 
+    <select id="selectCashAsset" parameterType="map" resultType="java.util.HashMap">
+        SELECT id, name, amount FROM asset
+        WHERE id = #{id} AND user_id = #{userId} AND stock_symbol IS NULL
+    </select>
+
+    <update id="adjustCashAsset" parameterType="map">
+        UPDATE asset SET amount = amount + #{delta}, updated_at = now()
+        WHERE id = #{id} AND user_id = #{userId} AND stock_symbol IS NULL
+          AND amount + #{delta} BETWEEN 0 AND 99999999999
+    </update>
+
+    <select id="hasTransfers" parameterType="map" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM ledger_entry WHERE user_id = #{userId} AND transfer_asset_id = #{id}
+            UNION ALL
+            SELECT 1 FROM recurring_item WHERE user_id = #{userId} AND transfer_asset_id = #{id}
+        )
+    </select>
+
+    <select id="selectStockList" parameterType="long" resultType="java.util.HashMap">
+        SELECT id, stock_symbol AS "stockSymbol", stock_quantity AS "stockQuantity",
+               stock_price_usd AS "stockPriceUsd", stock_usd_krw AS "stockUsdKrw",
+               stock_quote_date AS "stockQuoteDate"
+        FROM asset WHERE user_id = #{userId} AND stock_symbol IS NOT NULL
+    </select>
+
+    <update id="updateStockValuation" parameterType="map">
+        UPDATE asset SET amount = #{amount}, stock_price_usd = #{price}, stock_usd_krw = #{rate},
+                         stock_quote_date = #{quoteDate}, stock_valued_at = now(), updated_at = now()
+        WHERE id = #{id} AND user_id = #{userId} AND stock_symbol IS NOT NULL
+    </update>
+
     <insert id="insertAsset" parameterType="map">
-        INSERT INTO asset (user_id, name, amount, updated_at)
-        VALUES (#{userId}, #{name}, #{amount}, now())
+        INSERT INTO asset (user_id, name, amount, updated_at, stock_symbol, stock_quantity,
+                           stock_price_usd, stock_usd_krw, stock_quote_date, stock_valued_at)
+        VALUES (#{userId}, #{name}, #{amount}, now(), #{stockSymbol}, #{stockQuantity},
+                #{stockPriceUsd}, #{stockUsdKrw}, #{stockQuoteDate},
+                CASE WHEN #{stockSymbol, jdbcType=VARCHAR} IS NULL THEN NULL ELSE now() END)
     </insert>
 
     <update id="updateAsset" parameterType="map">
-        UPDATE asset SET name = #{name}, amount = #{amount}, updated_at = now()
+        UPDATE asset SET name = #{name}, amount = #{amount}, updated_at = now(),
+                         stock_symbol = #{stockSymbol}, stock_quantity = #{stockQuantity},
+                         stock_price_usd = #{stockPriceUsd}, stock_usd_krw = #{stockUsdKrw},
+                         stock_quote_date = #{stockQuoteDate},
+                         stock_valued_at = CASE WHEN #{stockSymbol, jdbcType=VARCHAR} IS NULL THEN NULL ELSE now() END
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 

@@ -35,6 +35,11 @@
 <legend>결제수단</legend>
 <div class="choice-buttons" id="${id}-payments"></div>
 </fieldset>
+<label class="field" id="${id}-transfer-field" hidden>
+<span>적금·예금 자산으로 이체 (선택)</span>
+<select id="${id}-transfer-asset"><option value="">연결 안 함</option></select>
+<small class="form-note">지출 금액이 연결한 자산 잔액에도 바로 더해져요.</small>
+</label>
 <label class="field">
 <span>날짜</span>
 <input type="date" id="${id}-date">

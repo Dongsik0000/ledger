@@ -120,6 +120,14 @@ h3 { font-size: 17px; }
 .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
 .field > span, .field > label { font-weight: 500; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.stock-search-control { display: flex; gap: 8px; align-items: stretch; }
+.stock-search-control input { flex: 1; }
+.stock-search-control button { flex: none; white-space: nowrap; }
+.stock-search-results { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
+.stock-search-results button { width: 100%; text-align: left; }
+.stock-search-results small { margin-left: 6px; color: #6c7664; }
+@media (max-width: 480px) { .stock-search-control { flex-wrap: wrap; } .stock-search-control button { width: 100%; } }
+
 input:not([type=checkbox]):not([type=radio]), select, textarea { width: 100%; min-width: 0; border: 1px solid #d8ded0; background: #fffefa; border-radius: 8px; padding: 10px 12px; min-height: 43px; box-shadow: none; }
 input::placeholder, textarea::placeholder { color: #788173; }
 input:focus, select:focus, textarea:focus { border-color: #577b53; }
