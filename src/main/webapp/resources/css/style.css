@@ -420,6 +420,13 @@ input[aria-invalid=true] { border-color: #b55345 !important; background: #fff8f5
 .dialog-footer .button { min-height: 44px; min-width: 78px; }
 .dialog-body .form-stack { gap: 18px; }
 .dialog-body input, .dialog-body select { scroll-margin-block: 110px; }
+@media (min-width: 769px) { .editor-dialog.wide { width: min(880px, calc(100% - 40px)); } }
+.manage-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.manage-card { display: grid; justify-items: start; align-content: start; gap: 6px; padding: 18px; border: 1px solid var(--color-border); border-radius: 14px; background: #fffefa; text-align: left; transition: background .18s, border-color .18s; }
+.manage-card:hover { background: var(--color-primary-light); border-color: #6f8d5a; }
+.manage-card .icon { color: var(--color-primary); margin-bottom: 4px; }
+.manage-card strong { font-size: 14px; }
+.manage-card span { color: var(--color-text-secondary); font-size: 11px; line-height: 1.5; }
 .confirm-dialog { width: min(420px, calc(100% - 32px)); }
 html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
 .checkbox-field { display: flex; gap: 10px; align-items: center; min-height: 44px; }
@@ -464,6 +471,7 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
   .dialog-footer { padding: 12px 18px calc(16px + env(safe-area-inset-bottom)); }
   .dialog-footer .form-note { font-size: 11px; }
   .dialog-body .choice-buttons span { font-size: 13px; }
+  .manage-cards { grid-template-columns: 1fr; }
   .field input:not([type=checkbox]):not([type=radio]), .field select, .field textarea, .period-control .field input, .range-fields input { font-size: 16px !important; }
   .field input.amount-input { font-size: 30px !important; }
   .mobile-scroll-hint { display: block; color: var(--color-text-secondary); font-size: 12px; margin: 12px 0; }

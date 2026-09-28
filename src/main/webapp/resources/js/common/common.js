@@ -201,6 +201,35 @@ App.saved = function (title) {
     _alert(title || '저장했어요', {autoClose: 900});
 };
 
+// App.bindDialog(dialog, isDirty, discard): 편집 창의 닫기 요청(data-close 버튼·Escape·뒤로 가기)을 한곳에서 받는다.
+// isDirty() 가 true 면 버릴지 먼저 묻고, 버리기로 하면 discard() 뒤에 닫는다.
+// Escape 는 cancel 을 막는 것만으로는 Chrome 이 연속 입력에서 창을 그냥 닫으므로 keydown 에서 막는다(entry.js 와 같은 방식)
+App.bindDialog = function (dialog, isDirty, discard) {
+    var requestClose = function () {
+        if (!isDirty()) {
+            dialog.close();
+            return;
+        }
+        _confirm('작성 중인 내용을 버릴까요?', '저장하지 않은 입력은 사라져요.', function () {
+            discard();
+            dialog.close();
+        });
+    };
+    dialog.querySelectorAll('[data-close]').forEach(function (b) {
+        b.addEventListener('click', requestClose);
+    });
+    dialog.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            requestClose();
+        }
+    });
+    dialog.addEventListener('cancel', function (e) {
+        e.preventDefault();
+        requestClose();
+    });
+};
+
 // App.result(res, handlers): 결과 코드 분기 공통. handlers.ok 는 성공, handlers['95'] 처럼 코드별 처리.
 // 처리하지 않은 90·92 는 서버 message, 91 은 "찾을 수 없어요", 나머지는 App.fail.
 //

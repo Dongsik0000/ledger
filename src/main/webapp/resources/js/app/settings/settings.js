@@ -13,6 +13,8 @@ App.settings = (function(){
             newPasswordConfirm: document.getElementById('newPasswordConfirm'),
             expenseBody: document.getElementById('expenseCategoryBody'),
             incomeBody: document.getElementById('incomeCategoryBody'),
+            categoryOpen: document.getElementById('categoryOpen'),
+            categoryDialog: document.getElementById('categoryDialog'),
             categoryAdd: document.getElementById('categoryAdd'),
             newCategoryName: document.getElementById('newCategoryName'),
             newCategoryGroup: document.getElementById('newCategoryGroup'),
@@ -20,6 +22,8 @@ App.settings = (function(){
             categoryAddSave: document.getElementById('categoryAddSave'),
             categoryAddCancel: document.getElementById('categoryAddCancel'),
             paymentBody: document.getElementById('paymentBody'),
+            paymentOpen: document.getElementById('paymentOpen'),
+            paymentDialog: document.getElementById('paymentDialog'),
             paymentAdd: document.getElementById('paymentAdd'),
             newPaymentName: document.getElementById('newPaymentName'),
             paymentAddSave: document.getElementById('paymentAddSave'),
@@ -29,7 +33,8 @@ App.settings = (function(){
             exportButton: document.getElementById('exportButton')
         },
         // drafts: 아직 저장하지 않은 행 입력("c12"·"p3" → 값). 한 행을 저장하면 표 전체를 다시 그리므로 다른 행의 입력을 되살린다
-        settings = { submitting: false, drafts: {}, cycleDirty: false, openingDirty: false },
+        // data: 마지막으로 받은 목록(창을 닫으며 입력을 버릴 때 요청 없이 표를 원래 값으로 다시 그린다)
+        settings = { submitting: false, drafts: {}, data: null, cycleDirty: false, openingDirty: false },
         url = {
             load: contextPath + '/ledger/settings/load',
             summary: contextPath + '/ledger/dashboard/summary',
@@ -67,6 +72,22 @@ App.settings = (function(){
             });
             m$.paymentAddSave.addEventListener('click', addPayment);
             m$.paymentAddCancel.addEventListener('click', function(){
+                m$.newPaymentName.value = '';
+                m$.paymentAdd.open = false;
+            });
+            m$.categoryOpen.addEventListener('click', function(){ m$.categoryDialog.showModal(); });
+            m$.paymentOpen.addEventListener('click', function(){ m$.paymentDialog.showModal(); });
+            App.bindDialog(m$.categoryDialog, function(){
+                return hasDraft('c') || !!(m$.newCategoryName.value.trim() || m$.newCategoryGroup.value.trim() || m$.newCategoryOrder.value);
+            }, function(){
+                discardDrafts('c');
+                resetCategoryAdd();
+                m$.categoryAdd.open = false;
+            });
+            App.bindDialog(m$.paymentDialog, function(){
+                return hasDraft('p') || !!m$.newPaymentName.value.trim();
+            }, function(){
+                discardDrafts('p');
                 m$.newPaymentName.value = '';
                 m$.paymentAdd.open = false;
             });
@@ -124,6 +145,7 @@ App.settings = (function(){
         },
 
         render = function(data){
+            settings.data = data;
             if (!settings.cycleDirty) {
                 m$.payDay.value = String(data.payDay);
                 m$.payDayAdjust.checked = !!data.payDayAdjust;
@@ -271,6 +293,19 @@ App.settings = (function(){
 
         clearDraft = function(key){
             return function(){ delete settings.drafts[key]; };
+        },
+
+        // prefix: 'c' 카테고리, 'p' 결제수단
+        hasDraft = function(prefix){
+            return Object.keys(settings.drafts).some(function(k){ return k.charAt(0) === prefix; });
+        },
+
+        // 해당 표의 저장 전 입력을 버리고 저장된 값으로 다시 그린다(다른 표의 입력은 drafts 로 되살아난다)
+        discardDrafts = function(prefix){
+            Object.keys(settings.drafts).forEach(function(k){
+                if (k.charAt(0) === prefix) delete settings.drafts[k];
+            });
+            if (settings.data) render(settings.data);
         },
 
         field = function(label, input){
