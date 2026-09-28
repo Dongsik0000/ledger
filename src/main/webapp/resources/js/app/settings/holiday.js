@@ -5,6 +5,8 @@ App.holiday = (function(){
             importButton: document.getElementById('holidayImport'),
             keyNote: document.getElementById('holidayKeyNote'),
             body: document.getElementById('holidayBody'),
+            open: document.getElementById('holidayOpen'),
+            dialog: document.getElementById('holidayDialog'),
             add: document.getElementById('holidayAdd'),
             date: document.getElementById('holidayDate'),
             name: document.getElementById('holidayName'),
@@ -26,12 +28,17 @@ App.holiday = (function(){
             });
             m$.importButton.addEventListener('click', importYear);
             m$.addSave.addEventListener('click', add);
-            m$.addCancel.addEventListener('click', function(){
-                m$.date.value = '';
-                m$.name.value = '';
-                m$.add.open = false;
-            });
+            m$.addCancel.addEventListener('click', clearAdd);
+            m$.open.addEventListener('click', function(){ m$.dialog.showModal(); });
+            // 추가에 성공해도 날짜는 남겨 두므로(add) 이름이 있을 때만 작성 중으로 본다
+            App.bindDialog(m$.dialog, function(){ return !!m$.name.value.trim(); }, clearAdd);
             load();
+        },
+
+        clearAdd = function(){
+            m$.date.value = '';
+            m$.name.value = '';
+            m$.add.open = false;
         },
 
         load = function(){
