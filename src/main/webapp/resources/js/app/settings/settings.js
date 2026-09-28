@@ -3,7 +3,10 @@ App.settings = (function(){
             payDay: document.getElementById('payDay'),
             payDayAdjust: document.getElementById('payDayAdjust'),
             cycleSave: document.getElementById('cycleSave'),
-            cycleExample: document.getElementById('cycleExample'),
+            cycleRuler: document.getElementById('cycleRuler'),
+            cycleRange: document.getElementById('cycleRange'),
+            cycleFill: document.getElementById('cycleFill'),
+            cycleCaption: document.getElementById('cycleCaption'),
             openingBalance: document.getElementById('openingBalance'),
             openingDate: document.getElementById('openingDate'),
             openingSave: document.getElementById('openingSave'),
@@ -11,30 +14,35 @@ App.settings = (function(){
             currentPassword: document.getElementById('currentPassword'),
             newPassword: document.getElementById('newPassword'),
             newPasswordConfirm: document.getElementById('newPasswordConfirm'),
-            expenseBody: document.getElementById('expenseCategoryBody'),
-            incomeBody: document.getElementById('incomeCategoryBody'),
+            expenseList: document.getElementById('expenseCategoryList'),
+            incomeList: document.getElementById('incomeCategoryList'),
+            categoryOrderStatus: document.getElementById('categoryOrderStatus'),
             categoryOpen: document.getElementById('categoryOpen'),
             categoryDialog: document.getElementById('categoryDialog'),
             categoryAdd: document.getElementById('categoryAdd'),
+            categoryAddOpen: document.getElementById('categoryAddOpen'),
             newCategoryName: document.getElementById('newCategoryName'),
             newCategoryGroup: document.getElementById('newCategoryGroup'),
-            newCategoryOrder: document.getElementById('newCategoryOrder'),
             categoryAddSave: document.getElementById('categoryAddSave'),
             categoryAddCancel: document.getElementById('categoryAddCancel'),
-            paymentBody: document.getElementById('paymentBody'),
+            paymentList: document.getElementById('paymentList'),
+            paymentOrderStatus: document.getElementById('paymentOrderStatus'),
             paymentOpen: document.getElementById('paymentOpen'),
             paymentDialog: document.getElementById('paymentDialog'),
             paymentAdd: document.getElementById('paymentAdd'),
+            paymentAddOpen: document.getElementById('paymentAddOpen'),
             newPaymentName: document.getElementById('newPaymentName'),
             paymentAddSave: document.getElementById('paymentAddSave'),
             paymentAddCancel: document.getElementById('paymentAddCancel'),
+            exportPresets: document.getElementById('exportPresets'),
             exportFrom: document.getElementById('exportFrom'),
             exportTo: document.getElementById('exportTo'),
             exportButton: document.getElementById('exportButton')
         },
-        // drafts: 아직 저장하지 않은 행 입력("c12"·"p3" → 값). 한 행을 저장하면 표 전체를 다시 그리므로 다른 행의 입력을 되살린다
-        // data: 마지막으로 받은 목록(창을 닫으며 입력을 버릴 때 요청 없이 표를 원래 값으로 다시 그린다)
-        settings = { submitting: false, drafts: {}, data: null, cycleDirty: false, openingDirty: false },
+        // drafts: 아직 저장하지 않은 행 입력("c12"·"p3" → 값). 한 행을 저장하면 목록 전체를 다시 그리므로 다른 행의 입력을 되살린다
+        // data: 마지막으로 받은 목록(창을 닫으며 입력을 버릴 때 요청 없이 목록을 원래 값으로 다시 그린다)
+        // cycle: 저장된 설정으로 계산한 이번 주기 {start, end}(내보내기 '이번 주기'에도 쓴다)
+        settings = { submitting: false, drafts: {}, data: null, cycleDirty: false, openingDirty: false, cycle: null },
         url = {
             load: contextPath + '/ledger/settings/load',
             summary: contextPath + '/ledger/dashboard/summary',
@@ -43,10 +51,10 @@ App.settings = (function(){
             password: contextPath + '/ledger/account/password',
             categorySave: contextPath + '/ledger/settings/category/save',
             categoryDelete: contextPath + '/ledger/settings/category/delete',
-            categoryMove: contextPath + '/ledger/settings/category/move',
+            categoryOrder: contextPath + '/ledger/settings/category/order',
             paymentSave: contextPath + '/ledger/settings/payment/save',
             paymentDelete: contextPath + '/ledger/settings/payment/delete',
-            paymentMove: contextPath + '/ledger/settings/payment/move',
+            paymentOrder: contextPath + '/ledger/settings/payment/order',
             exportCsv: contextPath + '/ledger/settings/export'
         },
 
@@ -63,44 +71,76 @@ App.settings = (function(){
             });
             m$.openingDate.addEventListener('change', function(){ settings.openingDirty = true; });
             [m$.payDay, m$.payDayAdjust].forEach(function(el){
-                el.addEventListener('change', function(){ settings.cycleDirty = true; });
+                el.addEventListener('change', function(){
+                    settings.cycleDirty = true;
+                    renderCycle();
+                });
             });
+            m$.categoryAddOpen.addEventListener('click', function(){ toggleAdd(m$.categoryAdd, m$.categoryAddOpen, m$.newCategoryName); });
+            m$.paymentAddOpen.addEventListener('click', function(){ toggleAdd(m$.paymentAdd, m$.paymentAddOpen, m$.newPaymentName); });
             m$.categoryAddSave.addEventListener('click', addCategory);
-            m$.categoryAddCancel.addEventListener('click', function(){
-                resetCategoryAdd();
-                m$.categoryAdd.open = false;
-            });
+            m$.categoryAddCancel.addEventListener('click', closeCategoryAdd);
             m$.paymentAddSave.addEventListener('click', addPayment);
-            m$.paymentAddCancel.addEventListener('click', function(){
-                m$.newPaymentName.value = '';
-                m$.paymentAdd.open = false;
-            });
+            m$.paymentAddCancel.addEventListener('click', closePaymentAdd);
             m$.categoryOpen.addEventListener('click', function(){ m$.categoryDialog.showModal(); });
             m$.paymentOpen.addEventListener('click', function(){ m$.paymentDialog.showModal(); });
+            // 창을 닫으면 추가 칸도 접는다(다음에 열 때 목록부터 보이게)
+            m$.categoryDialog.addEventListener('close', closeCategoryAdd);
+            m$.paymentDialog.addEventListener('close', closePaymentAdd);
             App.bindDialog(m$.categoryDialog, function(){
-                return hasDraft('c') || !!(m$.newCategoryName.value.trim() || m$.newCategoryGroup.value.trim() || m$.newCategoryOrder.value);
+                return hasDraft('c') || !!(m$.newCategoryName.value.trim() || m$.newCategoryGroup.value.trim());
             }, function(){
                 discardDrafts('c');
-                resetCategoryAdd();
-                m$.categoryAdd.open = false;
+                closeCategoryAdd();
             });
             App.bindDialog(m$.paymentDialog, function(){
                 return hasDraft('p') || !!m$.newPaymentName.value.trim();
             }, function(){
                 discardDrafts('p');
-                m$.newPaymentName.value = '';
-                m$.paymentAdd.open = false;
+                closePaymentAdd();
             });
+            bindSort(m$.expenseList, m$.categoryOrderStatus);
+            bindSort(m$.incomeList, m$.categoryOrderStatus);
+            bindSort(m$.paymentList, m$.paymentOrderStatus);
             initExport();
             load();
         },
 
-        // 기본 기간: 이번 달 1일 ~ 오늘
+        // Date → "2026-09-28"(로컬 날짜)
+        iso = function(d){
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        },
+
+        // "2026-09-28" → 로컬 자정 Date
+        parseDay = function(s){
+            var p = s.split('-');
+            return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        },
+
+        // 기간 빠른 선택. 날짜를 직접 바꾸면 선택을 푼다. 기본은 이번 달(주기를 불러오면 이번 주기)
+        exportRanges = {
+            cycle: function(){ return settings.cycle; },
+            month: function(t){ return {start: new Date(t.getFullYear(), t.getMonth(), 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0)}; },
+            lastMonth: function(t){ return {start: new Date(t.getFullYear(), t.getMonth() - 1, 1), end: new Date(t.getFullYear(), t.getMonth(), 0)}; },
+            year: function(t){ return {start: new Date(t.getFullYear(), 0, 1), end: new Date(t.getFullYear(), 11, 31)}; }
+        },
+
+        applyExportRange = function(key){
+            var r = exportRanges[key](new Date());
+            if (!r) return;
+            m$.exportFrom.value = iso(r.start);
+            m$.exportTo.value = iso(r.end);
+            m$.exportPresets.querySelector('input[value="' + key + '"]').checked = true;
+        },
+
         initExport = function(){
-            var d = new Date(),
-                ym = d.getFullYear() + '-' + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1);
-            m$.exportFrom.value = ym + '-01';
-            m$.exportTo.value = ym + '-' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+            applyExportRange('month');
+            m$.exportPresets.addEventListener('change', function(e){ applyExportRange(e.target.value); });
+            [m$.exportFrom, m$.exportTo].forEach(function(el){
+                el.addEventListener('input', function(){
+                    m$.exportPresets.querySelectorAll('input').forEach(function(r){ r.checked = false; });
+                });
+            });
             m$.exportButton.addEventListener('click', exportCsv);
         },
 
@@ -127,24 +167,42 @@ App.settings = (function(){
             loadCycle();
         },
 
-        // "2026-09-26" -> "9월 26일"
-        dayLabel = function(d){
-            var p = d.split('-');
-            return Number(p[1]) + '월 ' + Number(p[2]) + '일';
-        },
+        // Date → "9월 26일"
+        dayLabel = function(d){ return (d.getMonth() + 1) + '월 ' + d.getDate() + '일'; },
 
-        // 저장된 설정으로 계산한 현재 주기 "9월 26일~10월 25일"
+        // 저장된 설정으로 계산한 이번 주기
         loadCycle = function(){
             App.post(url.summary)
                 .then(function(res){
                     App.result(res, { ok: function(){
-                        m$.cycleExample.textContent = dayLabel(res.data.cycleStart) + '~' + dayLabel(res.data.cycleEnd);
+                        var first = !settings.cycle;
+                        settings.cycle = {start: parseDay(res.data.cycleStart), end: parseDay(res.data.cycleEnd)};
+                        renderCycle();
+                        var preset = m$.exportPresets.querySelector('input:checked');
+                        if (first ? preset && preset.value === 'month' : preset && preset.value === 'cycle') applyExportRange('cycle');
                     } });
                 })
                 .catch(function(){});
         },
 
+        // 주기 막대: 시작~끝 사이에서 오늘의 위치. 저장 전 변경이 있으면 흐리게 두고 저장하면 다시 계산됨을 알린다
+        renderCycle = function(){
+            var c = settings.cycle;
+            if (!c) return;
+            var day = 86400000,
+                total = Math.round((c.end - c.start) / day) + 1,
+                today = parseDay(iso(new Date())),
+                n = Math.min(Math.max(Math.round((today - c.start) / day) + 1, 0), total);
+            m$.cycleRange.textContent = dayLabel(c.start) + ' ~ ' + dayLabel(c.end);
+            m$.cycleFill.style.width = (n / total * 100) + '%';
+            m$.cycleRuler.classList.toggle('is-stale', settings.cycleDirty);
+            m$.cycleCaption.textContent = settings.cycleDirty
+                ? '저장하면 새 시작일로 주기를 다시 계산해요.'
+                : '오늘은 ' + total + '일 중 ' + n + '일째, ' + (total - n) + '일 남았어요.';
+        },
+
         render = function(data){
+            var focused = document.activeElement && document.activeElement.getAttribute('data-handle');
             settings.data = data;
             if (!settings.cycleDirty) {
                 m$.payDay.value = String(data.payDay);
@@ -154,17 +212,20 @@ App.settings = (function(){
                 m$.openingBalance.value = data.openingDate ? signedNumber(data.openingBalance) : '';
                 m$.openingDate.value = data.openingDate || '';
             }
-            renderRows(m$.expenseBody, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryRow, 5, '지출 카테고리가 없어요.');
-            renderRows(m$.incomeBody, data.categories.filter(function(c){ return c.type === 'INCOME'; }), categoryRow, 5, '수입 카테고리가 없어요.');
-            renderRows(m$.paymentBody, data.paymentMethods, paymentRow, 4, '결제수단이 없어요.');
+            renderList(m$.expenseList, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryItem, '지출 카테고리가 없어요.');
+            renderList(m$.incomeList, data.categories.filter(function(c){ return c.type === 'INCOME'; }), categoryItem, '수입 카테고리가 없어요.');
+            renderList(m$.paymentList, data.paymentMethods, paymentItem, '결제수단이 없어요.');
+            // 키보드로 순서를 옮기던 손잡이에 초점을 되돌린다(다시 그리면 요소가 바뀐다)
+            if (focused) {
+                var handle = document.querySelector('[data-handle="' + focused + '"]');
+                if (handle) handle.focus();
+            }
         },
 
-        renderRows = function(tbody, list, rowFn, cols, emptyText){
-            var rows = list.map(rowFn);
-            if (!rows.length) {
-                rows = [App.h('tr', null, [App.h('td', {attrs: {colspan: cols}, text: emptyText})])];
-            }
-            tbody.replaceChildren.apply(tbody, rows);
+        renderList = function(list, items, itemFn, emptyText){
+            var rows = items.map(itemFn);
+            if (!rows.length) rows = [App.h('li', {className: 'sort-empty', text: emptyText})];
+            list.replaceChildren.apply(list, rows);
         },
 
         // 요청 공통: 중복 전송을 막고, 성공하면 짧게 알린 뒤 다시 불러온다
@@ -190,6 +251,85 @@ App.settings = (function(){
                 .then(function(res){ App.result(res, handlers); })
                 .catch(function(){})
                 .then(function(){ settings.submitting = false; });
+        },
+
+        // 목록 순서 저장: 화면의 순서 그대로 전체 id 를 보낸다. 결과와 상관없이 다시 불러와 서버 순서로 맞춘다.
+        // 다른 창에서 항목이 추가·삭제돼 목록이 달라졌으면 서버가 91 로 거절한다
+        saveOrder = function(list, status, name){
+            var ids = Array.prototype.map.call(list.querySelectorAll('.sort-item'), function(li){ return Number(li.dataset.id); }),
+                param = list.dataset.type ? {type: list.dataset.type, ids: ids} : {ids: ids},
+                handlers = {ok: function(){
+                    var pos = ids.indexOf(Number(list.dataset.moved)) + 1;
+                    status.textContent = '‘' + name + '’ 항목을 ' + pos + '번째로 옮겼어요.';
+                }};
+            handlers[App.CODE.NOT_FOUND] = function(){
+                _error('목록이 바뀌었어요', '다른 곳에서 항목이 추가되거나 삭제됐어요. 최신 목록으로 다시 보여 드릴게요.');
+            };
+            App.post(list.dataset.type ? url.categoryOrder : url.paymentOrder, param)
+                .then(function(res){ App.result(res, handlers); })
+                .catch(function(){})
+                .then(load);
+        },
+
+        itemsOf = function(list){ return Array.prototype.slice.call(list.querySelectorAll('.sort-item')); },
+
+        // 손잡이로 순서 바꾸기. 마우스·터치는 Pointer Events(터치에서는 HTML 드래그앤드롭이 동작하지 않는다), 키보드는 ↑·↓.
+        // 끄는 동안에는 항목을 바로 옮겨 보여 주고, 놓았을 때 순서가 달라졌으면 한 번 저장한다
+        bindSort = function(list, status){
+            var box = list.closest('dialog'),
+                keySave = App.debounce(function(item){ saveOrder(list, status, item.dataset.name); }, 400);
+
+            list.addEventListener('pointerdown', function(e){
+                var handle = e.target.closest('.drag-handle');
+                if (!handle || e.button !== 0) return;
+                var item = handle.closest('.sort-item'),
+                    before = itemsOf(list).indexOf(item);
+                e.preventDefault();
+                item.classList.add('is-dragging');
+                list.classList.add('is-sorting');
+
+                var move = function(ev){
+                    var r = box.getBoundingClientRect();
+                    if (ev.clientY < r.top + 70) box.scrollBy(0, -14);
+                    else if (ev.clientY > r.bottom - 70) box.scrollBy(0, 14);
+                    itemsOf(list).some(function(li){
+                        if (li === item) return false;
+                        var b = li.getBoundingClientRect();
+                        if (ev.clientY < b.top || ev.clientY > b.bottom) return false;
+                        list.insertBefore(item, ev.clientY < b.top + b.height / 2 ? li : li.nextSibling);
+                        return true;
+                    });
+                };
+                // 항목을 옮기면(insertBefore) 손잡이의 포인터 캡처가 풀리므로 window 에서 받는다
+                var end = function(){
+                    window.removeEventListener('pointermove', move);
+                    window.removeEventListener('pointerup', end);
+                    window.removeEventListener('pointercancel', end);
+                    item.classList.remove('is-dragging');
+                    list.classList.remove('is-sorting');
+                    if (itemsOf(list).indexOf(item) !== before) {
+                        list.dataset.moved = item.dataset.id;
+                        saveOrder(list, status, item.dataset.name);
+                    }
+                };
+                window.addEventListener('pointermove', move);
+                window.addEventListener('pointerup', end);
+                window.addEventListener('pointercancel', end);
+            });
+
+            list.addEventListener('keydown', function(e){
+                var handle = e.target.closest('.drag-handle');
+                if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+                var item = handle.closest('.sort-item'),
+                    target = e.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
+                e.preventDefault();
+                if (!target || !target.classList.contains('sort-item')) return;
+                list.insertBefore(item, e.key === 'ArrowUp' ? target : target.nextSibling);
+                handle.focus();
+                list.dataset.moved = item.dataset.id;
+                status.textContent = '‘' + item.dataset.name + '’ ' + (itemsOf(list).indexOf(item) + 1) + '번째';
+                keySave(item);
+            });
         },
 
         // 삭제 확인 → 사용 중(95)이면 숨기기를 제안
@@ -236,7 +376,7 @@ App.settings = (function(){
                 {title: date ? '저장했어요' : '시작 잔액을 해제했어요', done: function(){ settings.openingDirty = false; }});
         },
 
-        // 비밀번호 변경은 표를 다시 그릴 필요가 없어 send() 대신 직접 보낸다
+        // 비밀번호 변경은 목록을 다시 그릴 필요가 없어 send() 대신 직접 보낸다
         changePassword = function(){
             var next = m$.newPassword.value;
             if (!m$.currentPassword.value || !next || !m$.newPasswordConfirm.value) {
@@ -300,7 +440,7 @@ App.settings = (function(){
             return Object.keys(settings.drafts).some(function(k){ return k.charAt(0) === prefix; });
         },
 
-        // 해당 표의 저장 전 입력을 버리고 저장된 값으로 다시 그린다(다른 표의 입력은 drafts 로 되살아난다)
+        // 해당 목록의 저장 전 입력을 버리고 저장된 값으로 다시 그린다(다른 목록의 입력은 drafts 로 되살아난다)
         discardDrafts = function(prefix){
             Object.keys(settings.drafts).forEach(function(k){
                 if (k.charAt(0) === prefix) delete settings.drafts[k];
@@ -308,104 +448,111 @@ App.settings = (function(){
             if (settings.data) render(settings.data);
         },
 
-        field = function(label, input){
-            return App.h('label', {className: 'field'}, [App.h('span', {text: label}), input]);
+        // 목록 입력칸. shown 이면 이름표를 칸 앞에 보이고, 아니면 스크린리더에만 읽힌다
+        field = function(label, input, extraClass, shown){
+            return App.h('label', {className: 'field' + (extraClass ? ' ' + extraClass : '')}, [App.h('span', {className: shown ? null : 'sr-only', text: label}), input]);
         },
 
         switchField = function(input){
             return App.h('label', {className: 'switch'}, [input, App.h('span', {attrs: {'aria-hidden': 'true'}})]);
         },
 
-        smallButton = function(text, onClick, extraClass, label){
+        smallButton = function(text, onClick, extraClass){
             return App.h('button', {
                 type: 'button',
                 className: 'button small' + (extraClass ? ' ' + extraClass : ''),
                 text: text,
-                attrs: label ? {'aria-label': label} : null,
                 on: {click: onClick}
             });
         },
 
-        categoryRow = function(c){
-            var name = App.h('input', {type: 'text', value: c.name, maxLength: 50}),
-                group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '없음'}),
-                order = App.h('input', {type: 'number', value: c.sortOrder, min: 0, max: 9999, inputMode: 'numeric'}),
-                active = App.h('input', {type: 'checkbox', checked: !!c.active, attrs: {'aria-label': c.name + ' 표시'}}),
-                key = 'c' + c.id,
-                save = function(){
-                    send(url.categorySave, {id: c.id, type: c.type, name: name.value, groupName: group.value, sortOrder: order.value, active: active.checked},
-                        {done: clearDraft(key)});
-                },
-                move = function(direction){
-                    return function(){ send(url.categoryMove, {id: c.id, direction: direction}, {title: '순서를 바꿨어요'}); };
-                };
-
-            bindDraft(key, {name: name, group: group, order: order, active: active},
-                {name: c.name, group: c.groupName || '', order: c.sortOrder, active: !!c.active});
-
-            return App.h('tr', null, [
-                App.h('th', {attrs: {scope: 'row'}}, [field('이름', name)]),
-                App.h('td', {attrs: {'data-label': '그룹'}}, [field('그룹명', group)]),
-                App.h('td', {attrs: {'data-label': '표시 순서'}}, [
-                    App.h('div', {className: 'order-control'}, [
-                        field('순서', order),
-                        smallButton('↑', move('UP'), null, c.name + ' 위로 이동'),
-                        smallButton('↓', move('DOWN'), null, c.name + ' 아래로 이동')
-                    ])
-                ]),
-                App.h('td', {attrs: {'data-label': '표시'}}, [switchField(active)]),
-                App.h('td', {attrs: {'data-label': '관리'}}, [
-                    smallButton('저장', function(){ save(); }),
-                    ' ',
-                    smallButton('삭제', function(){
-                        // 숨기기는 저장된 원래 값으로(입력칸에서 고치다 만 값까지 저장하지 않게)
-                        confirmDelete(c.name, url.categoryDelete, c.id, function(){
-                            send(url.categorySave, {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', sortOrder: c.sortOrder, active: false},
-                                {title: '숨겼어요', done: clearDraft(key)});
-                        }, key);
-                    }, 'danger')
-                ])
+        // 목록 한 줄: 손잡이 / 입력칸들 / 표시 스위치 / 저장·삭제. key 는 drafts·초점 복원에 쓰는 "c12"·"p3"
+        sortItem = function(key, id, name, active, fields, actions){
+            return App.h('li', {className: 'sort-item' + (active ? '' : ' is-inactive'), attrs: {'data-id': id, 'data-name': name}}, [
+                App.h('button', {
+                    type: 'button',
+                    className: 'drag-handle',
+                    attrs: {'data-handle': key, 'aria-label': '‘' + name + '’ 순서 옮기기'}
+                }, [App.icon('grip')]),
+                App.h('div', {className: 'sort-fields'}, fields),
+                App.h('div', {className: 'sort-actions'}, actions)
             ]);
         },
 
-        paymentRow = function(p){
+        categoryItem = function(c){
+            var name = App.h('input', {type: 'text', value: c.name, maxLength: 50}),
+                group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '그룹 없음'}),
+                active = App.h('input', {type: 'checkbox', checked: !!c.active, attrs: {'aria-label': c.name + ' 거래에서 보이기'}}),
+                key = 'c' + c.id;
+
+            bindDraft(key, {name: name, group: group, active: active},
+                {name: c.name, group: c.groupName || '', active: !!c.active});
+
+            return sortItem(key, c.id, c.name, c.active, [
+                field('이름', name, 'sort-name'),
+                field('그룹', group, 'sort-group', true)
+            ], [
+                switchField(active),
+                smallButton('저장', function(){
+                    send(url.categorySave, {id: c.id, type: c.type, name: name.value, groupName: group.value, active: active.checked},
+                        {done: clearDraft(key)});
+                }),
+                smallButton('삭제', function(){
+                    // 숨기기는 저장된 원래 값으로(입력칸에서 고치다 만 값까지 저장하지 않게)
+                    confirmDelete(c.name, url.categoryDelete, c.id, function(){
+                        send(url.categorySave, {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', active: false},
+                            {title: '숨겼어요', done: clearDraft(key)});
+                    }, key);
+                }, 'danger')
+            ]);
+        },
+
+        paymentItem = function(p){
             var name = App.h('input', {type: 'text', value: p.name, maxLength: 50}),
-                active = App.h('input', {type: 'checkbox', checked: !!p.active, attrs: {'aria-label': p.name + ' 표시'}}),
-                key = 'p' + p.id,
-                save = function(){
-                    send(url.paymentSave, {id: p.id, name: name.value, active: active.checked}, {done: clearDraft(key)});
-                },
-                move = function(direction){
-                    return function(){ send(url.paymentMove, {id: p.id, direction: direction}, {title: '순서를 바꿨어요'}); };
-                };
+                active = App.h('input', {type: 'checkbox', checked: !!p.active, attrs: {'aria-label': p.name + ' 거래에서 보이기'}}),
+                key = 'p' + p.id;
 
             bindDraft(key, {name: name, active: active}, {name: p.name, active: !!p.active});
 
-            return App.h('tr', null, [
-                App.h('th', {attrs: {scope: 'row'}}, [field('결제수단 이름', name)]),
-                App.h('td', {attrs: {'data-label': '순서'}}, [
-                    App.h('div', {className: 'order-control'}, [
-                        smallButton('↑', move('UP'), null, p.name + ' 위로 이동'),
-                        smallButton('↓', move('DOWN'), null, p.name + ' 아래로 이동')
-                    ])
-                ]),
-                App.h('td', {attrs: {'data-label': '표시'}}, [switchField(active)]),
-                App.h('td', {attrs: {'data-label': '관리'}}, [
-                    smallButton('저장', function(){ save(); }),
-                    ' ',
-                    smallButton('삭제', function(){
-                        confirmDelete(p.name, url.paymentDelete, p.id, function(){
-                            send(url.paymentSave, {id: p.id, name: p.name, active: false}, {title: '숨겼어요', done: clearDraft(key)});
-                        }, key);
-                    }, 'danger')
-                ])
+            return sortItem(key, p.id, p.name, p.active, [
+                field('결제수단 이름', name, 'sort-name')
+            ], [
+                switchField(active),
+                smallButton('저장', function(){
+                    send(url.paymentSave, {id: p.id, name: name.value, active: active.checked}, {done: clearDraft(key)});
+                }),
+                smallButton('삭제', function(){
+                    confirmDelete(p.name, url.paymentDelete, p.id, function(){
+                        send(url.paymentSave, {id: p.id, name: p.name, active: false}, {title: '숨겼어요', done: clearDraft(key)});
+                    }, key);
+                }, 'danger')
             ]);
         },
 
         resetCategoryAdd = function(){
             m$.newCategoryName.value = '';
             m$.newCategoryGroup.value = '';
-            m$.newCategoryOrder.value = '';
+        },
+
+        // 창 위쪽 '추가' 버튼: 목록 위의 추가 칸을 열고 닫는다. 열면 맨 위로 올려 이름 칸에 초점
+        toggleAdd = function(panel, opener, input, show){
+            if (show === undefined) show = panel.hidden;
+            panel.hidden = !show;
+            opener.setAttribute('aria-expanded', String(show));
+            if (show) {
+                panel.closest('dialog').scrollTop = 0;
+                input.focus();
+            }
+        },
+
+        closeCategoryAdd = function(){
+            resetCategoryAdd();
+            toggleAdd(m$.categoryAdd, m$.categoryAddOpen, m$.newCategoryName, false);
+        },
+
+        closePaymentAdd = function(){
+            m$.newPaymentName.value = '';
+            toggleAdd(m$.paymentAdd, m$.paymentAddOpen, m$.newPaymentName, false);
         },
 
         addCategory = function(){
@@ -417,8 +564,7 @@ App.settings = (function(){
             send(url.categorySave, {
                 type: checked ? checked.value : 'EXPENSE',
                 name: m$.newCategoryName.value,
-                groupName: m$.newCategoryGroup.value,
-                sortOrder: m$.newCategoryOrder.value
+                groupName: m$.newCategoryGroup.value
             }, {title: '추가했어요', done: resetCategoryAdd});
         },
 

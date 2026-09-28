@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +43,6 @@ public class SettingsApiController {
     private static final int NAME_MAX = 50;    // category.name, payment_method.name VARCHAR(50)
     private static final int ORDER_MAX = 9999;
     private static final Set<String> TYPES = Set.of("EXPENSE", "INCOME");
-    private static final Set<String> DIRECTIONS = Set.of("UP", "DOWN");
     private static final String MSG_IN_USE_DELETE = "거래나 고정 항목에서 쓰고 있어 삭제할 수 없어요.";
     private static final int EXPORT_MAX_YEARS = 10;
 
@@ -178,27 +178,22 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS);
     }
 
-    // 같은 구분 안에서 한 칸 위·아래로. 순서를 1부터 다시 매긴다
+    // 같은 구분 안의 전체 id 를 새 순서대로 받아 1부터 다시 매긴다(드래그·키보드 이동 공통)
     @Transactional
     @ResponseBody
-    @PostMapping("/category/move")
-    public Response moveCategory(@RequestBody HashMap<String, Object> param, HttpSession session) {
+    @PostMapping("/category/order")
+    public Response orderCategory(@RequestBody HashMap<String, Object> param, HttpSession session) {
         long userId = SessionUtil.getUserId(session);
-        Long id = ParamUtil.lng(param, "id");
-        String direction = ParamUtil.str(param, "direction");
-        if (id == null || !DIRECTIONS.contains(direction)) {
-            return Response.invalid("이동할 항목과 방향을 확인해 주세요.");
+        String type = ParamUtil.str(param, "type");
+        List<Long> ids = ids(param.get("ids"));
+        if (!TYPES.contains(type) || ids == null) {
+            return Response.invalid("순서를 바꿀 항목을 확인해 주세요.");
         }
-        Map<String, Object> saved = settingsService.selectCategory(ParamUtil.map("id", id, "userId", userId));
-        if (saved == null) {
+        if (!sameIds(settingsService.selectCategoryIds(ParamUtil.map("userId", userId, "type", type)), ids)) {
             return Response.of(Constants.NOT_FOUND);
         }
-        List<Long> ids = new ArrayList<>(settingsService.selectCategoryIds(
-                ParamUtil.map("userId", userId, "type", saved.get("type"))));
-        if (reorder(ids, id, direction)) {
-            for (int i = 0; i < ids.size(); i++) {
-                settingsService.updateCategoryOrder(ParamUtil.map("id", ids.get(i), "userId", userId, "sortOrder", i + 1));
-            }
+        for (int i = 0; i < ids.size(); i++) {
+            settingsService.updateCategoryOrder(ParamUtil.map("id", ids.get(i), "userId", userId, "sortOrder", i + 1));
         }
         return Response.of(Constants.SUCCESS);
     }
@@ -253,22 +248,18 @@ public class SettingsApiController {
 
     @Transactional
     @ResponseBody
-    @PostMapping("/payment/move")
-    public Response movePayment(@RequestBody HashMap<String, Object> param, HttpSession session) {
+    @PostMapping("/payment/order")
+    public Response orderPayment(@RequestBody HashMap<String, Object> param, HttpSession session) {
         long userId = SessionUtil.getUserId(session);
-        Long id = ParamUtil.lng(param, "id");
-        String direction = ParamUtil.str(param, "direction");
-        if (id == null || !DIRECTIONS.contains(direction)) {
-            return Response.invalid("이동할 항목과 방향을 확인해 주세요.");
+        List<Long> ids = ids(param.get("ids"));
+        if (ids == null) {
+            return Response.invalid("순서를 바꿀 항목을 확인해 주세요.");
         }
-        if (settingsService.selectPayment(ParamUtil.map("id", id, "userId", userId)) == null) {
+        if (!sameIds(settingsService.selectPaymentIds(userId), ids)) {
             return Response.of(Constants.NOT_FOUND);
         }
-        List<Long> ids = new ArrayList<>(settingsService.selectPaymentIds(userId));
-        if (reorder(ids, id, direction)) {
-            for (int i = 0; i < ids.size(); i++) {
-                settingsService.updatePaymentOrder(ParamUtil.map("id", ids.get(i), "userId", userId, "sortOrder", i + 1));
-            }
+        for (int i = 0; i < ids.size(); i++) {
+            settingsService.updatePaymentOrder(ParamUtil.map("id", ids.get(i), "userId", userId, "sortOrder", i + 1));
         }
         return Response.of(Constants.SUCCESS);
     }
@@ -302,15 +293,25 @@ public class SettingsApiController {
         writer.flush();
     }
 
-    // ids 안에서 id 를 한 칸 위(UP)·아래(DOWN)로 옮긴다. 끝이라 옮길 수 없거나 없는 id 면 false
-    static boolean reorder(List<Long> ids, long id, String direction) {
-        int from = ids.indexOf(id);
-        int to = "UP".equals(direction) ? from - 1 : from + 1;
-        if (from < 0 || to < 0 || to >= ids.size()) {
-            return false;
+    // JSON 배열 → id 목록. 배열이 아니거나 정수가 아닌 값이 섞이면 null
+    static List<Long> ids(Object raw) {
+        if (!(raw instanceof List<?> list)) {
+            return null;
         }
-        Collections.swap(ids, from, to);
-        return true;
+        List<Long> ids = new ArrayList<>();
+        for (Object v : list) {
+            if (!(v instanceof Integer || v instanceof Long)) {
+                return null;
+            }
+            ids.add(((Number) v).longValue());
+        }
+        return ids;
+    }
+
+    // 요청한 순서가 저장된 목록과 같은 항목을 한 번씩만 담았는지(다른 창에서 추가·삭제했거나 남의 id 면 false)
+    static boolean sameIds(List<Long> saved, List<Long> requested) {
+        return saved.size() == requested.size() && new HashSet<>(requested).size() == requested.size()
+                && new HashSet<>(saved).equals(new HashSet<>(requested));
     }
 
     private static boolean isOrder(Integer sortOrder) {

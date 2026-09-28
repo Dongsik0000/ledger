@@ -15,49 +15,56 @@
                 <p class="page-description">기록의 기준을 정하고, 익숙한 방식으로 관리해요.</p>
             </div>
         </header>
-        <nav class="section-jumps" aria-label="설정 바로가기"><a href="#cycle-settings">주기</a><a href="#export-settings">기록 내보내기</a><a href="#list-settings">목록 관리</a><a href="#account-settings">계정</a></nav>
+        <nav class="section-jumps" aria-label="설정 바로가기"><a href="#cycle-settings">기록 주기</a><a href="#opening-settings">시작 잔액</a><a href="#export-settings">기록 내보내기</a><a href="#list-settings">목록 관리</a><a href="#account-settings">계정</a></nav>
         <div class="settings-grid">
-            <section class="panel">
+            <section class="panel settings-card">
                 <div class="panel-head">
                     <div>
                         <h2 id="cycle-settings" tabindex="-1">나의 기록 주기</h2>
-                        <p>월급날에 맞춰 한 달의 시작을 정해요.</p>
+                        <p>월급날에 맞춰 한 달의 시작을 정해요. 1일이면 달력 월과 같아요.</p>
                     </div>
                     <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
                 </div>
                 <div class="setting-row">
-                    <div>
-                        <strong>주기 시작일</strong>
-                        <p>달력 월 기준으로 사용하려면 1일을 선택해요.</p>
-                    </div>
-                    <label class="field">
-                        <span>매월</span>
+                    <label for="payDay"><strong>주기 시작일</strong></label>
+                    <div class="payday-select">
+                        <span aria-hidden="true">매월</span>
                         <select id="payDay" name="payDay">
                             <c:forEach var="d" begin="1" end="31"><option value="${d}">${d}일</option></c:forEach>
                         </select>
-                    </label>
+                    </div>
                 </div>
                 <div class="setting-row">
                     <div>
                         <strong>주말·공휴일이면 직전 평일로</strong>
-                        <p>시작일을 앞당겨 주기를 계산해요.</p>
+                        <p>시작일이 쉬는 날이면 하루씩 앞당겨요.</p>
                     </div>
                     <label class="switch">
                         <input type="checkbox" id="payDayAdjust" name="payDayAdjust" aria-label="주말 공휴일 직전 평일 보정">
                         <span aria-hidden="true"></span>
                     </label>
                 </div>
-                <p class="section-note">현재 주기 <b id="cycleExample">—</b><br>거래 목록의 달력 월과는 다른 기준이에요.</p>
-                <div class="form-actions">
-                    <button type="button" class="button primary" id="cycleSave">주기 설정 저장</button>
-                </div>
-                <div class="setting-row">
-                    <div>
-                        <strong>시작 잔액</strong>
-                        <p>기록을 시작한 날의 잔액이에요. 이 날짜 이전 거래는 잔액·이월 계산에서 빼고, 수입·지출 통계에는 남아요.</p>
+                <div class="cycle-ruler" id="cycleRuler">
+                    <div class="cycle-ruler-ends">
+                        <span>이번 주기</span>
+                        <strong id="cycleRange">불러오는 중</strong>
                     </div>
+                    <div class="cycle-track" aria-hidden="true"><span id="cycleFill"></span></div>
+                    <p class="cycle-caption" id="cycleCaption" role="status"></p>
                 </div>
-                <div class="field-row">
+                <div class="form-actions">
+                    <button type="button" class="button primary" id="cycleSave">주기 저장</button>
+                </div>
+            </section>
+            <section class="panel settings-card">
+                <div class="panel-head">
+                    <div>
+                        <h2 id="opening-settings" tabindex="-1">시작 잔액</h2>
+                        <p>기록을 시작한 날의 잔액부터 이월을 계산해요. 그 전 거래는 통계에만 남아요.</p>
+                    </div>
+                    <svg class="icon" aria-hidden="true"><use href="#i-wallet"></use></svg>
+                </div>
+                <div class="form-stack">
                     <label class="field">
                         <span>잔액 (원)</span>
                         <input type="text" id="openingBalance" autocomplete="off" placeholder="0" class="amount-input">
@@ -66,37 +73,43 @@
                         <span>기준일</span>
                         <input type="date" id="openingDate">
                     </label>
+                    <p class="form-note">마이너스 잔액은 앞에 -를 붙여요. 기준일을 비우고 저장하면 시작 잔액을 쓰지 않아요.</p>
                 </div>
-                <p class="section-note">기준일을 비우고 저장하면 시작 잔액을 쓰지 않아요. 잔액이 마이너스면 앞에 -를 붙여요.</p>
                 <div class="form-actions">
                     <button type="button" class="button primary" id="openingSave">시작 잔액 저장</button>
                 </div>
             </section>
-            <section class="panel">
-                <div class="panel-head">
-                    <div>
-                        <h2 id="export-settings" tabindex="-1">기록 내보내기</h2>
-                        <p>필요한 기간의 내역을 CSV로 보관해요.</p>
-                    </div>
-                    <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
-                </div>
-                <div class="form-stack">
-                    <div class="field-row">
-                        <label class="field">
-                            <span>시작일</span>
-                            <input type="date" id="exportFrom" name="exportFrom">
-                        </label>
-                        <label class="field">
-                            <span>종료일</span>
-                            <input type="date" id="exportTo" name="exportTo">
-                        </label>
-                    </div>
-                    <p class="form-note">날짜, 구분, 카테고리, 내용, 금액, 결제수단, 메모를 포함해요.</p>
-                    <button type="button" class="button primary" id="exportButton">
-                        <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>CSV 내보내기</button>
-                </div>
-            </section>
         </div>
+        <section class="panel export-panel">
+            <div class="panel-head">
+                <div>
+                    <h2 id="export-settings" tabindex="-1">기록 내보내기</h2>
+                    <p>날짜, 구분, 카테고리, 내용, 금액, 결제수단, 메모를 CSV로 받아요. 엑셀에서 바로 열려요.</p>
+                </div>
+                <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+            </div>
+            <fieldset class="choice-field">
+                <legend>기간</legend>
+                <div class="choice-buttons" id="exportPresets">
+                    <label><input type="radio" name="exportRange" value="cycle"><span>이번 주기</span></label>
+                    <label><input type="radio" name="exportRange" value="month"><span>이번 달</span></label>
+                    <label><input type="radio" name="exportRange" value="lastMonth"><span>지난달</span></label>
+                    <label><input type="radio" name="exportRange" value="year"><span>올해</span></label>
+                </div>
+            </fieldset>
+            <div class="export-fields">
+                <label class="field">
+                    <span>시작일</span>
+                    <input type="date" id="exportFrom" name="exportFrom">
+                </label>
+                <label class="field">
+                    <span>종료일</span>
+                    <input type="date" id="exportTo" name="exportTo">
+                </label>
+                <button type="button" class="button primary" id="exportButton">
+                    <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>CSV 내보내기</button>
+            </div>
+        </section>
         <section class="panel editor-grid">
             <div class="panel-head">
                 <div>
@@ -156,114 +169,74 @@
             <header class="dialog-head">
                 <div>
                     <h2 id="categoryDialog-heading">카테고리 관리</h2>
-                    <p>이름·그룹·순서를 수정하거나, 숨기거나 삭제할 수 있어요.</p>
+                    <p>손잡이를 끌어 순서를 바꾸고, 이름·그룹을 고치거나 숨겨요.</p>
                 </div>
-                <button type="button" class="icon-button" data-close aria-label="닫기">×</button>
+                <div class="dialog-tools">
+                    <button type="button" class="button small primary" id="categoryAddOpen" aria-expanded="false" aria-controls="categoryAdd">
+                        <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>추가</button>
+                    <button type="button" class="icon-button" data-close aria-label="닫기">×</button>
+                </div>
             </header>
             <div class="dialog-body">
-                <h3 class="section-subtitle">지출 카테고리</h3>
-                <div class="table-scroll" tabindex="0" role="region" aria-label="지출 카테고리 관리">
-                    <table class="mobile-record-table data-table management-table">
-                        <caption class="sr-only">지출 카테고리 이름 그룹 순서 표시 관리</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">이름</th>
-                                <th scope="col">그룹</th>
-                                <th scope="col">표시 순서</th>
-                                <th scope="col">표시</th>
-                                <th scope="col">관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expenseCategoryBody"></tbody>
-                    </table>
-                </div>
-                <h3 class="section-subtitle">수입 카테고리</h3>
-                <div class="table-scroll" tabindex="0" role="region" aria-label="수입 카테고리 관리">
-                    <table class="mobile-record-table data-table management-table">
-                        <caption class="sr-only">수입 카테고리 이름 그룹 순서 표시 관리</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">이름</th>
-                                <th scope="col">그룹</th>
-                                <th scope="col">표시 순서</th>
-                                <th scope="col">표시</th>
-                                <th scope="col">관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="incomeCategoryBody"></tbody>
-                    </table>
-                </div>
-                <p class="form-note">순서 숫자를 바꾸거나 위·아래 버튼으로 순서를 조정합니다. 숨긴 항목은 기존 거래에 남아요. 거래에서 쓰는 항목은 삭제 대신 숨길 수 있어요.</p>
-                <details class="ui-disclosure" id="categoryAdd">
-                    <summary>카테고리 추가<svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg></summary>
-                    <div class="disclosure-body">
-                        <div class="form-stack">
-                            <fieldset class="choice-field">
-                                <legend>구분</legend>
-                                <div class="choice-buttons">
-                                    <label><input type="radio" name="newCategoryType" value="EXPENSE" checked><span>지출</span></label>
-                                    <label><input type="radio" name="newCategoryType" value="INCOME"><span>수입</span></label>
-                                </div>
-                            </fieldset>
-                            <div class="field-row">
-                                <label class="field">
-                                    <span>이름</span>
-                                    <input type="text" id="newCategoryName" placeholder="카테고리 이름" maxlength="50">
-                                </label>
-                                <label class="field">
-                                    <span>그룹명 (선택)</span>
-                                    <input type="text" id="newCategoryGroup" placeholder="같이 묶을 그룹" maxlength="50">
-                                </label>
+                <section class="add-panel" id="categoryAdd" aria-labelledby="categoryAdd-heading" hidden>
+                    <h3 class="section-subtitle" id="categoryAdd-heading">새 카테고리</h3>
+                    <div class="form-stack">
+                        <fieldset class="choice-field">
+                            <legend>구분</legend>
+                            <div class="choice-buttons">
+                                <label><input type="radio" name="newCategoryType" value="EXPENSE" checked><span>지출</span></label>
+                                <label><input type="radio" name="newCategoryType" value="INCOME"><span>수입</span></label>
                             </div>
+                        </fieldset>
+                        <div class="field-row">
                             <label class="field">
-                                <span>표시 순서 (비우면 맨 뒤)</span>
-                                <input type="number" id="newCategoryOrder" min="0" max="9999" inputmode="numeric">
+                                <span>이름</span>
+                                <input type="text" id="newCategoryName" placeholder="카테고리 이름" maxlength="50">
                             </label>
-                            <div class="form-actions">
-                                <button type="button" class="button" id="categoryAddCancel">취소</button>
-                                <button type="button" class="button primary" id="categoryAddSave">저장</button>
-                            </div>
+                            <label class="field">
+                                <span>그룹명 (선택)</span>
+                                <input type="text" id="newCategoryGroup" placeholder="같이 묶을 그룹" maxlength="50">
+                            </label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="button" id="categoryAddCancel">취소</button>
+                            <button type="button" class="button primary" id="categoryAddSave">저장</button>
                         </div>
                     </div>
-                </details>
+                </section>
+                <h3 class="section-subtitle" id="expenseCategoryTitle">지출 카테고리</h3>
+                <ul class="sort-list" id="expenseCategoryList" data-type="EXPENSE" aria-labelledby="expenseCategoryTitle"></ul>
+                <h3 class="section-subtitle" id="incomeCategoryTitle">수입 카테고리</h3>
+                <ul class="sort-list" id="incomeCategoryList" data-type="INCOME" aria-labelledby="incomeCategoryTitle"></ul>
+                <p class="sort-status" id="categoryOrderStatus" role="status"></p>
             </div>
         </dialog>
         <dialog class="editor-dialog wide" id="paymentDialog" aria-labelledby="paymentDialog-heading">
             <header class="dialog-head">
                 <div>
                     <h2 id="paymentDialog-heading">결제수단 관리</h2>
-                    <p>자주 사용하는 방법으로 정리해요.</p>
+                    <p>자주 쓰는 결제수단을 위로 끌어 올려 두세요.</p>
                 </div>
-                <button type="button" class="icon-button" data-close aria-label="닫기">×</button>
+                <div class="dialog-tools">
+                    <button type="button" class="button small primary" id="paymentAddOpen" aria-expanded="false" aria-controls="paymentAdd">
+                        <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>추가</button>
+                    <button type="button" class="icon-button" data-close aria-label="닫기">×</button>
+                </div>
             </header>
             <div class="dialog-body">
-                <div class="table-scroll" tabindex="0" role="region" aria-label="결제수단 관리">
-                    <table class="mobile-record-table data-table management-table">
-                        <caption class="sr-only">결제수단 이름 순서 표시 관리</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">이름</th>
-                                <th scope="col">순서</th>
-                                <th scope="col">표시</th>
-                                <th scope="col">관리</th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentBody"></tbody>
-                    </table>
-                </div>
-                <details class="ui-disclosure" id="paymentAdd">
-                    <summary>결제수단 추가<svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg></summary>
-                    <div class="disclosure-body">
-                        <label class="field">
-                            <span>이름</span>
-                            <input type="text" id="newPaymentName" placeholder="예: 생활비 카드" maxlength="50">
-                        </label>
-                        <div class="form-actions">
-                            <button type="button" class="button" id="paymentAddCancel">취소</button>
-                            <button type="button" class="button primary" id="paymentAddSave">저장</button>
-                        </div>
+                <section class="add-panel" id="paymentAdd" aria-labelledby="paymentAdd-heading" hidden>
+                    <h3 class="section-subtitle" id="paymentAdd-heading">새 결제수단</h3>
+                    <label class="field">
+                        <span>이름</span>
+                        <input type="text" id="newPaymentName" placeholder="예: 생활비 카드" maxlength="50">
+                    </label>
+                    <div class="form-actions">
+                        <button type="button" class="button" id="paymentAddCancel">취소</button>
+                        <button type="button" class="button primary" id="paymentAddSave">저장</button>
                     </div>
-                </details>
+                </section>
+                <ul class="sort-list" id="paymentList" aria-label="결제수단"></ul>
+                <p class="sort-status" id="paymentOrderStatus" role="status"></p>
             </div>
         </dialog>
         <dialog class="editor-dialog wide" id="holidayDialog" aria-labelledby="holidayDialog-heading">
