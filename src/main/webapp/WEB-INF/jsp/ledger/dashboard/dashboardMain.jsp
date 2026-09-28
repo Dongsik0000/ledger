@@ -18,8 +18,8 @@
         <div class="cycle-strip">
             <span>
                 <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>현재 주기 <strong id="cycleRange">—</strong>
+                <span class="chip" id="daysLeft">—</span>
             </span>
-            <span class="chip" id="daysLeft">—</span>
             <a class="text-link" href="<c:url value='/ledger/entry?period=CYCLE'/>">이번 주기 거래 보기</a>
         </div>
         <div class="budget-grid">

@@ -112,6 +112,8 @@ h3 { font-size: 17px; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(290px,1fr); gap: 22px; align-items: start; }
 .dashboard-grid > .panel { margin: 0; }
 .quick-entry { grid-column: 2; grid-row: 1; }
+/* 최근 기록이 빠른 입력보다 길어 오른쪽이 비므로, 화면이 충분히 높으면 입력 칸을 따라 내려오게 한다 */
+@media (min-width: 901px) and (min-height: 860px) { .quick-entry { position: sticky; top: 24px; } }
 .recent-panel { grid-column: 1; grid-row: 1; }
 .two-columns { display: grid; grid-template-columns: 1.25fr 1fr; gap: 22px; align-items: start; }
 .two-columns > .panel, .settings-grid > .panel, .chart-grid > .panel { margin: 0; }
@@ -262,7 +264,9 @@ summary:focus-visible { outline: 3px solid #8baf74; outline-offset: 4px; border-
 .cycle-strip > span:first-child { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .cycle-strip .icon { width: 16px; height: 16px; }
 .cycle-strip strong { color: #36513b; font-weight: 600; }
-.budget-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: var(--space-5); margin-bottom: var(--space-6); }
+/* 위(오늘 쓸 수 있는 돈·주기 기록)와 아래(최근 기록·빠른 입력) 줄의 세로 경계를 맞춘다: .dashboard-grid 와 같은 열·간격 */
+.budget-grid { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(290px,1fr); gap: 22px; margin-bottom: 22px; }
+@media (max-width: 1150px) { .budget-grid { grid-template-columns: minmax(0,1.15fr) minmax(275px,1fr); } }
 .budget-grid > .panel { margin: 0; }
 .budget-hero { background: #45654c; border-color: #45654c; color: #fffefa; padding: var(--space-8); position: relative; overflow: hidden; }
 .budget-hero::after { content: ''; position: absolute; right: -45px; top: -55px; width: 240px; height: 240px; border: 1px solid #ffffff13; border-radius: 50%; pointer-events: none; }
