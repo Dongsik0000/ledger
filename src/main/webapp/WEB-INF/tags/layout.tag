@@ -21,8 +21,8 @@
     <script src="<c:url value='/resources/js/common/common.js'/>"></script>
     <script src="<c:url value='/resources/js/common/modal.js'/>"></script>
     <%-- 화면별 JS: <jsp:attribute name="script">
-<script src=...></script>
-</jsp:attribute> --%>
+    <script src=...></script>
+    </jsp:attribute> --%>
     <jsp:invoke fragment="script"/>
 </head>
 <body>
@@ -31,23 +31,23 @@
 <div class="app-shell">
     <jsp:include page="/WEB-INF/layout/ledgerMenu.jsp"/>
     <main class="app-main" id="main-content" tabindex="-1">
-<div class="app-topbar">
-<div class="breadcrumb">
-<span>나의 기록</span>
-<span aria-hidden="true">/</span>
-<strong>
-<c:out value="${title}"/>
-</strong>
-</div>
-</div>
-<div class="page-content">
-        <jsp:doBody/>
-    <footer class="subtle-footer">
-<span>오늘의 기록, 내일의 여유.</span>
-<span>LITTLE BY LITTLE</span>
-</footer>
-</div>
-</main>
+        <div class="app-topbar">
+            <div class="breadcrumb">
+                <span>나의 기록</span>
+                <span aria-hidden="true">/</span>
+                <strong>
+                    <c:out value="${title}"/>
+                </strong>
+            </div>
+        </div>
+        <div class="page-content">
+            <jsp:doBody/>
+            <footer class="subtle-footer">
+                <span>오늘의 기록, 내일의 여유.</span>
+                <span>LITTLE BY LITTLE</span>
+            </footer>
+        </div>
+    </main>
 </div>
 </body>
 </html>
