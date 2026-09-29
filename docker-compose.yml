@@ -1,4 +1,4 @@
-# ledger 배포 구성 (서버: /var/www/html/p3)
+# ledger 배포 구성 (서버: /srv/devgear/ledger)
 #
 #   docker compose up -d --build     기동
 #   docker compose logs -f app       로그
