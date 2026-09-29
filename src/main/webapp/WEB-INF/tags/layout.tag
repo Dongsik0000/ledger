@@ -11,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><c:if test="${not empty title}"><c:out value="${title}"/> · </c:if>나의 가계부</title>
     <link rel="manifest" href="<c:url value='/manifest.json'/>">
+    <link rel="apple-touch-icon" href="<c:url value='/resources/images/icon-180.png'/>">
     <meta name="theme-color" content="#45654c">
     <link rel="icon" href="<c:url value='/resources/images/ledger-leaf.svg'/>" type="image/svg+xml">
     <link rel="stylesheet" href="<c:url value='/resources/css/reset.css'/>">
