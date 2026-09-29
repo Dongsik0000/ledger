@@ -10,6 +10,7 @@
     <title>오류 안내 · 나의 가계부</title>
     <link rel="icon" href="<c:url value='/resources/images/ledger-leaf.svg'/>">
     <link rel="manifest" href="<c:url value='/manifest.json'/>">
+    <link rel="apple-touch-icon" href="<c:url value='/resources/images/icon-180.png'/>">
     <link rel="stylesheet" href="<c:url value='/resources/css/reset.css'/>">
     <link rel="stylesheet" href="<c:url value='/resources/css/common.css'/>">
     <link rel="stylesheet" href="<c:url value='/resources/css/style.css'/>">
