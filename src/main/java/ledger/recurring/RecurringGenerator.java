@@ -97,7 +97,7 @@ public class RecurringGenerator {
     }
 
     // 지난달·이번 달 결제일 중 today 이하(생성 대상)
-    static List<PayCycle.Due> duesUpTo(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
+    public static List<PayCycle.Due> duesUpTo(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
         List<PayCycle.Due> dues = new ArrayList<>();
         for (PayCycle.Due due : candidates(day, adjust, today, holidays)) {
             if (!due.date().isAfter(today)) {
@@ -108,7 +108,7 @@ public class RecurringGenerator {
     }
 
     // 지난달·이번 달 결제일 중 today 보다 앞선 것(건너뛸 대상)
-    static List<PayCycle.Due> duesBefore(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
+    public static List<PayCycle.Due> duesBefore(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
         List<PayCycle.Due> dues = new ArrayList<>();
         for (PayCycle.Due due : candidates(day, adjust, today, holidays)) {
             if (due.date().isBefore(today)) {
@@ -183,7 +183,7 @@ public class RecurringGenerator {
         Map<String, Object> entry = ParamUtil.map("userId", item.get("userId"), "entryDate", due.date(),
                 "type", item.get("type"), "categoryId", item.get("categoryId"), "title", title(item, due.month()),
                 "amount", amount, "paymentMethodId", item.get("paymentMethodId"), "memo", item.get("memo"),
-                "transferAssetId", item.get("transferAssetId"));
+                "transferAssetId", item.get("transferAssetId"), "accountId", item.get("accountId"));
         entryService.insertEntry(entry);
         recurringService.updateRunEntry(ParamUtil.map("recurringId", item.get("id"), "periodYm", periodYm, "entryId", entry.get("id")));
         return true;

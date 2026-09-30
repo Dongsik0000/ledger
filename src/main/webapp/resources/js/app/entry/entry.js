@@ -26,6 +26,7 @@ App.entry = (function(){
             categories: document.getElementById(ED + '-categories'),
             title: document.getElementById(ED + '-title'),
             payments: document.getElementById(ED + '-payments'),
+            account: document.getElementById(ED + '-account'),
             transferField: document.getElementById(ED + '-transfer-field'),
             transferAsset: document.getElementById(ED + '-transfer-asset'),
             date: document.getElementById(ED + '-date'),
@@ -315,6 +316,7 @@ App.entry = (function(){
             App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, e ? e.type : 'EXPENSE', e ? e.categoryId : null);
             m$.title.value = e ? e.title : '';
             App.entryForm.renderPayments(m$.payments, ED + '-payment', settings.master.paymentMethods, e ? e.paymentMethodId : null);
+            App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], e ? e.accountId : App.entryForm.lastAccount());
             m$.date.value = e ? e.entryDate
                 : (settings.month === App.entryForm.today().slice(0, 7) ? App.entryForm.today() : settings.month + '-01');
             m$.memo.value = e && e.memo ? e.memo : '';
@@ -330,7 +332,7 @@ App.entry = (function(){
         // 창에 입력된 값 전체(열었을 때와 비교해 작성 중인지 판단)
         snapshot = function(){
             return JSON.stringify([m$.amount.value, App.entryForm.checked(ED + '-type'), App.entryForm.checked(ED + '-category'),
-                m$.title.value, App.entryForm.checked(ED + '-payment'), m$.date.value, m$.memo.value,
+                m$.title.value, App.entryForm.checked(ED + '-payment'), m$.account.value, m$.date.value, m$.memo.value,
                 m$.transferAsset.value]);
         },
 
@@ -378,10 +380,12 @@ App.entry = (function(){
                 amount: amount,
                 paymentMethodId: App.entryForm.checked(ED + '-payment'),
                 transferAssetId: m$.transferField.hidden ? '' : m$.transferAsset.value,
+                accountId: m$.account.value,
                 memo: m$.memo.value.trim()
             })
                 .then(function(res){
                     App.result(res, {ok: function(){
+                        App.entryForm.rememberAccount(m$.account.value);
                         m$.dialog.close();
                         App.saved();
                         list();

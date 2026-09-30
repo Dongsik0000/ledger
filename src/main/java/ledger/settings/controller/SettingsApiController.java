@@ -2,6 +2,7 @@ package ledger.settings.controller;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import ledger.account.service.AccountService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.CsvUtil;
 import ledger.cmmn.util.ParamUtil;
@@ -52,12 +53,15 @@ public class SettingsApiController {
     @Autowired
     private EntryService entryService;
 
+    @Autowired
+    private AccountService accountService;
+
     @GetMapping
     public String settings() {
         return "settings/settingsMain";
     }
 
-    // 여러 화면이 쓰는 선택지: 카테고리·결제수단 전체(비활성 포함, active 로 구분)
+    // 여러 화면이 쓰는 선택지: 카테고리·결제수단 전체(비활성 포함, active 로 구분), 통장(기본 통장 먼저)
     @ResponseBody
     @PostMapping("/master")
     public Response master(HttpSession session) {
@@ -65,6 +69,7 @@ public class SettingsApiController {
         Map<String, Object> data = new HashMap<>();
         data.put("categories", settingsService.selectCategoryList(userId));
         data.put("paymentMethods", settingsService.selectPaymentList(userId));
+        data.put("accounts", accountService.selectAccountOptions(userId));
         return Response.of(Constants.SUCCESS, data);
     }
 

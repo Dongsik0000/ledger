@@ -17,6 +17,7 @@ App.dashboard = (function(){
             categories: document.getElementById('quickCategories'),
             title: document.getElementById('quickTitle'),
             payments: document.getElementById('quickPayments'),
+            account: document.getElementById('quickAccount'),
             optional: document.getElementById('quickOptional'),
             date: document.getElementById('quickDate'),
             memo: document.getElementById('quickMemo'),
@@ -83,6 +84,7 @@ App.dashboard = (function(){
                         var last = lastPayment(),
                             known = settings.master.paymentMethods.some(function(p){ return p.active && p.id === last; });
                         App.entryForm.renderPayments(m$.payments, 'quickPayment', settings.master.paymentMethods, known ? last : null);
+                        App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], App.entryForm.lastAccount());
                     }});
                 })
                 .catch(function(){});
@@ -164,11 +166,13 @@ App.dashboard = (function(){
                 title: title,
                 amount: amount,
                 paymentMethodId: paymentMethodId,
+                accountId: m$.account.value,
                 memo: m$.memo.value.trim()
             })
                 .then(function(res){
                     App.result(res, {ok: function(){
                         rememberPayment(paymentMethodId);
+                        App.entryForm.rememberAccount(m$.account.value);
                         m$.amount.value = '';
                         m$.title.value = '';
                         m$.memo.value = '';

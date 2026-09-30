@@ -1,5 +1,6 @@
 package ledger.recurring;
 
+import ledger.account.TransferGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
-// 고정 항목 자동 기록: 매일 00:05(한국 시간) + 앱 기동 직후(꺼져 있던 동안의 결제일 따라잡기)
+// 고정 항목·정기 이체 자동 기록: 매일 00:05(한국 시간) + 앱 기동 직후(꺼져 있던 동안의 결제일 따라잡기)
 @Component
 public class RecurringScheduler {
 
@@ -20,6 +21,9 @@ public class RecurringScheduler {
 
     @Autowired
     private RecurringGenerator recurringGenerator;
+
+    @Autowired
+    private TransferGenerator transferGenerator;
 
     @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Seoul")
     public void daily() {
@@ -38,6 +42,12 @@ public class RecurringScheduler {
             logger.info("고정 항목 자동 기록({}): {}건", trigger, created);
         } catch (RuntimeException e) {
             logger.error("고정 항목 자동 기록({}) 실패", trigger, e);
+        }
+        try {
+            int created = transferGenerator.generateAll(LocalDate.now(SEOUL));
+            logger.info("정기 이체 자동 기록({}): {}건", trigger, created);
+        } catch (RuntimeException e) {
+            logger.error("정기 이체 자동 기록({}) 실패", trigger, e);
         }
     }
 }

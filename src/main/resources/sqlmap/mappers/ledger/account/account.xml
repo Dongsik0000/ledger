@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ledger.account.dao.AccountDAO">
+
+    <!-- 잔액 = 기준 잔액 + 기준 뒤 ~ to 의 이 통장 거래 (수입 − 지출) + 받은 이체 − 보낸 이체.
+         기준 뒤: 기준일 다음 날부터, 또는 기준일이면서 기준 잔액을 적은 뒤(base_at) 기록한 것.
+         to 는 가계부 잔액과 같은 이번 주기 마지막 날. 기본 통장 잔액은 화면이 가계부 잔액에서 다른 통장을 빼서 구한다 -->
+    <sql id="afterBase">
+        AND (${date} &gt; a.base_date OR (${date} = a.base_date AND ${alias}.created_at &gt; a.base_at))
+        AND ${date} &lt;= #{to}
+    </sql>
+
+    <select id="selectAccountList" parameterType="map" resultType="java.util.HashMap">
+        SELECT a.id, a.name, a.is_default AS "isDefault",
+               a.base_balance AS "baseBalance", to_char(a.base_date, 'YYYY-MM-DD') AS "baseDate",
+               a.base_balance
+               + COALESCE((SELECT SUM(CASE WHEN e.type = 'INCOME' THEN e.amount ELSE -e.amount END)
+                           FROM ledger_entry e
+                           WHERE e.user_id = a.user_id AND e.account_id = a.id
+                           <include refid="afterBase"><property name="alias" value="e"/><property name="date" value="e.entry_date"/></include>), 0)
+               + COALESCE((SELECT SUM(t.amount) FROM account_transfer t
+                           WHERE t.user_id = a.user_id AND t.to_account_id = a.id
+                           <include refid="afterBase"><property name="alias" value="t"/><property name="date" value="t.transfer_date"/></include>), 0)
+               - COALESCE((SELECT SUM(t.amount) FROM account_transfer t
+                           WHERE t.user_id = a.user_id AND t.from_account_id = a.id
+                           <include refid="afterBase"><property name="alias" value="t"/><property name="date" value="t.transfer_date"/></include>), 0) AS "balance"
+        FROM bank_account a
+        WHERE a.user_id = #{userId}
+        ORDER BY a.is_default DESC, a.id
+    </select>
+
+    <!-- 거래·고정 항목 입력 창의 통장 선택지 -->
+    <select id="selectAccountOptions" parameterType="long" resultType="java.util.HashMap">
+        SELECT id, name, is_default AS "isDefault"
+        FROM bank_account
+        WHERE user_id = #{userId}
+        ORDER BY is_default DESC, id
+    </select>
+
+    <select id="selectAccount" parameterType="map" resultType="java.util.HashMap">
+        SELECT id, name, is_default AS "isDefault"
+        FROM bank_account
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <select id="countAccountName" parameterType="map" resultType="int">
+        SELECT count(*) FROM bank_account
+        WHERE user_id = #{userId} AND name = #{name}
+        <if test="id != null">AND id &lt;&gt; #{id}</if>
+    </select>
+
+    <!-- 거래·고정 항목·이체가 쓰는 통장은 지우지 않는다(지우면 다른 통장 잔액이 조용히 바뀐다) -->
+    <select id="countAccountUsage" parameterType="map" resultType="int">
+        SELECT (SELECT count(*) FROM ledger_entry WHERE user_id = #{userId} AND account_id = #{id})
+             + (SELECT count(*) FROM recurring_item WHERE user_id = #{userId} AND account_id = #{id})
+             + (SELECT count(*) FROM account_transfer
+                WHERE user_id = #{userId} AND (from_account_id = #{id} OR to_account_id = #{id}))
+    </select>
+
+    <insert id="insertAccount" parameterType="map">
+        INSERT INTO bank_account (user_id, name, is_default, base_balance, base_date)
+        VALUES (#{userId}, #{name}, #{isDefault}, #{baseBalance}, #{baseDate})
+    </insert>
+
+    <update id="updateAccount" parameterType="map">
+        UPDATE bank_account
+        SET name = #{name}, is_default = #{isDefault},
+            base_balance = #{baseBalance}, base_date = #{baseDate},
+            base_at = CASE WHEN base_balance = #{baseBalance} AND base_date = #{baseDate} THEN base_at ELSE now() END
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <!-- 기본 통장은 사용자당 하나: 다른 통장을 기본으로 정하기 전에 기존 기본 통장을 푼다 -->
+    <update id="clearDefault" parameterType="map">
+        UPDATE bank_account SET is_default = FALSE
+        WHERE user_id = #{userId} AND is_default
+        <if test="id != null">AND id &lt;&gt; #{id}</if>
+    </update>
+
+    <!-- 정기 이체는 FK ON DELETE CASCADE 로 함께 지워진다. 쓰는 곳이 있으면 Controller 가 먼저 막는다 -->
+    <delete id="deleteAccount" parameterType="map">
+        DELETE FROM bank_account WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 이체: 최근 것부터 limit 건. 정기 이체가 만든 것은 recurring = true -->
+    <select id="selectTransferList" parameterType="map" resultType="java.util.HashMap">
+        SELECT t.id, to_char(t.transfer_date, 'YYYY-MM-DD') AS "transferDate", t.amount, t.memo,
+               t.from_account_id AS "fromAccountId", f.name AS "fromAccountName",
+               t.to_account_id AS "toAccountId", ta.name AS "toAccountName",
+               EXISTS (SELECT 1 FROM recurring_transfer_run r WHERE r.transfer_id = t.id) AS "recurring"
+        FROM account_transfer t
+        JOIN bank_account f ON f.id = t.from_account_id
+        JOIN bank_account ta ON ta.id = t.to_account_id
+        WHERE t.user_id = #{userId}
+        ORDER BY t.transfer_date DESC, t.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <insert id="insertTransfer" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO account_transfer (user_id, transfer_date, from_account_id, to_account_id, amount, memo)
+        VALUES (#{userId}, #{transferDate}, #{fromAccountId}, #{toAccountId}, #{amount}, #{memo})
+    </insert>
+
+    <update id="updateTransfer" parameterType="map">
+        UPDATE account_transfer
+        SET transfer_date = #{transferDate}, from_account_id = #{fromAccountId}, to_account_id = #{toAccountId},
+            amount = #{amount}, memo = #{memo}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <!-- 정기 이체가 만든 것이면 recurring_transfer_run.transfer_id 는 FK 로 NULL 이 되어 그 달은 다시 만들지 않는다 -->
+    <delete id="deleteTransfer" parameterType="map">
+        DELETE FROM account_transfer WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 정기 이체 -->
+    <sql id="recurringColumns">
+        r.id, r.amount, r.day_of_month AS "dayOfMonth", r.adjust, r.active, r.memo,
+        r.from_account_id AS "fromAccountId", f.name AS "fromAccountName",
+        r.to_account_id AS "toAccountId", ta.name AS "toAccountName"
+    </sql>
+
+    <select id="selectRecurringList" parameterType="long" resultType="java.util.HashMap">
+        SELECT <include refid="recurringColumns"/>
+        FROM recurring_transfer r
+        JOIN bank_account f ON f.id = r.from_account_id
+        JOIN bank_account ta ON ta.id = r.to_account_id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.active DESC, r.day_of_month, r.id
+    </select>
+
+    <select id="selectRecurring" parameterType="map" resultType="java.util.HashMap">
+        SELECT <include refid="recurringColumns"/>
+        FROM recurring_transfer r
+        JOIN bank_account f ON f.id = r.from_account_id
+        JOIN bank_account ta ON ta.id = r.to_account_id
+        WHERE r.id = #{id} AND r.user_id = #{userId}
+    </select>
+
+    <!-- 스케줄러: 모든 사용자의 활성 정기 이체(이체는 각 항목의 user_id 로 만든다) -->
+    <select id="selectActiveRecurring" resultType="java.util.HashMap">
+        SELECT id, user_id AS "userId", from_account_id AS "fromAccountId", to_account_id AS "toAccountId",
+               amount, day_of_month AS "dayOfMonth", adjust, memo
+        FROM recurring_transfer
+        WHERE active
+    </select>
+
+    <insert id="insertRecurring" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO recurring_transfer (user_id, from_account_id, to_account_id, amount, day_of_month, adjust, active, memo)
+        VALUES (#{userId}, #{fromAccountId}, #{toAccountId}, #{amount}, #{dayOfMonth}, #{adjust}, #{active}, #{memo})
+    </insert>
+
+    <update id="updateRecurring" parameterType="map">
+        UPDATE recurring_transfer
+        SET from_account_id = #{fromAccountId}, to_account_id = #{toAccountId}, amount = #{amount},
+            day_of_month = #{dayOfMonth}, adjust = #{adjust}, active = #{active}, memo = #{memo}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <!-- 처리 기록은 CASCADE 로 함께 지워지고, 이미 만든 이체는 남는다 -->
+    <delete id="deleteRecurring" parameterType="map">
+        DELETE FROM recurring_transfer WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <!-- 그 달 처리 기록. 이미 있으면 아무것도 하지 않는다. 영향 행 수 1 = 새로 처리 -->
+    <insert id="insertRecurringRun" parameterType="map">
+        INSERT INTO recurring_transfer_run (recurring_transfer_id, period_ym, transfer_id)
+        VALUES (#{recurringId}, #{periodYm}, #{transferId})
+        ON CONFLICT (recurring_transfer_id, period_ym) DO NOTHING
+    </insert>
+
+    <update id="updateRecurringRunTransfer" parameterType="map">
+        UPDATE recurring_transfer_run SET transfer_id = #{transferId}
+        WHERE recurring_transfer_id = #{recurringId} AND period_ym = #{periodYm}
+    </update>
+
+    <!-- 다음 이체일 계산용: 처리된(또는 건너뛴) "정기이체id|YYYY-MM" -->
+    <select id="selectRecurringRunKeys" parameterType="map" resultType="string">
+        SELECT r.recurring_transfer_id || '|' || r.period_ym
+        FROM recurring_transfer_run r
+        JOIN recurring_transfer i ON i.id = r.recurring_transfer_id
+        WHERE i.user_id = #{userId}
+          AND r.period_ym IN
+        <foreach collection="months" item="m" open="(" separator="," close=")">#{m}</foreach>
+    </select>
+</mapper>

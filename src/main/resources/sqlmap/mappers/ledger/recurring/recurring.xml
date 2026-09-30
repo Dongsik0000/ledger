@@ -9,7 +9,7 @@
         i.transfer_asset_id AS "transferAssetId", a.name AS "transferAssetName",
         i.day_of_month AS "dayOfMonth", i.adjust, i.active, i.memo,
         i.installment_total AS "installmentTotal", i.installment_months AS "installmentMonths",
-        i.installment_start AS "installmentStart"
+        i.installment_start AS "installmentStart", i.account_id AS "accountId"
     </sql>
 
     <!-- 활성 먼저, 결제일 순 -->
@@ -39,16 +39,16 @@
                transfer_asset_id AS "transferAssetId",
                day_of_month AS "dayOfMonth", adjust, memo,
                installment_total AS "installmentTotal", installment_months AS "installmentMonths",
-               installment_start AS "installmentStart"
+               installment_start AS "installmentStart", account_id AS "accountId"
         FROM recurring_item
         WHERE active
     </select>
 
     <insert id="insertItem" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO recurring_item (user_id, name, type, amount, category_id, payment_method_id, day_of_month, adjust, active, memo,
-                                    installment_total, installment_months, installment_start, usd_amount, transfer_asset_id)
+                                    installment_total, installment_months, installment_start, usd_amount, transfer_asset_id, account_id)
         VALUES (#{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{paymentMethodId}, #{dayOfMonth}, #{adjust}, #{active}, #{memo},
-                #{installmentTotal}, #{installmentMonths}, #{installmentStart}, #{usdAmount}, #{transferAssetId})
+                #{installmentTotal}, #{installmentMonths}, #{installmentStart}, #{usdAmount}, #{transferAssetId}, #{accountId})
     </insert>
 
     <update id="updateItem" parameterType="map">
@@ -58,7 +58,7 @@
             active = #{active}, memo = #{memo},
             installment_total = #{installmentTotal}, installment_months = #{installmentMonths},
             installment_start = #{installmentStart}, usd_amount = #{usdAmount},
-            transfer_asset_id = #{transferAssetId}
+            transfer_asset_id = #{transferAssetId}, account_id = #{accountId}
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 

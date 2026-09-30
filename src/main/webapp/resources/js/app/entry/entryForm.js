@@ -1,7 +1,8 @@
 // 거래 입력·표시 공용 도우미. 거래 내역(entry.js)과 대시보드(dashboard.js)가 같이 쓴다.
 App.entryForm = (function(){
-    // 카테고리 아이콘: 이름에 든 낱말로 고른다(사용자가 추가한 카테고리도). 앞에 있는 규칙이 우선, 없으면 book
-    var ICON_RULES = [
+    var LAST_ACCOUNT_KEY = 'ledger.lastAccountId',
+        // 카테고리 아이콘: 이름에 든 낱말로 고른다(사용자가 추가한 카테고리도). 앞에 있는 규칙이 우선, 없으면 book
+        ICON_RULES = [
             [/급여|월급|상여|성과급|수입|용돈/, 'wallet'],
             [/저축|적금|예금|투자|주식/, 'leaf'],
             [/카페|커피|간식/, 'coffee'],
@@ -54,6 +55,35 @@ App.entryForm = (function(){
                 items.push(radio(name, p.id, p.name + (p.active ? '' : ' (숨김)'), p.id === selectedId));
             });
             container.replaceChildren.apply(container, items);
+        },
+
+        // 통장 선택지. 빈 값 = 기본 통장(없으면 "선택 안 함")으로 저장된다. 통장이 없으면 칸을 숨긴다
+        renderAccounts = function(select, accounts, selectedId){
+            var def = accounts.filter(function(a){ return a.isDefault; })[0],
+                options = [App.h('option', {value: '', text: def ? def.name + ' (기본 통장)' : '선택 안 함'})];
+            accounts.forEach(function(a){
+                if (!a.isDefault) options.push(App.h('option', {value: String(a.id), text: a.name}));
+            });
+            select.replaceChildren.apply(select, options);
+            select.value = accounts.some(function(a){ return !a.isDefault && a.id === selectedId; }) ? String(selectedId) : '';
+            select.closest('.field').hidden = !accounts.length;
+        },
+
+        // 마지막으로 고른 통장(이 브라우저에만 저장). 저장소를 못 쓰는 환경이면 기억하지 않는다
+        lastAccount = function(){
+            try {
+                var v = localStorage.getItem(LAST_ACCOUNT_KEY);
+                return v ? Number(v) : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        rememberAccount = function(id){
+            try {
+                if (id) localStorage.setItem(LAST_ACCOUNT_KEY, String(id));
+                else localStorage.removeItem(LAST_ACCOUNT_KEY);
+            } catch (e) { /* 저장 불가 환경: 무시 */ }
         },
 
         checked = function(name){
@@ -137,6 +167,9 @@ App.entryForm = (function(){
     return {
         renderCategories: renderCategories,
         renderPayments: renderPayments,
+        renderAccounts: renderAccounts,
+        lastAccount: lastAccount,
+        rememberAccount: rememberAccount,
         checked: checked,
         today: today,
         dateLabel: dateLabel,
