@@ -1,6 +1,7 @@
 package ledger.recurring.controller;
 
 import jakarta.servlet.http.HttpSession;
+import ledger.account.service.AccountService;
 import ledger.asset.service.AssetService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
@@ -54,6 +55,9 @@ public class RecurringApiController {
 
     @Autowired
     private AssetService assetService;
+
+    @Autowired
+    private AccountService accountService;
 
     @Autowired
     private RecurringGenerator recurringGenerator;
@@ -185,6 +189,7 @@ public class RecurringApiController {
         Long categoryId = ParamUtil.lng(param, "categoryId");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
         Long transferAssetId = ParamUtil.lng(param, "transferAssetId");
+        Long accountId = ParamUtil.lng(param, "accountId");
         Integer dayOfMonth = ParamUtil.integer(param, "dayOfMonth");
         String adjust = ParamUtil.has(param, "adjust") ? ParamUtil.str(param, "adjust") : "NONE";
         String memo = ParamUtil.str(param, "memo");
@@ -213,6 +218,7 @@ public class RecurringApiController {
                 || categoryId == null || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
                 || (ParamUtil.has(param, "transferAssetId") && transferAssetId == null)
                 || (transferAssetId != null && !"EXPENSE".equals(type))
+                || (ParamUtil.has(param, "accountId") && accountId == null)
                 || dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31 || !ADJUSTS.contains(adjust)
                 || memo.length() > MEMO_MAX || active == null || installment == null) {
             return Response.invalid("항목명(100자 이하)·금액(1원~999억 원 미만)·결제일(1~31일)·카테고리를 확인해 주세요.");
@@ -230,6 +236,9 @@ public class RecurringApiController {
         if (transferAssetId != null && assetService.selectCashAsset(ParamUtil.map("id", transferAssetId, "userId", userId)) == null) {
             return Response.invalid("이체할 적금·예금 자산을 다시 골라 주세요.");
         }
+        if (accountId != null && accountService.selectAccount(ParamUtil.map("id", accountId, "userId", userId)) == null) {
+            return Response.invalid("통장을 다시 골라 주세요.");
+        }
 
         Map<String, Object> saved = null;
         if (id != null) {
@@ -244,7 +253,7 @@ public class RecurringApiController {
                 "dayOfMonth", dayOfMonth, "adjust", adjust, "active", active, "memo", memo.isEmpty() ? null : memo,
                 "installmentTotal", installmentTotal, "installmentMonths", installmentMonths,
                 "installmentStart", installmentStart == null ? null : installmentStart.toString(),
-                "usdAmount", usdAmount, "transferAssetId", transferAssetId);
+                "usdAmount", usdAmount, "transferAssetId", transferAssetId, "accountId", accountId);
         LocalDate today = LocalDate.now(SEOUL);
         if (recurringGenerator.isFinished(item, today)) {
             return Response.invalid("마지막 회차 결제일이 이미 지났어요. 지난 회차는 거래 내역에 직접 기록해 주세요.");
@@ -308,7 +317,7 @@ public class RecurringApiController {
 
     // 오늘 이후(오늘 포함) 아직 처리하지 않은 첫 결제일. 할부는 기간 안에서만 찾고, 마지막 회차가 지났으면 null.
     // 보정(PREV_BIZ)으로 다음 달분이 이번 달로 당겨질 수 있어 지난달분부터 본다
-    static PayCycle.Due nextDue(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays, Predicate<YearMonth> handled) {
+    public static PayCycle.Due nextDue(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays, Predicate<YearMonth> handled) {
         boolean installment = Installment.isInstallment(item);
         YearMonth m = YearMonth.from(today).minusMonths(1);
         if (installment && Installment.start(item).isAfter(m)) {
@@ -328,7 +337,7 @@ public class RecurringApiController {
 
     // 지난 결제일 건너뛰기는 신규·결제일/보정 변경·할부 일정 변경·재활성화일 때만.
     // 금액·이름만 바꾼 수정에서 건너뛰면, 스케줄러 실패로 누락된 결제가 조용히 "건너뜀"으로 가려진다
-    static boolean shouldSkipPassed(Map<String, Object> saved, Map<String, Object> item) {
+    public static boolean shouldSkipPassed(Map<String, Object> saved, Map<String, Object> item) {
         if (saved == null || !Boolean.TRUE.equals(saved.get("active"))) {
             return true;
         }

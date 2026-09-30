@@ -19,6 +19,7 @@ App.recurring = (function(){
             day: document.getElementById(ED + '-day'),
             category: document.getElementById(ED + '-category'),
             payment: document.getElementById(ED + '-payment'),
+            account: document.getElementById(ED + '-account'),
             transferField: document.getElementById(ED + '-transfer-field'),
             transferAsset: document.getElementById(ED + '-transfer-asset'),
             memo: document.getElementById(ED + '-memo'),
@@ -223,6 +224,18 @@ App.recurring = (function(){
             m$.payment.replaceChildren.apply(m$.payment, options);
         },
 
+        // 통장 선택지(entryForm.renderAccounts 와 같은 규칙). 빈 값 = 기본 통장, 통장이 없으면 칸을 숨긴다
+        fillAccounts = function(selectedId){
+            var accounts = settings.master.accounts || [],
+                def = accounts.filter(function(a){ return a.isDefault; })[0],
+                options = [option('', def ? def.name + ' (기본 통장)' : '선택 안 함', false)];
+            accounts.forEach(function(a){
+                if (!a.isDefault) options.push(option(a.id, a.name, a.id === selectedId));
+            });
+            m$.account.replaceChildren.apply(m$.account, options);
+            m$.account.closest('.field').hidden = !accounts.length;
+        },
+
         setRadio = function(name, value){
             var el = m$.dialog.querySelector('input[name="' + name + '"][value="' + value + '"]');
             if (el) el.checked = true;
@@ -317,6 +330,7 @@ App.recurring = (function(){
             m$.day.value = item ? item.dayOfMonth : 1;
             fillCategories(item ? item.type : 'EXPENSE', item ? item.categoryId : null);
             fillPayments(item ? item.paymentMethodId : null);
+            fillAccounts(item ? item.accountId : null);
             setRadio(ED + '-adjust', item ? item.adjust : 'NONE');
             m$.memo.value = item && item.memo ? item.memo : '';
             m$.active.checked = item ? !!item.active : true;
@@ -391,6 +405,7 @@ App.recurring = (function(){
                 dayOfMonth: day,
                 categoryId: m$.category.value,
                 paymentMethodId: m$.payment.value,
+                accountId: m$.account.value,
                 transferAssetId: m$.transferField.hidden ? '' : m$.transferAsset.value,
                 adjust: checked(ED + '-adjust'),
                 memo: m$.memo.value.trim(),

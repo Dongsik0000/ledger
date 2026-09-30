@@ -441,7 +441,7 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
 @keyframes dialog-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 768px) {
   .app-sidebar { padding: 13px 18px; }
-  .app-nav { position: fixed; z-index: 100; inset: auto 0 0; display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 0; margin: 0; padding: 7px max(4px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); overflow: visible; background: #fffefa; border-top: 1px solid var(--color-border); box-shadow: 0 -4px 18px #263a3008; }
+  .app-nav { position: fixed; z-index: 100; inset: auto 0 0; display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 0; margin: 0; padding: 7px max(4px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left)); overflow: visible; background: #fffefa; border-top: 1px solid var(--color-border); box-shadow: 0 -4px 18px #263a3008; }
   .app-nav .nav-item { display: flex; flex-direction: column; gap: 4px; justify-content: center; min-height: 53px; padding: 5px 0; border-radius: 9px; font-family: var(--font-body); font-size: 11px; letter-spacing: -.4px; }
   .app-nav .nav-item .icon { width: 20px; height: 20px; }
   .app-nav .nav-item::after { display: none; }

@@ -1,6 +1,7 @@
 package ledger.entry.controller;
 
 import jakarta.servlet.http.HttpSession;
+import ledger.account.service.AccountService;
 import ledger.asset.service.AssetService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.LikeUtil;
@@ -52,6 +53,9 @@ public class EntryApiController {
 
     @Autowired
     private SettingsService settingsService;
+
+    @Autowired
+    private AccountService accountService;
 
     @Autowired
     private HolidayService holidayService;
@@ -132,9 +136,11 @@ public class EntryApiController {
         Long amount = ParamUtil.lng(param, "amount");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
         Long transferAssetId = ParamUtil.lng(param, "transferAssetId");
+        Long accountId = ParamUtil.lng(param, "accountId");
         String memo = ParamUtil.str(param, "memo");
 
-        if ((ParamUtil.has(param, "id") && id == null) || entryDate == null || !TYPES.contains(type)
+        if ((ParamUtil.has(param, "id") && id == null) || entryDate == null
+                || (ParamUtil.has(param, "accountId") && accountId == null) || !TYPES.contains(type)
                 || categoryId == null || title.isEmpty() || title.length() > TITLE_MAX
                 || amount == null || amount < 1 || amount > AMOUNT_MAX
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
@@ -157,10 +163,13 @@ public class EntryApiController {
         if (transferAssetId != null && assetService.selectCashAsset(ParamUtil.map("id", transferAssetId, "userId", userId)) == null) {
             return Response.invalid("이체할 적금·예금 자산을 다시 골라 주세요.");
         }
+        if (accountId != null && accountService.selectAccount(ParamUtil.map("id", accountId, "userId", userId)) == null) {
+            return Response.invalid("통장을 다시 골라 주세요.");
+        }
         Map<String, Object> entry = ParamUtil.map("userId", userId, "id", id, "entryDate", entryDate, "type", type,
                 "categoryId", categoryId, "title", title, "amount", amount,
                 "paymentMethodId", paymentMethodId, "memo", memo.isEmpty() ? null : memo,
-                "transferAssetId", transferAssetId);
+                "transferAssetId", transferAssetId, "accountId", accountId);
 
         try {
             if (id == null) {

@@ -84,6 +84,10 @@
                             <legend>결제수단</legend>
                             <div class="choice-buttons" id="quickPayments"></div>
                         </fieldset>
+                        <label class="field" hidden>
+                            <span>통장</span>
+                            <select id="quickAccount"></select>
+                        </label>
                         <details class="optional-fields" id="quickOptional"><summary>날짜 · 메모 <span>기본 오늘</span></summary><div class="field-row">
                                 <label class="field">
                                     <span>날짜</span>

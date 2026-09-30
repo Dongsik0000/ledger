@@ -7,7 +7,8 @@
         e.category_id AS "categoryId", c.name AS "categoryName",
         e.title, e.amount,
         e.payment_method_id AS "paymentMethodId", p.name AS "paymentMethodName",
-        e.transfer_asset_id AS "transferAssetId", a.name AS "transferAssetName", e.memo
+        e.transfer_asset_id AS "transferAssetId", a.name AS "transferAssetName", e.memo,
+        e.account_id AS "accountId"
     </sql>
 
     <!-- 거래 조회 조건. from·to 가 없으면 그쪽 기간 제한 없음(전체 기간 검색). keyword 는 LikeUtil.contains 로 만든 패턴 -->
@@ -71,15 +72,15 @@
     </select>
 
     <insert id="insertEntry" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        INSERT INTO ledger_entry (user_id, entry_date, type, category_id, title, amount, payment_method_id, memo, transfer_asset_id)
-        VALUES (#{userId}, #{entryDate}, #{type}, #{categoryId}, #{title}, #{amount}, #{paymentMethodId}, #{memo}, #{transferAssetId})
+        INSERT INTO ledger_entry (user_id, entry_date, type, category_id, title, amount, payment_method_id, memo, transfer_asset_id, account_id)
+        VALUES (#{userId}, #{entryDate}, #{type}, #{categoryId}, #{title}, #{amount}, #{paymentMethodId}, #{memo}, #{transferAssetId}, #{accountId})
     </insert>
 
     <update id="updateEntry" parameterType="map">
         UPDATE ledger_entry
         SET entry_date = #{entryDate}, type = #{type}, category_id = #{categoryId}, title = #{title},
             amount = #{amount}, payment_method_id = #{paymentMethodId}, memo = #{memo},
-            transfer_asset_id = #{transferAssetId}
+            transfer_asset_id = #{transferAssetId}, account_id = #{accountId}
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 

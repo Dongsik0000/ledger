@@ -70,6 +70,10 @@
                     <select id="${id}-payment"></select>
                 </label>
             </div>
+            <label class="field" hidden>
+                <span>통장</span>
+                <select id="${id}-account"></select>
+            </label>
             <label class="field" id="${id}-transfer-field" hidden>
                 <span>적금·예금 자산으로 이체 (선택)</span>
                 <select id="${id}-transfer-asset"><option value="">연결 안 함</option></select>

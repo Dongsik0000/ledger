@@ -50,6 +50,13 @@
             </svg>
             <span>자산</span>
         </a>
+        <a class="nav-item${requestScope.uiPage eq 'account' ? ' is-active' : ''}" aria-current="${requestScope.uiPage eq 'account' ? 'page' : 'false'}" href="<c:url value='/ledger/account'/>">
+            <svg class="icon" aria-hidden="true">
+                <use href="#i-bank">
+                </use>
+            </svg>
+            <span>통장</span>
+        </a>
         <a class="nav-item${requestScope.uiPage eq 'settings' ? ' is-active' : ''}" aria-current="${requestScope.uiPage eq 'settings' ? 'page' : 'false'}" href="<c:url value='/ledger/settings'/>">
             <svg class="icon" aria-hidden="true">
                 <use href="#i-settings">
