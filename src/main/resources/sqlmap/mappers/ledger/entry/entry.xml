@@ -57,6 +57,18 @@
         LIMIT #{limit}
     </select>
 
+    <!-- 내용 자동 채우기: from 이후 거래의 내용별 가장 최근 값. 최근에 쓴 내용부터 limit 개 -->
+    <select id="selectTitleSuggestions" parameterType="map" resultType="java.util.HashMap">
+        SELECT t.title, t.type, t.amount, t."categoryId", t."paymentMethodId", t."accountId"
+        FROM (SELECT DISTINCT ON (e.title) e.id, e.entry_date, e.title, e.type, e.amount,
+                     e.category_id AS "categoryId", e.payment_method_id AS "paymentMethodId", e.account_id AS "accountId"
+              FROM ledger_entry e
+              WHERE e.user_id = #{userId} AND e.entry_date &gt;= #{from}
+              ORDER BY e.title, e.entry_date DESC, e.id DESC) t
+        ORDER BY t.entry_date DESC, t.id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectEntry" parameterType="map" resultType="java.util.HashMap">
         SELECT <include refid="entryColumns"/>
         FROM ledger_entry e

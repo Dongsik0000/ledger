@@ -1,6 +1,8 @@
 /* 거래 입력·표시 공용 도우미. 거래 내역(entry.js·entryBatch.js)과 대시보드(dashboard.js)가 같이 쓴다. */
 App.entryForm = (function(){
 	var LAST_ACCOUNT_KEY = 'ledger.lastAccountId',
+		TITLE_LIST_ID = 'entryTitles',                    /* 내용 칸의 list 속성이 가리키는 datalist */
+		titles = [],                                      /* 내용 자동 채우기 값(/ledger/entry/titles) */
 		/* 카테고리 아이콘: 이름에 든 낱말로 고른다(사용자가 추가한 카테고리도). 앞에 있는 규칙이 우선, 없으면 book */
 		ICON_RULES = [
 			[/급여|월급|상여|성과급|수입|용돈/, 'wallet'],
@@ -124,6 +126,52 @@ App.entryForm = (function(){
 			} catch(e){ /* 저장 불가 환경: 무시 */ }
 		},
 
+		/* 최근 내용 목록을 받아 datalist 로 그린다. 저장 뒤 다시 불러 방금 쓴 내용도 나오게 한다.
+		   자동 채우기는 보조 기능이라 실패해도 알리지 않고 목록 없이 둔다 */
+		loadTitles = function(){
+			App.post(contextPath + '/ledger/entry/titles', null, {onError: function(){}})
+				.then(function(res){
+					if(!res || res.code !== App.CODE.SUCCESS) return;
+					var list = document.getElementById(TITLE_LIST_ID) || document.body.appendChild(App.h('datalist', {id: TITLE_LIST_ID}));
+					titles = res.data;
+					list.replaceChildren.apply(list, titles.map(function(t){ return App.h('option', {value: t.title}); }));
+				})
+				.catch(function(){});
+		},
+
+		/* 내용이 정확히 같은 최근 거래 값. 없으면 null */
+		suggestionFor = function(title){
+			var t = String(title || '').trim();
+			return t ? titles.filter(function(s){ return s.title === t; })[0] || null : null;
+		},
+
+		/* 라디오로 고르는 입력 창(거래 추가·빠른 입력)에 예전 값을 채운다. names: 구분·카테고리·결제수단 라디오 name.
+		   구분 라디오에 change 를 보내 화면이 카테고리를 다시 그리게 한 뒤 고른다. 숨김·삭제된 항목은 선택지에 없어 건너뛴다.
+		   금액은 비어 있을 때만 채운다(먼저 적은 금액을 덮어쓰지 않게) */
+		fillFromSuggestion = function(s, root, names, account, amount){
+			var pick = function(name, value){
+				var el = root.querySelector('input[name="' + name + '"][value="' + value + '"]');
+				if(el) el.checked = true;
+				return el;
+			};
+			var type = pick(names.type, s.type);
+			if(type) type.dispatchEvent(new Event('change', {bubbles: true}));
+			pick(names.category, s.categoryId);
+			pick(names.payment, s.paymentMethodId === null || s.paymentMethodId === undefined ? '' : s.paymentMethodId);
+			setAccount(account, s.accountId);
+			if(!amount.value.trim()){
+				amount.value = Number(s.amount).toLocaleString('ko-KR');
+				amount.dispatchEvent(new Event('input', {bubbles: true}));
+			}
+		},
+
+		/* 통장 선택지에 그 통장이 있으면 고르고, 없으면(기본 통장·NULL) 빈 값 = 기본 통장 */
+		setAccount = function(select, accountId){
+			var v = accountId === null || accountId === undefined ? '' : String(accountId);
+			select.value = Array.prototype.some.call(select.options, function(o){ return o.value === v; }) ? v : '';
+			select.dispatchEvent(new Event('change', {bubbles: true}));
+		},
+
 		checked = function(name){
 			var el = document.querySelector('input[name="' + name + '"]:checked');
 			return el ? el.value : '';
@@ -210,6 +258,10 @@ App.entryForm = (function(){
 		balanceEffect: balanceEffect,
 		balanceHint: balanceHint,
 		lastAccount: lastAccount,
+		loadTitles: loadTitles,
+		suggestionFor: suggestionFor,
+		fillFromSuggestion: fillFromSuggestion,
+		setAccount: setAccount,
 		rememberAccount: rememberAccount,
 		checked: checked,
 		today: today,

@@ -37,6 +37,11 @@ public class EntryServiceImpl implements EntryService {
     }
 
     @Override
+    public List<Map<String, Object>> selectTitleSuggestions(Map<String, Object> param) {
+        return entryDAO.selectTitleSuggestions(param);
+    }
+
+    @Override
     public Map<String, Object> selectEntry(Map<String, Object> param) {
         return entryDAO.selectEntry(param);
     }

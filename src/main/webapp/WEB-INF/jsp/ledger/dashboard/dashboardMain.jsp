@@ -78,7 +78,7 @@
                         </fieldset>
                         <label class="field">
                             <span>내용</span>
-                            <input type="text" id="quickTitle" enterkeyhint="done" placeholder="어디에 사용하셨나요?" maxlength="100">
+                            <input type="text" id="quickTitle" enterkeyhint="done" placeholder="어디에 사용하셨나요?" maxlength="100" list="entryTitles" autocomplete="off">
                         </label>
                         <fieldset class="choice-field">
                             <legend>결제수단</legend>

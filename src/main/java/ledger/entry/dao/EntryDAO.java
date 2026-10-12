@@ -27,6 +27,10 @@ public class EntryDAO {
         return sqlSession.selectList(SQL_PATH + ".selectRecentEntries", param);
     }
 
+    public List<Map<String, Object>> selectTitleSuggestions(Map<String, Object> param) {
+        return sqlSession.selectList(SQL_PATH + ".selectTitleSuggestions", param);
+    }
+
     public Map<String, Object> selectEntry(Map<String, Object> param) {
         return sqlSession.selectOne(SQL_PATH + ".selectEntry", param);
     }

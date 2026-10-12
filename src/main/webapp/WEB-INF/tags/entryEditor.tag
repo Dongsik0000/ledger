@@ -29,7 +29,7 @@
             </fieldset>
             <label class="field">
                 <span>내용</span>
-                <input type="text" id="${id}-title" maxlength="100" placeholder="예: 점심, 월급">
+                <input type="text" id="${id}-title" maxlength="100" placeholder="예: 점심, 월급" list="entryTitles" autocomplete="off">
             </label>
             <fieldset class="choice-field">
                 <legend>결제수단</legend>

@@ -66,6 +66,7 @@ App.entry = (function(){
 			/* 주기 보기: 이 날짜가 속한 주기(없으면 오늘) */
 			settings.cycleDate = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : '';
 			showPeriod();
+			App.entryForm.loadTitles();
 			m$.keyword.value = q.get('q') || '';
 			m$.type.value = ['INCOME', 'EXPENSE'].indexOf(q.get('type')) >= 0 ? q.get('type') : '';
 			settings.editId = q.get('edit');
@@ -115,6 +116,12 @@ App.entry = (function(){
 			});
 			m$.amount.addEventListener('input', showBalance);
 			m$.account.addEventListener('change', showBalance);
+			/* 새 거래의 내용이 예전 거래와 같으면 그 구분·카테고리·결제수단·통장(금액은 비었을 때만)을 채운다. 수정 중에는 건드리지 않는다 */
+			m$.title.addEventListener('change', function(){
+				var s = !settings.editing && App.entryForm.suggestionFor(m$.title.value);
+				if(s) App.entryForm.fillFromSuggestion(s, m$.dialog,
+					{type: ED + '-type', category: ED + '-category', payment: ED + '-payment'}, m$.account, m$.amount);
+			});
 			m$.date.addEventListener('change', showBalance);
 			m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
 				b.addEventListener('click', requestClose);
@@ -429,6 +436,7 @@ App.entry = (function(){
 				App.entryForm.rememberAccount(m$.account.value);
 				m$.dialog.close();
 				App.saved();
+				App.entryForm.loadTitles();
 				list();
 			}});
 		},

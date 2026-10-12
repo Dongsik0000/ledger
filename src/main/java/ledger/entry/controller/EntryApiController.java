@@ -45,6 +45,7 @@ public class EntryApiController {
     private static final Set<String> PERIODS = Set.of("MONTH", "CYCLE", "RECENT12", "ALL");
     private static final int WIDE_LIMIT = 500;
     private static final int BATCH_MAX = 50;
+    private static final int SUGGEST_LIMIT = 200;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired
@@ -124,6 +125,14 @@ public class EntryApiController {
         data.put("from", from == null ? null : from.toString());
         data.put("to", to == null ? null : to.toString());
         return Response.of(Constants.SUCCESS, data);
+    }
+
+    // 내용 자동 채우기: 최근 1년 거래의 내용별 가장 최근 구분·카테고리·결제수단·통장·금액
+    @ResponseBody
+    @PostMapping("/titles")
+    public Response titles(HttpSession session) {
+        return Response.of(Constants.SUCCESS, entryService.selectTitleSuggestions(ParamUtil.map(
+                "userId", SessionUtil.getUserId(session), "from", LocalDate.now(SEOUL).minusYears(1), "limit", SUGGEST_LIMIT)));
     }
 
     @ResponseBody
