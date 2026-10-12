@@ -16,6 +16,7 @@ App.entryForm = (function(){
 		],
 		WARM = {'카페/간식': true},
 
+		/* 카테고리 이름 → 아이콘 이름 */
 		iconOf = function(name){
 			for(var i = 0; i < ICON_RULES.length; i++){
 				if(ICON_RULES[i][0].test(name || '')) return ICON_RULES[i][1];
@@ -23,6 +24,7 @@ App.entryForm = (function(){
 			return 'book';
 		},
 
+		/* 한 자리 수 앞에 0 */
 		pad = function(n){ return (n < 10 ? '0' : '') + n; },
 
 		/* 선택지: 활성 항목 + 이미 고른 항목(비활성이어도 기존 거래 수정이 되도록) */
@@ -30,6 +32,7 @@ App.entryForm = (function(){
 			return list.filter(function(x){ return x.active || x.id === selectedId; });
 		},
 
+		/* label 로 감싼 라디오 하나 */
 		radio = function(name, value, label, checked){
 			return App.h('label', null, [
 				App.h('input', {type: 'radio', name: name, value: String(value), checked: !!checked}),
@@ -119,6 +122,7 @@ App.entryForm = (function(){
 			}
 		},
 
+		/* 마지막 통장 저장(빈 값이면 지운다) */
 		rememberAccount = function(id){
 			try {
 				if(id) localStorage.setItem(LAST_ACCOUNT_KEY, String(id));
@@ -172,11 +176,13 @@ App.entryForm = (function(){
 			select.dispatchEvent(new Event('change', {bubbles: true}));
 		},
 
+		/* 그 name 에서 고른 라디오 값. 없으면 빈 문자열 */
 		checked = function(name){
 			var el = document.querySelector('input[name="' + name + '"]:checked');
 			return el ? el.value : '';
 		},
 
+		/* 오늘 "YYYY-MM-DD"(브라우저 시간) */
 		today = function(){
 			var d = new Date();
 			return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -188,6 +194,7 @@ App.entryForm = (function(){
 			return Number(p[1]) + '월 ' + Number(p[2]) + '일';
 		},
 
+		/* 수입은 +, 지출은 − 를 붙인 금액 */
 		signedMoney = function(type, amount){
 			return (type === 'INCOME' ? '+' : '−') + App.money(amount);
 		},
@@ -242,6 +249,7 @@ App.entryForm = (function(){
 			return nodes;
 		},
 
+		/* 빈 목록 안내 */
 		empty = function(title, text){
 			return App.h('div', {className: 'empty-state compact'}, [
 				App.h('span', {className: 'empty-icon'}, [App.icon('book')]),

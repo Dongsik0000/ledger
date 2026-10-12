@@ -6,8 +6,10 @@ import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// CSV 칸·줄 만들기와 수식 주입 방지 테스트
 class CsvUtilTest {
 
+    // 평범한 글자는 그대로
     @Test
     void plainTextUnchanged() {
         assertEquals("점심", CsvUtil.cell("점심"));
@@ -25,6 +27,7 @@ class CsvUtilTest {
         assertEquals("'\tx", CsvUtil.cell("\tx"));
     }
 
+    // 쉼표·따옴표·줄바꿈이 있으면 따옴표로 감싼다
     @Test
     void quotesWhenNeeded() {
         assertEquals("\"a,b\"", CsvUtil.cell("a,b"));
@@ -32,6 +35,7 @@ class CsvUtilTest {
         assertEquals("\"line1\nline2\"", CsvUtil.cell("line1\nline2"));
     }
 
+    // 칸은 쉼표로 잇고 줄 끝은 CRLF
     @Test
     void lineJoinsCellsWithCrLf() {
         assertEquals("a,\"b,c\",'=1\r\n", CsvUtil.line(Arrays.asList("a", "b,c", "=1")));

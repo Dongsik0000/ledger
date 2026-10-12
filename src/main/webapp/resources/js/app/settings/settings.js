@@ -1,43 +1,43 @@
 App.settings = (function(){
 	var m$ = {
-			payDay: document.getElementById('payDay'),
-			payDayAdjust: document.getElementById('payDayAdjust'),
-			cycleSave: document.getElementById('cycleSave'),
-			cycleRuler: document.getElementById('cycleRuler'),
-			cycleRange: document.getElementById('cycleRange'),
-			cycleFill: document.getElementById('cycleFill'),
-			cycleCaption: document.getElementById('cycleCaption'),
-			openingBalance: document.getElementById('openingBalance'),
-			openingDate: document.getElementById('openingDate'),
-			openingSave: document.getElementById('openingSave'),
-			passwordForm: document.getElementById('passwordForm'),
-			currentPassword: document.getElementById('currentPassword'),
-			newPassword: document.getElementById('newPassword'),
-			newPasswordConfirm: document.getElementById('newPasswordConfirm'),
-			expenseList: document.getElementById('expenseCategoryList'),
-			incomeList: document.getElementById('incomeCategoryList'),
-			categoryOrderStatus: document.getElementById('categoryOrderStatus'),
-			categoryOpen: document.getElementById('categoryOpen'),
-			categoryDialog: document.getElementById('categoryDialog'),
-			categoryAdd: document.getElementById('categoryAdd'),
-			categoryAddOpen: document.getElementById('categoryAddOpen'),
-			newCategoryName: document.getElementById('newCategoryName'),
-			newCategoryGroup: document.getElementById('newCategoryGroup'),
-			categoryAddSave: document.getElementById('categoryAddSave'),
-			categoryAddCancel: document.getElementById('categoryAddCancel'),
-			paymentList: document.getElementById('paymentList'),
-			paymentOrderStatus: document.getElementById('paymentOrderStatus'),
-			paymentOpen: document.getElementById('paymentOpen'),
-			paymentDialog: document.getElementById('paymentDialog'),
-			paymentAdd: document.getElementById('paymentAdd'),
-			paymentAddOpen: document.getElementById('paymentAddOpen'),
-			newPaymentName: document.getElementById('newPaymentName'),
-			paymentAddSave: document.getElementById('paymentAddSave'),
-			paymentAddCancel: document.getElementById('paymentAddCancel'),
-			exportPresets: document.getElementById('exportPresets'),
-			exportFrom: document.getElementById('exportFrom'),
-			exportTo: document.getElementById('exportTo'),
-			exportButton: document.getElementById('exportButton')
+			payDay: document.getElementById('payDay'),  /* 주기 시작일 선택 */
+			payDayAdjust: document.getElementById('payDayAdjust'),  /* 주말·공휴일 보정 체크 */
+			cycleSave: document.getElementById('cycleSave'),  /* 주기 저장 버튼 */
+			cycleRuler: document.getElementById('cycleRuler'),  /* 주기 막대 */
+			cycleRange: document.getElementById('cycleRange'),  /* 주기 기간 글 */
+			cycleFill: document.getElementById('cycleFill'),  /* 막대에서 오늘까지 채운 부분 */
+			cycleCaption: document.getElementById('cycleCaption'),  /* 막대 설명 */
+			openingBalance: document.getElementById('openingBalance'),  /* 시작 잔액 */
+			openingDate: document.getElementById('openingDate'),  /* 시작 잔액 기준일 */
+			openingSave: document.getElementById('openingSave'),  /* 시작 잔액 저장 버튼 */
+			passwordForm: document.getElementById('passwordForm'),  /* 비밀번호 변경 폼 */
+			currentPassword: document.getElementById('currentPassword'),  /* 현재 비밀번호 */
+			newPassword: document.getElementById('newPassword'),  /* 새 비밀번호 */
+			newPasswordConfirm: document.getElementById('newPasswordConfirm'),  /* 새 비밀번호 확인 */
+			expenseList: document.getElementById('expenseCategoryList'),  /* 지출 카테고리 목록 */
+			incomeList: document.getElementById('incomeCategoryList'),  /* 수입 카테고리 목록 */
+			categoryOrderStatus: document.getElementById('categoryOrderStatus'),  /* 카테고리 순서 변경 안내(화면 낭독기) */
+			categoryOpen: document.getElementById('categoryOpen'),  /* 카테고리 관리 창 열기 버튼 */
+			categoryDialog: document.getElementById('categoryDialog'),  /* 카테고리 관리 창 */
+			categoryAdd: document.getElementById('categoryAdd'),  /* 카테고리 추가 칸 */
+			categoryAddOpen: document.getElementById('categoryAddOpen'),  /* 카테고리 추가 열기 버튼 */
+			newCategoryName: document.getElementById('newCategoryName'),  /* 새 카테고리 이름 */
+			newCategoryGroup: document.getElementById('newCategoryGroup'),  /* 새 카테고리 그룹 */
+			categoryAddSave: document.getElementById('categoryAddSave'),  /* 카테고리 추가 버튼 */
+			categoryAddCancel: document.getElementById('categoryAddCancel'),  /* 카테고리 추가 취소 버튼 */
+			paymentList: document.getElementById('paymentList'),  /* 결제수단 목록 */
+			paymentOrderStatus: document.getElementById('paymentOrderStatus'),  /* 결제수단 순서 변경 안내(화면 낭독기) */
+			paymentOpen: document.getElementById('paymentOpen'),  /* 결제수단 관리 창 열기 버튼 */
+			paymentDialog: document.getElementById('paymentDialog'),  /* 결제수단 관리 창 */
+			paymentAdd: document.getElementById('paymentAdd'),  /* 결제수단 추가 칸 */
+			paymentAddOpen: document.getElementById('paymentAddOpen'),  /* 결제수단 추가 열기 버튼 */
+			newPaymentName: document.getElementById('newPaymentName'),  /* 새 결제수단 이름 */
+			paymentAddSave: document.getElementById('paymentAddSave'),  /* 결제수단 추가 버튼 */
+			paymentAddCancel: document.getElementById('paymentAddCancel'),  /* 결제수단 추가 취소 버튼 */
+			exportPresets: document.getElementById('exportPresets'),  /* CSV 내보내기 기간 빠른 선택 */
+			exportFrom: document.getElementById('exportFrom'),  /* 내보내기 시작일 */
+			exportTo: document.getElementById('exportTo'),  /* 내보내기 종료일 */
+			exportButton: document.getElementById('exportButton')  /* 내보내기 버튼 */
 		},
 
 		settings = {
@@ -67,12 +67,14 @@ App.settings = (function(){
 			exportCsv: contextPath + '/ledger/settings/export'
 		},
 
+		/* 이벤트 연결, 내보내기 기간을 이번 달로 채우고 설정 불러오기 */
 		init = function(){
 			bindEvent();
 			applyExportRange('month');
 			load();
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			m$.cycleSave.addEventListener('click', saveCycle);
 			m$.openingSave.addEventListener('click', saveOpening);
@@ -139,12 +141,17 @@ App.settings = (function(){
 
 		/* 기간 빠른 선택. 날짜를 직접 바꾸면 선택을 푼다. 기본은 이번 달(주기를 불러오면 이번 주기) */
 		exportRanges = {
+			/* 이번 주기 */
 			cycle: function(){ return settings.cycle; },
+			/* 이번 달 */
 			month: function(t){ return {start: new Date(t.getFullYear(), t.getMonth(), 1), end: new Date(t.getFullYear(), t.getMonth() + 1, 0)}; },
+			/* 지난달 */
 			lastMonth: function(t){ return {start: new Date(t.getFullYear(), t.getMonth() - 1, 1), end: new Date(t.getFullYear(), t.getMonth(), 0)}; },
+			/* 올해 */
 			year: function(t){ return {start: new Date(t.getFullYear(), 0, 1), end: new Date(t.getFullYear(), 11, 31)}; }
 		},
 
+		/* 빠른 선택 기간을 내보내기 날짜 칸에 채운다 */
 		applyExportRange = function(key){
 			var r = exportRanges[key](new Date());
 			if(!r) return;
@@ -167,6 +174,7 @@ App.settings = (function(){
 			location.href = url.exportCsv + '?' + new URLSearchParams({from: from, to: to}).toString();
 		},
 
+		/* 설정 값 받기 */
 		load = function(){
 			App.post(url.load)
 				.then(function(res){
@@ -186,6 +194,7 @@ App.settings = (function(){
 				.catch(function(){});
 		},
 
+		/* 이번 주기를 받아 주기 막대를 그리고, 내보내기 기간이 주기면 맞춘다 */
 		handleCycleResult = function(res){
 			App.result(res, { ok: function(){
 				var first = !settings.cycle;
@@ -212,6 +221,7 @@ App.settings = (function(){
 				: '오늘은 ' + total + '일 중 ' + n + '일째, ' + (total - n) + '일 남았어요.';
 		},
 
+		/* 설정 값 그리기. 저장하지 않은 입력은 남긴다 */
 		render = function(data){
 			var focused = document.activeElement && document.activeElement.getAttribute('data-handle');
 			settings.data = data;
@@ -233,6 +243,7 @@ App.settings = (function(){
 			}
 		},
 
+		/* 정렬 목록 그리기(비면 안내) */
 		renderList = function(list, items, itemFn, emptyText){
 			var rows = items.map(itemFn);
 			if(!rows.length) rows = [App.h('li', {className: 'sort-empty', text: emptyText})];
@@ -246,6 +257,7 @@ App.settings = (function(){
 			if(settings.submitting) return;
 			settings.submitting = true;
 			var handlers = {
+				/* 성공: 알리고 추가 동작 뒤 다시 불러오기 */
 				ok: function(){
 					App.saved(opts.title);
 					if(opts.done) opts.done();
@@ -282,6 +294,7 @@ App.settings = (function(){
 				.then(load);
 		},
 
+		/* 목록의 항목 요소들 */
 		itemsOf = function(list){ return Array.prototype.slice.call(list.querySelectorAll('.sort-item')); },
 
 		/* 손잡이로 순서 바꾸기. 마우스·터치는 Pointer Events(터치에서는 HTML 드래그앤드롭이 동작하지 않는다), 키보드는 ↑·↓. */
@@ -349,6 +362,7 @@ App.settings = (function(){
 				send(u, {id: id}, {
 					title: '삭제했어요',
 					done: clearDraft(key),
+					/* 사용 중이면 대신 숨길지 묻는다 */
 					inUse: function(res){
 						_confirm('사용 중인 항목이에요', res.message + '\n대신 숨길까요?', hide);
 					}
@@ -359,11 +373,13 @@ App.settings = (function(){
 		/* 시작 잔액 칸: 앞의 -(음수)와 숫자·쉼표만 서식 정리, 그 밖의 입력은 값을 두고 오류 표시 */
 		signedNumber = function(n){ return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR'); },
 
+		/* "-1,000" 같은 입력 → 숫자. 형식이 틀리면 null */
 		parseSigned = function(s){
 			var t = String(s).replace(/[,\s]/g, '').replace('−', '-');
 			return /^-?\d{1,11}$/.test(t) ? Number(t) : null;
 		},
 
+		/* 입력하는 동안 서식 정리, 틀리면 aria-invalid */
 		formatSigned = function(input){
 			var t = input.value.replace(/[,\s]/g, '').replace('−', '-');
 			if(t === '' || t === '-'){
@@ -376,6 +392,7 @@ App.settings = (function(){
 			}
 		},
 
+		/* 입력 확인 후 시작 잔액 저장(기준일을 비우면 해제) */
 		saveOpening = function(){
 			var date = m$.openingDate.value,
 				amount = m$.openingBalance.value.trim() ? parseSigned(m$.openingBalance.value) : 0;
@@ -417,6 +434,7 @@ App.settings = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 주기 시작일·보정 저장 */
 		saveCycle = function(){
 			send(url.cycleSave, {payDay: m$.payDay.value, payDayAdjust: m$.payDayAdjust.checked},
 				{done: function(){ settings.cycleDirty = false; }});
@@ -442,6 +460,7 @@ App.settings = (function(){
 			});
 		},
 
+		/* 저장 성공 뒤 그 항목의 작성 중 표시를 지우는 함수 */
 		clearDraft = function(key){
 			return function(){ delete settings.drafts[key]; };
 		},
@@ -464,10 +483,12 @@ App.settings = (function(){
 			return App.h('label', {className: 'field' + (extraClass ? ' ' + extraClass : '')}, [App.h('span', {className: shown ? null : 'sr-only', text: label}), input]);
 		},
 
+		/* 켜고 끄는 스위치 모양 체크박스 */
 		switchField = function(input){
 			return App.h('label', {className: 'switch'}, [input, App.h('span', {attrs: {'aria-hidden': 'true'}})]);
 		},
 
+		/* 작은 버튼 */
 		smallButton = function(text, onClick, extraClass){
 			return App.h('button', {
 				type: 'button',
@@ -490,6 +511,7 @@ App.settings = (function(){
 			]);
 		},
 
+		/* 카테고리 한 줄(이름·그룹·사용 여부·저장·삭제·손잡이) */
 		categoryItem = function(c){
 			var name = App.h('input', {type: 'text', value: c.name, maxLength: 50}),
 				group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '그룹 없음'}),
@@ -518,6 +540,7 @@ App.settings = (function(){
 			]);
 		},
 
+		/* 결제수단 한 줄(이름·사용 여부·저장·삭제·손잡이) */
 		paymentItem = function(p){
 			var name = App.h('input', {type: 'text', value: p.name, maxLength: 50}),
 				active = App.h('input', {type: 'checkbox', checked: !!p.active, attrs: {'aria-label': p.name + ' 거래에서 보이기'}}),
@@ -540,6 +563,7 @@ App.settings = (function(){
 			]);
 		},
 
+		/* 카테고리 추가 칸 비우기 */
 		resetCategoryAdd = function(){
 			m$.newCategoryName.value = '';
 			m$.newCategoryGroup.value = '';
@@ -556,16 +580,19 @@ App.settings = (function(){
 			}
 		},
 
+		/* 카테고리 추가 칸 비우고 접기 */
 		closeCategoryAdd = function(){
 			resetCategoryAdd();
 			toggleAdd(m$.categoryAdd, m$.categoryAddOpen, m$.newCategoryName, false);
 		},
 
+		/* 결제수단 추가 칸 비우고 접기 */
 		closePaymentAdd = function(){
 			m$.newPaymentName.value = '';
 			toggleAdd(m$.paymentAdd, m$.paymentAddOpen, m$.newPaymentName, false);
 		},
 
+		/* 입력 확인 후 카테고리 추가 */
 		addCategory = function(){
 			var checked = document.querySelector('input[name="newCategoryType"]:checked');
 			if(App.isEmpty(m$.newCategoryName.value.trim())){
@@ -579,6 +606,7 @@ App.settings = (function(){
 			}, {title: '추가했어요', done: resetCategoryAdd});
 		},
 
+		/* 입력 확인 후 결제수단 추가 */
 		addPayment = function(){
 			if(App.isEmpty(m$.newPaymentName.value.trim())){
 				_error('알림', '결제수단 이름을 입력해주세요.');
@@ -586,6 +614,7 @@ App.settings = (function(){
 			}
 			send(url.paymentSave, {name: m$.newPaymentName.value}, {
 				title: '추가했어요',
+				/* 추가 성공: 이름 칸 비우기 */
 				done: function(){ m$.newPaymentName.value = ''; }
 			});
 		};

@@ -8,16 +8,20 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// 요약 표 만들기 테스트
 class SummaryTablesTest {
 
+    // 카테고리 값
     private static Map<String, Object> category(long id, String name, String group, boolean active) {
         return ledger.cmmn.util.ParamUtil.map("id", id, "type", "EXPENSE", "name", name, "groupName", group, "active", active);
     }
 
+    // id 의 그 달 금액
     private static Map<String, Object> amount(long id, String month, long amount) {
         return ledger.cmmn.util.ParamUtil.map("id", id, "month", month, "amount", amount);
     }
 
+    // 시작·종료 월을 포함한 월 목록
     @Test
     void monthsBetweenInclusive() {
         assertEquals(List.of("2026-11", "2026-12", "2027-01"),
@@ -70,6 +74,7 @@ class SummaryTablesTest {
         assertEquals(45L, rows.get(3).total());
     }
 
+    // 결제수단 없음(id NULL)의 그 달 금액
     private static Map<String, Object> amountNull(String month, long amount) {
         return ledger.cmmn.util.ParamUtil.map("id", null, "month", month, "amount", amount);
     }

@@ -35,11 +35,13 @@ public class AssetApiController {
     @Autowired
     private MarketDataClient marketData;
 
+    // 자산 화면
     @GetMapping
     public String asset() {
         return "asset/assetMain";
     }
 
+    // 자산 목록과 합계. 주식은 먼저 최신 시세로 다시 평가한다
     @ResponseBody
     @PostMapping("/list")
     public Response list(HttpSession session) {
@@ -57,6 +59,7 @@ public class AssetApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 거래·고정 항목의 "적금·예금 자산으로 이체" 선택지(주식 제외)
     @ResponseBody
     @PostMapping("/cash-list")
     public Response cashList(HttpSession session) {
@@ -66,6 +69,7 @@ public class AssetApiController {
                 .toList());
     }
 
+    // 미국 주식 종목 검색(Alpha Vantage)
     @ResponseBody
     @PostMapping("/search")
     public Response search(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -81,6 +85,7 @@ public class AssetApiController {
         }
     }
 
+    // 자산 추가·수정. 주식이면 종목 코드·수량으로 시세를 받아 원화 평가액을 계산한다
     @ResponseBody
     @PostMapping("/save")
     public Response save(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -131,6 +136,7 @@ public class AssetApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 자산 삭제
     @ResponseBody
     @PostMapping("/delete")
     public Response delete(@RequestBody HashMap<String, Object> param, HttpSession session) {

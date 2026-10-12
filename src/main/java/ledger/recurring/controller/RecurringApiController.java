@@ -71,6 +71,7 @@ public class RecurringApiController {
     @Autowired
     private MarketDataClient marketData;
 
+    // 고정 항목 화면
     @GetMapping
     public String recurring() {
         return "recurring/recurringMain";
@@ -163,6 +164,7 @@ public class RecurringApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 고정 항목 추가·수정. 저장 직후 지난 결제일은 건너뛰고, 오늘이 결제일이면 바로 기록
     @Transactional
     @ResponseBody
     @PostMapping("/save")
@@ -273,6 +275,7 @@ public class RecurringApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 사용·중지 전환. 꺼져 있던 항목을 켜면 지난 결제일은 건너뛰고 오늘이 결제일이면 기록
     @Transactional
     @ResponseBody
     @PostMapping("/toggle")
@@ -352,10 +355,12 @@ public class RecurringApiController {
         return v == null ? null : ((Number) v).longValue();
     }
 
+    // 비교용 문자열(CHAR 공백 제거). null 은 그대로
     private static String text(Object v) {
         return v == null ? null : v.toString().trim();
     }
 
+    // 항목 id
     private static long id(Map<String, Object> item) {
         return ((Number) item.get("id")).longValue();
     }

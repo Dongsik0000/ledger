@@ -8,6 +8,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 // /ledger/** 요청은 세션에 userId 가 있어야 통과. Ajax 는 JSON 으로, 화면 요청은 /login 으로 보낸다.
 public class LoginPageInterceptor implements HandlerInterceptor {
 
+    // 로그인하지 않았으면 Ajax 는 sessionExpired, 화면은 /login 으로
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (SessionUtil.getUserId(request.getSession()) != null) {

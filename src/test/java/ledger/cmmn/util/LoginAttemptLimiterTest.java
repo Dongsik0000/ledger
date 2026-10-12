@@ -15,16 +15,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// 로그인 시도 제한: 5회 뒤 5분 차단, 키 상한 테스트
 class LoginAttemptLimiterTest {
 
     private final long[] now = {1_000_000L};
     private LoginAttemptLimiter limiter;
 
+    // 시계를 직접 움직이는 제한기
     @BeforeEach
     void setUp() {
         limiter = new LoginAttemptLimiter(() -> now[0], 100);
     }
 
+    // times 번 시도해 통과한 횟수
     private int acquire(LoginAttemptLimiter target, String key, int times) {
         int allowed = 0;
         for (int i = 0; i < times; i++) {
@@ -35,17 +38,20 @@ class LoginAttemptLimiterTest {
         return allowed;
     }
 
+    // 처음 5번은 통과
     @Test
     void firstFiveAttemptsAllowed() {
         assertEquals(5, acquire(limiter, "a", 5));
     }
 
+    // 6번째는 차단
     @Test
     void sixthAttemptBlocked() {
         acquire(limiter, "a", 5);
         assertFalse(limiter.tryAcquire("a"));
     }
 
+    // 5분이 지나면 다시 시도할 수 있다
     @Test
     void blockExpiresAfterFiveMinutes() {
         acquire(limiter, "a", 5);
@@ -56,6 +62,7 @@ class LoginAttemptLimiterTest {
         assertFalse(limiter.tryAcquire("a"));
     }
 
+    // 마지막 시도 뒤 5분이 지나면 횟수를 처음부터 센다
     @Test
     void oldAttemptsForgotten() {
         acquire(limiter, "a", 4);
@@ -63,6 +70,7 @@ class LoginAttemptLimiterTest {
         assertEquals(5, acquire(limiter, "a", 5));
     }
 
+    // reset 하면 기록이 지워진다
     @Test
     void resetClears() {
         acquire(limiter, "a", 4);
@@ -70,6 +78,7 @@ class LoginAttemptLimiterTest {
         assertEquals(5, acquire(limiter, "a", 5));
     }
 
+    // 키마다 따로 센다
     @Test
     void keysAreIndependent() {
         acquire(limiter, "a", 6);
@@ -111,6 +120,7 @@ class LoginAttemptLimiterTest {
         assertTrue(small.tryAcquire("a"));
     }
 
+    // 상한일 때 오래된 키를 정리해 자리를 만든다
     @Test
     void staleKeysPurgedWhenFull() {
         LoginAttemptLimiter small = new LoginAttemptLimiter(() -> now[0], 3);

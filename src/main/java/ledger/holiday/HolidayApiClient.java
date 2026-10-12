@@ -36,6 +36,7 @@ public class HolidayApiClient {
     @Value("${Globals.Ledger.HolidayApiKey}")
     private String apiKey;
 
+    // 공휴일 API 키가 설정됐는지
     public boolean isConfigured() {
         return apiKey != null && !apiKey.isBlank();
     }

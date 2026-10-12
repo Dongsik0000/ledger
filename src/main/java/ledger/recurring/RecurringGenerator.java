@@ -46,6 +46,7 @@ public class RecurringGenerator {
 
     private final TransactionTemplate tx;
 
+    // 고정 항목 한 건마다 트랜잭션을 따로 쓰려고 TransactionTemplate 을 만든다
     @Autowired
     public RecurringGenerator(PlatformTransactionManager transactionManager) {
         this.tx = new TransactionTemplate(transactionManager);
@@ -189,6 +190,7 @@ public class RecurringGenerator {
         return true;
     }
 
+    // 결제일 보정에 쓰는 앞뒤 공휴일
     private Set<LocalDate> holidays(LocalDate today) {
         return new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
                 "from", today.minusMonths(2).withDayOfMonth(1), "to", today.plusMonths(1))));
@@ -205,6 +207,7 @@ public class RecurringGenerator {
         return name.length() + suffix.length() > TITLE_MAX ? name.substring(0, TITLE_MAX - suffix.length()) + suffix : name + suffix;
     }
 
+    // 매월 결제일(1~31)
     private static int day(Map<String, Object> item) {
         return ((Number) item.get("dayOfMonth")).intValue();
     }

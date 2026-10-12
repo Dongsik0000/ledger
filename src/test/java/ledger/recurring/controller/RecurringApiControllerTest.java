@@ -14,16 +14,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// 고정 항목 저장 시 건너뛰기 판단과 다음 결제일 테스트
 class RecurringApiControllerTest {
 
+    // 저장돼 있던 항목 값(결제일·보정·사용 여부)
     private static Map<String, Object> saved(int day, String adjust, boolean active) {
         return ParamUtil.map("dayOfMonth", day, "adjust", adjust, "active", active);
     }
 
+    // 새로 받은 항목 값(결제일·보정)
     private static Map<String, Object> item(int day, String adjust) {
         return ParamUtil.map("dayOfMonth", day, "adjust", adjust);
     }
 
+    // 1일 결제·다음 영업일 보정 할부 항목
     private static Map<String, Object> installment(String start, int months) {
         return ParamUtil.map("dayOfMonth", 1, "adjust", "NEXT_BIZ", "active", true,
                 "installmentStart", start, "installmentMonths", months);
@@ -35,12 +39,14 @@ class RecurringApiControllerTest {
         assertFalse(RecurringApiController.shouldSkipPassed(saved(5, "NONE", true), item(5, "NONE")));
     }
 
+    // 결제일·보정을 바꾸면 건너뛴다
     @Test
     void dayOrAdjustChangeSkips() {
         assertTrue(RecurringApiController.shouldSkipPassed(saved(5, "NONE", true), item(6, "NONE")));
         assertTrue(RecurringApiController.shouldSkipPassed(saved(5, "NONE", true), item(5, "PREV_BIZ")));
     }
 
+    // 다시 켜면 건너뛴다
     @Test
     void reactivationSkips() {
         assertTrue(RecurringApiController.shouldSkipPassed(saved(5, "NONE", false), item(5, "NONE")));
@@ -54,10 +60,12 @@ class RecurringApiControllerTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 9, 26);
 
+    // 일반 항목(금액 2만 원)
     private static Map<String, Object> regular(int day, String adjust) {
         return ParamUtil.map("dayOfMonth", day, "adjust", adjust, "amount", 20_000L);
     }
 
+    // 기대 결제일(회차 월·날짜)
     private static PayCycle.Due due(int y, int m, String date) {
         return new PayCycle.Due(YearMonth.of(y, m), LocalDate.parse(date));
     }

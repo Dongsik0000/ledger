@@ -61,6 +61,7 @@ public class AccountApiController {
     @Autowired
     private DashboardService dashboardService;
 
+    // 통장 화면
     @GetMapping
     public String account() {
         return "account/accountMain";
@@ -201,6 +202,7 @@ public class AccountApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 이체 추가·수정. 보내는·받는 통장은 내 것이고 서로 달라야 한다
     @ResponseBody
     @PostMapping("/transfer/save")
     public Response saveTransfer(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -231,6 +233,7 @@ public class AccountApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 이체 삭제. 정기 이체가 만든 것이면 그 달은 다시 만들지 않는다
     @ResponseBody
     @PostMapping("/transfer/delete")
     public Response deleteTransfer(@RequestBody HashMap<String, Object> param, HttpSession session) {

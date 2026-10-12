@@ -55,6 +55,7 @@ App.ajax = function (url, data, opts) {
         });
 };
 
+// 세션 만료 안내 후 로그인 화면으로. 뒤의 then 이 돌지 않게 끝나지 않는 Promise
 App.sessionExpired = function(){
     _error('로그인 세션시간이 초과되었습니다.', '다시 로그인 부탁드립니다.', function(){
         window.location.href = contextPath + '/login';
@@ -67,6 +68,7 @@ App.sessionExpired = function(){
 App.get = function (url, data, opts) {
     return App.ajax(url, data, Object.assign({}, opts, {method: 'GET'}));
 };
+// POST 요청
 App.post = function (url, data, opts) {
     return App.ajax(url, data, Object.assign({}, opts, {method: 'POST'}));
 };
@@ -325,11 +327,13 @@ var _loading = (function () {
     let OVERLAY_KEY = '_loadingOverlay';
     let _active = [];
 
+    // id 문자열이면 요소로
     function resolve(container) {
         if (typeof container === 'string') return document.getElementById(container);
         return container || null;
     }
 
+    // 로딩 화면 띄우기
     function show(container) {
         let el = (container === undefined || container === null) ? document.querySelector('.manage-section') : resolve(container);
         if (!el) return;
@@ -357,6 +361,7 @@ var _loading = (function () {
         _active.push(el);
     }
 
+    // 로딩 화면 지우기
     function hide(container) {
         if (container === undefined) {
             _active.forEach(function (el) {

@@ -63,11 +63,13 @@ public class EntryApiController {
     @Autowired
     private HolidayService holidayService;
 
+    // 거래 내역 화면
     @GetMapping
     public String entry() {
         return "entry/entryMain";
     }
 
+    // 기간(달력 월·주기·최근 12개월·전체)과 필터로 거래 목록·합계
     @ResponseBody
     @PostMapping("/list")
     public Response list(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -135,6 +137,7 @@ public class EntryApiController {
                 "userId", SessionUtil.getUserId(session), "from", LocalDate.now(SEOUL).minusYears(1), "limit", SUGGEST_LIMIT)));
     }
 
+    // 거래 한 건 추가·수정
     @ResponseBody
     @PostMapping("/save")
     public Response save(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -233,6 +236,7 @@ public class EntryApiController {
         return null;
     }
 
+    // 거래 삭제. 연결 자산 잔액도 되돌린다
     @ResponseBody
     @PostMapping("/delete")
     public Response delete(@RequestBody HashMap<String, Object> param, HttpSession session) {

@@ -8,6 +8,7 @@ import java.util.List;
 public final class TransferAdjustment {
     private TransferAdjustment() {}
 
+    // 이전(자산·금액) → 새(자산·금액)으로 바뀔 때 자산별 증감(자산 id 순)
     public static List<Delta> between(Long oldAssetId, long oldAmount, Long newAssetId, long newAmount) {
         List<Delta> changes = new ArrayList<>(2);
         if (oldAssetId != null && oldAssetId.equals(newAssetId)) {
@@ -20,5 +21,6 @@ public final class TransferAdjustment {
         return changes;
     }
 
+    // 자산 하나에 더할 금액(음수면 뺀다)
     public record Delta(long assetId, long amount) {}
 }

@@ -16,6 +16,7 @@ public final class SummaryTables {
     public record Row(String label, List<Long> values, long total, String kind) {
     }
 
+    // 정적 메서드만 쓰는 클래스
     private SummaryTables() {
     }
 
@@ -94,6 +95,7 @@ public final class SummaryTables {
         return rows;
     }
 
+    // id 별 월 금액 배열(months 순서). months 밖의 행은 버린다
     private static Map<Object, long[]> index(List<Map<String, Object>> amounts, List<String> months) {
         Map<String, Integer> col = new HashMap<>();
         for (int i = 0; i < months.size(); i++) {
@@ -115,6 +117,7 @@ public final class SummaryTables {
         return id == null ? null : ((Number) id).longValue();
     }
 
+    // 표 한 줄(월별 값과 합계)
     private static Row row(String label, long[] values, String kind) {
         List<Long> list = new ArrayList<>();
         for (long v : values) {
@@ -123,6 +126,7 @@ public final class SummaryTables {
         return new Row(label, list, sum(values), kind);
     }
 
+    // 배열 합
     private static long sum(long[] values) {
         long s = 0;
         for (long v : values) {
@@ -131,6 +135,7 @@ public final class SummaryTables {
         return s;
     }
 
+    // target 에 values 를 칸별로 더한다
     private static void add(long[] target, long[] values) {
         for (int i = 0; i < target.length; i++) {
             target[i] += values[i];

@@ -3,29 +3,29 @@ App.summary = (function(){
 		EXPENSE_COLOR = '#bc9856',
 		DONUT_COLORS = ['#547851', '#bc9856', '#879975', '#a27560', '#6f8f9c', '#c9b98a', '#8a6f8f', '#9aa98a'],
 		m$ = {
-			basis: document.getElementById('basis'),
-			basisNote: document.getElementById('basisNote'),
-			from: document.getElementById('rangeFrom'),
-			to: document.getElementById('rangeTo'),
-			search: document.getElementById('rangeSearch'),
-			cycleRange: document.getElementById('cycleRange'),
-			daysLeft: document.getElementById('daysLeft'),
-			cycleBalance: document.getElementById('cycleBalance'),
-			cycleBalanceFoot: document.getElementById('cycleBalanceFoot'),
-			cycleIncome: document.getElementById('cycleIncome'),
-			cycleIncomeFoot: document.getElementById('cycleIncomeFoot'),
-			cycleExpense: document.getElementById('cycleExpense'),
-			cycleExpenseFoot: document.getElementById('cycleExpenseFoot'),
-			monthlyBody: document.getElementById('monthlyBody'),
-			categoryHead: document.getElementById('categoryHead'),
-			categoryBody: document.getElementById('categoryBody'),
-			paymentHead: document.getElementById('paymentHead'),
-			paymentBody: document.getElementById('paymentBody'),
-			monthlyChart: document.getElementById('monthlyChart'),
-			monthlyChartRange: document.getElementById('monthlyChartRange'),
-			categoryMonth: document.getElementById('categoryMonth'),
-			categoryChart: document.getElementById('categoryChart'),
-			categoryLegend: document.getElementById('categoryLegend')
+			basis: document.getElementById('basis'),  /* 기준 선택(달력 월·주기) */
+			basisNote: document.getElementById('basisNote'),  /* 기준 설명 */
+			from: document.getElementById('rangeFrom'),  /* 시작 월 */
+			to: document.getElementById('rangeTo'),  /* 종료 월 */
+			search: document.getElementById('rangeSearch'),  /* 조회 버튼 */
+			cycleRange: document.getElementById('cycleRange'),  /* 이번 주기 기간 */
+			daysLeft: document.getElementById('daysLeft'),  /* 남은 일수 */
+			cycleBalance: document.getElementById('cycleBalance'),  /* 주기 잔액 */
+			cycleBalanceFoot: document.getElementById('cycleBalanceFoot'),  /* 주기 잔액 설명 */
+			cycleIncome: document.getElementById('cycleIncome'),  /* 주기 수입 */
+			cycleIncomeFoot: document.getElementById('cycleIncomeFoot'),  /* 주기 수입 설명 */
+			cycleExpense: document.getElementById('cycleExpense'),  /* 주기 지출 */
+			cycleExpenseFoot: document.getElementById('cycleExpenseFoot'),  /* 주기 지출 설명 */
+			monthlyBody: document.getElementById('monthlyBody'),  /* 월별 표 본문 */
+			categoryHead: document.getElementById('categoryHead'),  /* 카테고리 표 머리(월) */
+			categoryBody: document.getElementById('categoryBody'),  /* 카테고리 표 본문 */
+			paymentHead: document.getElementById('paymentHead'),  /* 결제수단 표 머리(월) */
+			paymentBody: document.getElementById('paymentBody'),  /* 결제수단 표 본문 */
+			monthlyChart: document.getElementById('monthlyChart'),  /* 월별 막대 차트 */
+			monthlyChartRange: document.getElementById('monthlyChartRange'),  /* 차트 기간 */
+			categoryMonth: document.getElementById('categoryMonth'),  /* 도넛 월 선택 */
+			categoryChart: document.getElementById('categoryChart'),  /* 도넛 차트 */
+			categoryLegend: document.getElementById('categoryLegend')  /* 도넛 범례 */
 		},
 
 		settings = {
@@ -38,6 +38,7 @@ App.summary = (function(){
 			donut: contextPath + '/ledger/summary/donut'
 		},
 
+		/* 한 자리 수 앞에 0 */
 		pad = function(n){ return (n < 10 ? '0' : '') + n; },
 
 		/* 기준 월에서 delta 개월 옮긴 "YYYY-MM" */
@@ -46,10 +47,14 @@ App.summary = (function(){
 			return d.getFullYear() + '-' + pad(d.getMonth() + 1);
 		},
 
+		/* 천 단위 쉼표 */
 		num = function(n){ return Number(n).toLocaleString('ko-KR'); },
+		/* "2026-10-12" → "2026.10.12" */
 		dotted = function(d){ return d.replace(/-/g, '.'); },
+		/* "2026-10-12" → "10/12" */
 		shortDate = function(d){ var p = d.split('-'); return Number(p[1]) + '/' + Number(p[2]); },
 
+		/* 기간을 최근 3개월로 채우고 주기 요약·집계·도넛 불러오기 */
 		init = function(){
 			var now = new Date(),
 				thisMonth = now.getFullYear() + '-' + pad(now.getMonth() + 1);
@@ -63,6 +68,7 @@ App.summary = (function(){
 			loadDonut();
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			m$.search.addEventListener('click', function(){
 				load();
@@ -78,12 +84,14 @@ App.summary = (function(){
 			});
 		},
 
+		/* 이번 주기 요약 받기 */
 		loadCycle = function(){
 			App.post(url.summary)
 				.then(handleCycleResult)
 				.catch(function(){});
 		},
 
+		/* 이번 주기 잔액·수입·지출 카드 */
 		handleCycleResult = function(res){
 			App.result(res, {ok: function(){
 				var s = res.data, range = shortDate(s.cycleStart) + '~' + shortDate(s.cycleEnd);
@@ -98,6 +106,7 @@ App.summary = (function(){
 			}});
 		},
 
+		/* 기간·기준으로 집계 받기 */
 		load = function(){
 			if(!m$.from.value || !m$.to.value){
 				_error('알림', '시작 월과 종료 월을 골라주세요.');
@@ -116,6 +125,7 @@ App.summary = (function(){
 			return months.map(function(m){ return sameYear ? Number(m.slice(5)) + '월' : dotted(m); });
 		},
 
+		/* 월별 표·카테고리 표·결제수단 표·막대 차트 */
 		render = function(data){
 			var labels = monthLabels(data.months),
 				cycle = data.basis === 'CYCLE';
@@ -162,6 +172,7 @@ App.summary = (function(){
 			settings.charts[key] = new Chart(canvas, config);
 		},
 
+		/* 월별 수입·지출 막대 차트 */
 		renderMonthlyChart = function(labels, monthly){
 			draw('monthly', m$.monthlyChart, {
 				type: 'bar',
@@ -184,6 +195,7 @@ App.summary = (function(){
 			});
 		},
 
+		/* 고른 월의 그룹별 지출 받기 */
 		loadDonut = function(){
 			if(!m$.categoryMonth.value) return;
 			App.post(url.donut, {month: m$.categoryMonth.value, basis: m$.basis.value})
@@ -193,6 +205,7 @@ App.summary = (function(){
 				.catch(function(){});
 		},
 
+		/* 그룹별 지출 도넛 차트와 범례 */
 		renderDonut = function(rows){
 			var total = rows.reduce(function(s, r){ return s + Number(r.amount); }, 0);
 			draw('category', m$.categoryChart, {

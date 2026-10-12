@@ -18,6 +18,7 @@ public final class PayCycle {
     public record Due(YearMonth month, LocalDate date) {
     }
 
+    // 정적 메서드만 쓰는 클래스
     private PayCycle() {
     }
 
@@ -78,6 +79,7 @@ public final class PayCycle {
         return dues;
     }
 
+    // d 가 휴일이면 그 전 영업일, 아니면 d
     private static LocalDate previousBusinessDay(LocalDate d, Set<LocalDate> holidays) {
         while (!isBusinessDay(d, holidays)) {
             d = d.minusDays(1);
@@ -85,6 +87,7 @@ public final class PayCycle {
         return d;
     }
 
+    // 주말·공휴일이 아닌 날
     private static boolean isBusinessDay(LocalDate d, Set<LocalDate> holidays) {
         DayOfWeek w = d.getDayOfWeek();
         return w != DayOfWeek.SATURDAY && w != DayOfWeek.SUNDAY && !holidays.contains(d);

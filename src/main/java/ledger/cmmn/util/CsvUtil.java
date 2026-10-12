@@ -8,6 +8,7 @@ public class CsvUtil {
 
     private static final String FORMULA_START = "=+-@\t\r";
 
+    // 정적 메서드만 쓰는 클래스
     private CsvUtil() {
     }
 
@@ -24,6 +25,7 @@ public class CsvUtil {
         return s;
     }
 
+    // 값들을 CSV 한 줄(줄바꿈 포함)로
     public static String line(List<?> values) {
         return values.stream().map(CsvUtil::cell).collect(Collectors.joining(",")) + "\r\n";
     }

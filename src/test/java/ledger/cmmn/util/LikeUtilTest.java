@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+// LIKE 검색 패턴 만들기 테스트
 class LikeUtilTest {
 
+    // 앞뒤에 % 를 붙인다
     @Test
     void wrapsWithPercent() {
         assertEquals("%커피%", LikeUtil.contains("커피"));
@@ -20,6 +22,7 @@ class LikeUtilTest {
         assertEquals("%c:\\\\d%", LikeUtil.contains("c:\\d"));
     }
 
+    // 빈 검색어는 null(조건 없음)
     @Test
     void blankIsNull() {
         assertNull(LikeUtil.contains(""));

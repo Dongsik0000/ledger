@@ -11,9 +11,11 @@ public final class Installment {
     public static final int MONTHS_MIN = 2;
     public static final int MONTHS_MAX = 60;
 
+    // 정적 메서드만 쓰는 클래스
     private Installment() {
     }
 
+    // 할부 항목인지(개월 수가 있으면 할부)
     public static boolean isInstallment(Map<String, Object> item) {
         return item.get("installmentMonths") != null;
     }
@@ -23,6 +25,7 @@ public final class Installment {
         return total / months;
     }
 
+    // 회차 금액. 1회차가 나머지를 맡아 합계가 총액과 같다
     public static long amountOf(long total, int months, int round) {
         long base = baseAmount(total, months);
         return round == 1 ? total - base * (months - 1) : base;
@@ -34,6 +37,7 @@ public final class Installment {
         return round >= 1 && round <= months ? (int) round : 0;
     }
 
+    // 마지막 결제월
     public static YearMonth lastMonth(YearMonth start, int months) {
         return start.plusMonths(months - 1L);
     }
@@ -48,14 +52,17 @@ public final class Installment {
         return round == 0 ? null : amountOf(total(item), months, round);
     }
 
+    // 첫 결제월
     public static YearMonth start(Map<String, Object> item) {
         return YearMonth.parse(item.get("installmentStart").toString().trim());
     }
 
+    // 할부 개월 수
     public static int months(Map<String, Object> item) {
         return ((Number) item.get("installmentMonths")).intValue();
     }
 
+    // 할부 총액
     private static long total(Map<String, Object> item) {
         return ((Number) item.get("installmentTotal")).longValue();
     }

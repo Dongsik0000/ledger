@@ -1,34 +1,35 @@
 App.account = (function(){
 	var AED = 'accountEditor', TED = 'transferEditor', RED = 'recurringTransferEditor',
 		ADJUST_LABEL = {NONE: '', PREV_BIZ: ' · 직전 평일', NEXT_BIZ: ' · 다음 평일'},
+		/* document.getElementById 줄임 */
 		byId = function(id){ return document.getElementById(id); },
 		m$ = {
-			accountNew: byId('accountNew'),
-			transferNew: byId('transferNew'),
-			recurringNew: byId('recurringNew'),
-			bankTotal: byId('bankTotal'),
-			ledgerBalance: byId('ledgerBalance'),
-			diff: byId('balanceDiff'),
-			diffFoot: byId('balanceDiffFoot'),
-			accountBody: byId('accountBody'),
-			recurringBody: byId('recurringBody'),
-			transferBody: byId('transferBody'),
-			account: {
-				dialog: byId(AED), heading: byId(AED + '-heading'), subtitle: byId(AED + '-subtitle'),
-				name: byId(AED + '-name'), isDefault: byId(AED + '-default'),
-				amount: byId(AED + '-amount'), date: byId(AED + '-date'),
-				reset: byId(AED + '-reset'), del: byId(AED + '-delete'), save: byId(AED + '-save')
+			accountNew: byId('accountNew'),  /* 통장 추가 버튼 */
+			transferNew: byId('transferNew'),  /* 이체 기록 버튼 */
+			recurringNew: byId('recurringNew'),  /* 정기 이체 추가 버튼 */
+			bankTotal: byId('bankTotal'),  /* 통장 합계 */
+			ledgerBalance: byId('ledgerBalance'),  /* 가계부 잔액 */
+			diff: byId('balanceDiff'),  /* 통장 합계 − 가계부 잔액 */
+			diffFoot: byId('balanceDiffFoot'),  /* 차이 설명 */
+			accountBody: byId('accountBody'),  /* 통장 표 본문 */
+			recurringBody: byId('recurringBody'),  /* 정기 이체 표 본문 */
+			transferBody: byId('transferBody'),  /* 최근 이체 표 본문 */
+			account: {  /* 통장 추가·수정 창 */
+				dialog: byId(AED), heading: byId(AED + '-heading'), subtitle: byId(AED + '-subtitle'),  /* 창·제목·부제목 */
+				name: byId(AED + '-name'), isDefault: byId(AED + '-default'),  /* 이름·기본 통장 체크 */
+				amount: byId(AED + '-amount'), date: byId(AED + '-date'),  /* 기준 잔액·기준일 */
+				reset: byId(AED + '-reset'), del: byId(AED + '-delete'), save: byId(AED + '-save')  /* 지금 잔액으로 다시 맞추기·삭제·저장 버튼 */
 			},
-			transfer: {
-				dialog: byId(TED), heading: byId(TED + '-heading'),
-				from: byId(TED + '-from'), to: byId(TED + '-to'), amount: byId(TED + '-amount'),
-				date: byId(TED + '-date'), memo: byId(TED + '-memo'), del: byId(TED + '-delete'), save: byId(TED + '-save')
+			transfer: {  /* 이체 창 */
+				dialog: byId(TED), heading: byId(TED + '-heading'),  /* 창·제목 */
+				from: byId(TED + '-from'), to: byId(TED + '-to'), amount: byId(TED + '-amount'),  /* 보내는·받는 통장, 금액 */
+				date: byId(TED + '-date'), memo: byId(TED + '-memo'), del: byId(TED + '-delete'), save: byId(TED + '-save')  /* 날짜·메모·삭제·저장 버튼 */
 			},
-			recurring: {
-				dialog: byId(RED), heading: byId(RED + '-heading'),
-				from: byId(RED + '-from'), to: byId(RED + '-to'), amount: byId(RED + '-amount'),
-				day: byId(RED + '-day'), memo: byId(RED + '-memo'), active: byId(RED + '-active'),
-				del: byId(RED + '-delete'), save: byId(RED + '-save')
+			recurring: {  /* 정기 이체 창 */
+				dialog: byId(RED), heading: byId(RED + '-heading'),  /* 창·제목 */
+				from: byId(RED + '-from'), to: byId(RED + '-to'), amount: byId(RED + '-amount'),  /* 보내는·받는 통장, 금액 */
+				day: byId(RED + '-day'), memo: byId(RED + '-memo'), active: byId(RED + '-active'),  /* 매월 이체일·메모·사용 여부 */
+				del: byId(RED + '-delete'), save: byId(RED + '-save')  /* 삭제·저장 버튼 */
 			}
 		},
 
@@ -50,18 +51,23 @@ App.account = (function(){
 			recurringDel: contextPath + '/ledger/account/recurring/delete'
 		},
 
+		/* 절댓값에 천 단위 쉼표 */
 		num = function(n){ return Math.abs(Number(n)).toLocaleString('ko-KR'); },
+		/* 음수면 − 를 붙인 숫자 */
 		signed = function(n){ return (Number(n) < 0 ? '−' : '') + num(n); },
+		/* "2026-10-12" → "2026.10.12" */
 		dotted = function(d){ return d.replace(/-/g, '.'); },
 
 		/* 기준 잔액 칸: 앞의 -(음수)와 숫자·쉼표만 서식 정리(settings.js 시작 잔액과 같은 규칙) */
 		signedNumber = function(n){ return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR'); },
 
+		/* "-1,000" 같은 입력 → 숫자. 형식이 틀리면 null */
 		parseSigned = function(s){
 			var t = String(s).replace(/[,\s]/g, '').replace('−', '-');
 			return /^-?\d{1,11}$/.test(t) ? Number(t) : null;
 		},
 
+		/* 입력하는 동안 서식 정리, 틀리면 aria-invalid */
 		formatSigned = function(input){
 			var t = input.value.replace(/[,\s]/g, '').replace('−', '-');
 			if(t === '' || t === '-'){
@@ -74,16 +80,19 @@ App.account = (function(){
 			}
 		},
 
+		/* 정기 이체 휴일 보정 선택값 */
 		checkedAdjust = function(){
 			var el = document.querySelector('input[name="' + RED + '-adjust"]:checked');
 			return el ? el.value : 'NONE';
 		},
 
+		/* 화면 이벤트 연결 후 불러오기 */
 		init = function(){
 			bindEvent();
 			reload();
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			m$.accountNew.addEventListener('click', function(){ openAccount(null); });
 			m$.transferNew.addEventListener('click', function(){ openTransfer(null); });
@@ -127,6 +136,7 @@ App.account = (function(){
 			renderTransfers(data.transfers);
 		},
 
+		/* 통장 합계·가계부 잔액·차이 */
 		renderMetrics = function(accounts, ledgerBalance, hasDefault){
 			var total = accounts.reduce(function(sum, a){ return sum + Number(a.balance); }, 0);
 			m$.bankTotal.textContent = signed(total);
@@ -137,15 +147,18 @@ App.account = (function(){
 				: '기본 통장을 정하면 0이 돼요';
 		},
 
+		/* 빈 표 안내 줄 */
 		emptyRow = function(cols, text){
 			return App.h('tr', null, [App.h('td', {attrs: {colspan: cols}, text: text})]);
 		},
 
+		/* 표 줄의 수정 버튼 */
 		editButton = function(label, fn){
 			return App.h('button', {type: 'button', className: 'button small edit-button', text: '수정',
 				attrs: {'aria-label': label + ' 수정'}, on: {click: fn}});
 		},
 
+		/* 통장 표 */
 		renderAccounts = function(accounts){
 			if(!accounts.length){
 				m$.accountBody.replaceChildren(emptyRow(4, '등록한 통장이 없어요. 월급 통장을 기본 통장으로 추가해 보세요.'));
@@ -174,10 +187,12 @@ App.account = (function(){
 			return Number(p[1]) + '.' + Number(p[2]) + '(' + '일월화수목금토'.charAt(date.getDay()) + ')';
 		},
 
+		/* "보내는 통장 → 받는 통장" */
 		route = function(item){
 			return item.fromAccountName + ' → ' + item.toAccountName;
 		},
 
+		/* 정기 이체 표 */
 		renderRecurring = function(items){
 			if(!items.length){
 				m$.recurringBody.replaceChildren(emptyRow(5, '등록한 정기 이체가 없어요. 월급날 생활비 이체를 추가해 보세요.'));
@@ -196,6 +211,7 @@ App.account = (function(){
 			}));
 		},
 
+		/* 최근 이체 표 */
 		renderTransfers = function(transfers){
 			if(!transfers.length){
 				m$.transferBody.replaceChildren(emptyRow(5, '기록한 이체가 없어요.'));
@@ -213,6 +229,7 @@ App.account = (function(){
 			}));
 		},
 
+		/* 통장 select 선택지 */
 		fillAccounts = function(select, selectedId){
 			select.replaceChildren.apply(select, settings.accounts.map(function(a){
 				return App.h('option', {value: String(a.id), text: a.name, selected: a.id === selectedId});
@@ -227,12 +244,14 @@ App.account = (function(){
 			ed.reset.hidden = ed.isDefault.checked || !settings.editing.account;
 		},
 
+		/* 이체하려면 통장이 둘 이상 필요. 모자라면 안내하고 true */
 		needAccounts = function(){
 			if(settings.accounts.length >= 2) return false;
 			_error('통장을 먼저 추가해 주세요', '이체하려면 통장이 두 개 이상 있어야 해요.');
 			return true;
 		},
 
+		/* 통장 창 열기. a 가 있으면 수정 */
 		openAccount = function(a){
 			var ed = m$.account;
 			settings.editing.account = a;
@@ -264,6 +283,7 @@ App.account = (function(){
 			ed.amount.select();
 		},
 
+		/* 입력 확인 후 통장 저장 */
 		saveAccount = function(){
 			var ed = m$.account,
 				isDefault = ed.isDefault.checked,
@@ -289,6 +309,7 @@ App.account = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 삭제 확인 후 통장 삭제 */
 		removeAccount = function(){
 			var a = settings.editing.account;
 			if(!a) return;
@@ -297,6 +318,7 @@ App.account = (function(){
 			});
 		},
 
+		/* 이체 창 열기. t 가 있으면 수정 */
 		openTransfer = function(t){
 			var ed = m$.transfer;
 			if(!t && needAccounts()) return;
@@ -319,6 +341,7 @@ App.account = (function(){
 			return App.amountError(ed.amount.value, false);
 		},
 
+		/* 입력 확인 후 이체 저장 */
 		saveTransfer = function(){
 			var ed = m$.transfer,
 				error = routeError(ed) || (!ed.date.value ? '날짜를 골라주세요.' : null);
@@ -336,6 +359,7 @@ App.account = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 삭제 확인 후 이체 삭제 */
 		removeTransfer = function(){
 			var t = settings.editing.transfer;
 			if(!t) return;
@@ -345,6 +369,7 @@ App.account = (function(){
 			});
 		},
 
+		/* 정기 이체 창 열기. item 이 있으면 수정 */
 		openRecurring = function(item){
 			var ed = m$.recurring;
 			if(!item && needAccounts()) return;
@@ -365,6 +390,7 @@ App.account = (function(){
 			ed.amount.focus();
 		},
 
+		/* 입력 확인 후 정기 이체 저장 */
 		saveRecurring = function(){
 			var ed = m$.recurring,
 				day = Number(ed.day.value),
@@ -383,6 +409,7 @@ App.account = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 삭제 확인 후 정기 이체 삭제 */
 		removeRecurring = function(){
 			var item = settings.editing.recurring;
 			if(!item) return;
@@ -391,12 +418,14 @@ App.account = (function(){
 			});
 		},
 
+		/* 저장·삭제 성공: 창 닫고 알린 뒤 다시 불러오기 */
 		done = function(ed, title){
 			ed.dialog.close();
 			App.saved(title);
 			reload();
 		},
 
+		/* 삭제 요청 공통 */
 		remove = function(u, id, ed){
 			if(settings.submitting) return;
 			settings.submitting = true;

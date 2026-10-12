@@ -11,8 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// 할부 회차 금액·기간 테스트
 class InstallmentTest {
 
+    // 고정 항목 값. total·months 가 있으면 할부
     private static Map<String, Object> item(long amount, Long total, Integer months, String start) {
         Map<String, Object> item = new HashMap<>();
         item.put("amount", amount);
@@ -50,6 +52,7 @@ class InstallmentTest {
         assertEquals(0, Installment.roundOf(start, 3, YearMonth.of(2027, 2)));
     }
 
+    // 마지막 결제월
     @Test
     void lastMonth() {
         assertEquals(YearMonth.of(2027, 1), Installment.lastMonth(YearMonth.of(2026, 11), 3));

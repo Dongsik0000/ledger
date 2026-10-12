@@ -9,19 +9,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// 공휴일 API 응답 XML 읽기 테스트
 class HolidayXmlParserTest {
 
+    // 결과 코드와 items 를 담은 API 응답 XML
     private static String response(String resultCode, String items) {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<response><header><resultCode>" + resultCode + "</resultCode><resultMsg>NORMAL SERVICE.</resultMsg></header>"
                 + "<body>" + items + "<numOfRows>100</numOfRows><pageNo>1</pageNo><totalCount>3</totalCount></body></response>";
     }
 
+    // 공휴일 항목 XML 하나(isHoliday: Y·N)
     private static String item(String locdate, String name, String isHoliday) {
         return "<item><dateKind>01</dateKind><dateName>" + name + "</dateName><isHoliday>" + isHoliday
                 + "</isHoliday><locdate>" + locdate + "</locdate><seq>1</seq></item>";
     }
 
+    // 공휴일(isHoliday=Y)만 읽는다
     @Test
     void parsesHolidaysOnly() {
         String xml = response("00", "<items>" + item("20260101", "1월1일", "Y")
@@ -32,12 +36,14 @@ class HolidayXmlParserTest {
                 HolidayXmlParser.parse(xml));
     }
 
+    // 항목이 없으면 빈 목록
     @Test
     void emptyItemsIsEmptyList() {
         assertTrue(HolidayXmlParser.parse(response("00", "<items/>")).isEmpty());
         assertTrue(HolidayXmlParser.parse(response("00", "<items></items>")).isEmpty());
     }
 
+    // 결과 코드가 오류면 예외
     @Test
     void errorResultCodeFails() {
         assertThrows(IllegalStateException.class, () -> HolidayXmlParser.parse(response("22", "<items/>")));
@@ -61,6 +67,7 @@ class HolidayXmlParserTest {
         assertThrows(IllegalStateException.class, () -> HolidayXmlParser.parse(xml));
     }
 
+    // 깨진 XML 은 예외
     @Test
     void malformedFails() {
         assertThrows(IllegalStateException.class, () -> HolidayXmlParser.parse("Unauthorized"));

@@ -21,6 +21,7 @@ public class CmmnExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(CmmnExceptionHandler.class);
 
+    // 예외 → 상태 코드. Ajax 는 JSON, 화면은 error.jsp
     @ExceptionHandler(Exception.class)
     public ModelAndView handle(Exception e, HttpServletRequest request, HttpServletResponse response) {
         int status = statusOf(e);

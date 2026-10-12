@@ -20,14 +20,17 @@ import org.xml.sax.helpers.DefaultHandler;
 // 외부에서 받은 XML 이므로 DTD·외부 엔티티를 막고(XXE 방지) 해석한다. 실패는 IllegalStateException.
 public final class HolidayXmlParser {
 
+    // 공휴일 하루
     public record Holiday(LocalDate date, String name) {
     }
 
     private static final DateTimeFormatter LOCDATE = DateTimeFormatter.BASIC_ISO_DATE; // yyyyMMdd
 
+    // 정적 메서드만 쓰는 클래스
     private HolidayXmlParser() {
     }
 
+    // 특일정보 API 응답 XML → 공휴일 목록. 오류 응답이면 예외
     public static List<Holiday> parse(String xml) {
         Document doc = read(xml);
         Element root = doc.getDocumentElement();
@@ -56,6 +59,7 @@ public final class HolidayXmlParser {
         return holidays;
     }
 
+    // XML 읽기. DOCTYPE 을 막아 외부 엔티티(XXE)를 차단
     private static Document read(String xml) {
         try {
             DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
@@ -73,6 +77,7 @@ public final class HolidayXmlParser {
         }
     }
 
+    // 자식 태그의 글자. 없으면 빈 문자열
     private static String text(Element parent, String tag) {
         NodeList nodes = parent.getElementsByTagName(tag);
         return nodes.getLength() == 0 ? "" : nodes.item(0).getTextContent().trim();

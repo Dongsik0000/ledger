@@ -2,34 +2,34 @@ App.recurring = (function(){
 	var ED = 'recurringEditor',
 		ADJUST_LABEL = {NONE: '그대로', PREV_BIZ: '직전 평일', NEXT_BIZ: '다음 평일'},
 		m$ = {
-			newButton: document.getElementById('recurringNew'),
-			cycleRange: document.getElementById('cycleRange'),
-			daysLeft: document.getElementById('daysLeft'),
-			monthlyFixed: document.getElementById('monthlyFixed'),
-			pendingFixed: document.getElementById('pendingFixed'),
-			recorded: document.getElementById('recorded'),
-			body: document.getElementById('recurringBody'),
-			dialog: document.getElementById(ED),
-			heading: document.getElementById(ED + '-heading'),
-			subtitle: document.getElementById(ED + '-subtitle'),
-			name: document.getElementById(ED + '-name'),
-			amount: document.getElementById(ED + '-amount'),
-			usd: document.getElementById(ED + '-usd'),
-			usdAmount: document.getElementById(ED + '-usd-amount'),
-			day: document.getElementById(ED + '-day'),
-			category: document.getElementById(ED + '-category'),
-			payment: document.getElementById(ED + '-payment'),
-			account: document.getElementById(ED + '-account'),
-			transferField: document.getElementById(ED + '-transfer-field'),
-			transferAsset: document.getElementById(ED + '-transfer-asset'),
-			memo: document.getElementById(ED + '-memo'),
-			installment: document.getElementById(ED + '-installment'),
-			installmentTotal: document.getElementById(ED + '-installment-total'),
-			installmentMonths: document.getElementById(ED + '-installment-months'),
-			installmentStart: document.getElementById(ED + '-installment-start'),
-			active: document.getElementById(ED + '-active'),
-			del: document.getElementById(ED + '-delete'),
-			save: document.getElementById(ED + '-save')
+			newButton: document.getElementById('recurringNew'),  /* 고정 항목 등록 버튼 */
+			cycleRange: document.getElementById('cycleRange'),  /* 이번 주기 기간 */
+			daysLeft: document.getElementById('daysLeft'),  /* 남은 일수 */
+			monthlyFixed: document.getElementById('monthlyFixed'),  /* 월 고정지출 합 */
+			pendingFixed: document.getElementById('pendingFixed'),  /* 아직 나가지 않은 고정지출 */
+			recorded: document.getElementById('recorded'),  /* 이번 주기에 기록된 금액 */
+			body: document.getElementById('recurringBody'),  /* 고정 항목 표 본문 */
+			dialog: document.getElementById(ED),  /* 고정 항목 등록·수정 창 */
+			heading: document.getElementById(ED + '-heading'),  /* 창 제목 */
+			subtitle: document.getElementById(ED + '-subtitle'),  /* 창 부제목 */
+			name: document.getElementById(ED + '-name'),  /* 이름 */
+			amount: document.getElementById(ED + '-amount'),  /* 금액(원) */
+			usd: document.getElementById(ED + '-usd'),  /* 달러 결제 체크 */
+			usdAmount: document.getElementById(ED + '-usd-amount'),  /* 달러 금액 */
+			day: document.getElementById(ED + '-day'),  /* 매월 결제일 */
+			category: document.getElementById(ED + '-category'),  /* 카테고리 선택 */
+			payment: document.getElementById(ED + '-payment'),  /* 결제수단 선택 */
+			account: document.getElementById(ED + '-account'),  /* 통장 선택 */
+			transferField: document.getElementById(ED + '-transfer-field'),  /* 적금·예금 이체 칸 */
+			transferAsset: document.getElementById(ED + '-transfer-asset'),  /* 이체할 자산 선택 */
+			memo: document.getElementById(ED + '-memo'),  /* 메모 */
+			installment: document.getElementById(ED + '-installment'),  /* 할부 체크 */
+			installmentTotal: document.getElementById(ED + '-installment-total'),  /* 할부 총액 */
+			installmentMonths: document.getElementById(ED + '-installment-months'),  /* 할부 개월 수 */
+			installmentStart: document.getElementById(ED + '-installment-start'),  /* 첫 결제월 */
+			active: document.getElementById(ED + '-active'),  /* 사용 여부 */
+			del: document.getElementById(ED + '-delete'),  /* 삭제 버튼 */
+			save: document.getElementById(ED + '-save')  /* 저장 버튼 */
 		},
 
 		settings = {
@@ -49,6 +49,7 @@ App.recurring = (function(){
 			del: contextPath + '/ledger/recurring/delete'
 		},
 
+		/* 선택지를 받은 뒤 요약·목록 불러오기 */
 		init = function(){
 			bindEvent();
 
@@ -58,6 +59,7 @@ App.recurring = (function(){
 			reload();
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			m$.newButton.addEventListener('click', function(){ open(null); });
 			App.bindAmountInput(m$.amount);
@@ -81,11 +83,13 @@ App.recurring = (function(){
 			m$.del.addEventListener('click', remove);
 		},
 
+		/* 요약과 목록 다시 받기 */
 		reload = function(){
 			loadSummary();
 			loadList();
 		},
 
+		/* "2026-10-12" → "2026.10.12" */
 		dotted = function(d){ return d.replace(/-/g, '.'); },
 
 		/* 주기 띠·아직 예정인 지출은 대시보드 계산을 그대로 쓴다 */
@@ -95,6 +99,7 @@ App.recurring = (function(){
 				.catch(function(){});
 		},
 
+		/* 주기 기간·남은 일수·예정 고정지출 표시 */
 		handleSummaryResult = function(res){
 			App.result(res, {ok: function(){
 				var s = res.data;
@@ -104,6 +109,7 @@ App.recurring = (function(){
 			}});
 		},
 
+		/* 고정 항목 목록 받기 */
 		loadList = function(){
 			App.post(url.list)
 				.then(function(res){
@@ -112,6 +118,7 @@ App.recurring = (function(){
 				.catch(function(){});
 		},
 
+		/* 월 고정지출·기록 금액 합계와 표 그리기 */
 		render = function(data){
 			m$.monthlyFixed.textContent = Number(data.monthlyFixed).toLocaleString('ko-KR');
 			m$.recorded.textContent = Number(data.recorded).toLocaleString('ko-KR');
@@ -122,6 +129,7 @@ App.recurring = (function(){
 			m$.body.replaceChildren.apply(m$.body, data.items.map(row));
 		},
 
+		/* 이번 주기 상태(처리됨·건너뜀·예정 등) 칩 */
 		statusChip = function(status){
 			var map = {
 				DONE: ['chip', '처리됨'],
@@ -156,6 +164,7 @@ App.recurring = (function(){
 				? text + ' · ' + App.money(item.nextAmount) : text;
 		},
 
+		/* 표 한 줄 */
 		row = function(item){
 			var income = item.type === 'INCOME',
 				installment = !!item.installmentMonths,
@@ -213,6 +222,7 @@ App.recurring = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* select 선택지 하나 */
 		option = function(value, label, selected){
 			return App.h('option', {value: String(value), text: label, selected: !!selected});
 		},
@@ -227,6 +237,7 @@ App.recurring = (function(){
 			}));
 		},
 
+		/* 결제수단 선택지(숨김 항목은 이미 고른 것만) */
 		fillPayments = function(selectedId){
 			var options = [option('', '선택 안 함', selectedId === null || selectedId === undefined)];
 			settings.master.paymentMethods.forEach(function(p){
@@ -249,11 +260,13 @@ App.recurring = (function(){
 			m$.account.closest('.field').hidden = !accounts.length;
 		},
 
+		/* 그 값의 라디오 고르기 */
 		setRadio = function(name, value){
 			var el = m$.dialog.querySelector('input[name="' + name + '"][value="' + value + '"]');
 			if(el) el.checked = true;
 		},
 
+		/* 고른 라디오 값. 없으면 빈 문자열 */
 		checked = function(name){
 			var el = m$.dialog.querySelector('input[name="' + name + '"]:checked');
 			return el ? el.value : '';
@@ -271,6 +284,7 @@ App.recurring = (function(){
 			}
 		},
 
+		/* 원화·달러·할부에 맞는 금액 칸만 보인다 */
 		showMoneyMode = function(){
 			var usd = m$.usd.checked;
 			showInstallment(m$.installment.checked);
@@ -285,12 +299,14 @@ App.recurring = (function(){
 			showTransfer();
 		},
 
+		/* 지출일 때만 적금·예금 이체 칸을 보인다 */
 		showTransfer = function(){
 			var expense = checked(ED + '-type') === 'EXPENSE';
 			m$.transferField.hidden = !expense;
 			if(!expense) m$.transferAsset.value = '';
 		},
 
+		/* 이체할 자산 선택지 받기. 늦게 도착한 이전 응답은 버린다 */
 		loadTransferAssets = function(selectedId){
 			var token = ++settings.assetLoadToken;
 			m$.save.disabled = true;
@@ -330,6 +346,7 @@ App.recurring = (function(){
 			}
 		},
 
+		/* 고정 항목 창 열기. item 이 있으면 수정 */
 		open = function(item){
 			var installment = !!(item && item.installmentMonths);
 			settings.editing = item;
@@ -358,6 +375,7 @@ App.recurring = (function(){
 			m$.name.focus();
 		},
 
+		/* 입력 확인 후 저장 요청 */
 		save = function(){
 			if(settings.submitting) return;
 			var installment = m$.installment.checked,
@@ -429,6 +447,7 @@ App.recurring = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 저장 성공: 창 닫고 다시 불러오기 */
 		handleSaveResult = function(res){
 			App.result(res, {ok: function(){
 				m$.dialog.close();
@@ -437,6 +456,7 @@ App.recurring = (function(){
 			}});
 		},
 
+		/* 삭제 확인 후 요청 */
 		remove = function(){
 			var item = settings.editing;
 			if(!item) return;
@@ -450,6 +470,7 @@ App.recurring = (function(){
 			});
 		},
 
+		/* 삭제 성공: 창 닫고 다시 불러오기 */
 		handleRemoveResult = function(res){
 			App.result(res, {ok: function(){
 				m$.dialog.close();

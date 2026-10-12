@@ -1,6 +1,6 @@
 App.login = (function(){
 	var m$ = {
-			form: document.getElementById('loginForm')
+			form: document.getElementById('loginForm')  /* 로그인 폼 */
 		},
 
 		settings = {
@@ -11,10 +11,12 @@ App.login = (function(){
 			login: contextPath + '/auth/login'
 		},
 
+		/* 화면 이벤트 연결 */
 		init = function(){
 			bindEvent();
 		},
 
+		/* 폼 제출을 Ajax 요청으로 바꾼다 */
 		bindEvent = function(){
 			m$.form.addEventListener('submit', function(e){
 				e.preventDefault();
@@ -22,6 +24,7 @@ App.login = (function(){
 			});
 		},
 
+		/* 입력 확인 후 로그인 요청 */
 		submit = function(){
 			if(settings.submitting) return;
 
@@ -38,6 +41,7 @@ App.login = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 결과 코드별 이동·안내 */
 		handleLoginResult = function(res){
 			switch(res.code){
 				case App.CODE.SUCCESS:

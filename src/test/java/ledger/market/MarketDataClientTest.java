@@ -8,9 +8,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// 종목 검색 결과 거르기 테스트
 class MarketDataClientTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
+    // 미국 상장·USD 주식과 ETF 만 남긴다
     @Test
     void searchOnlyOffersUsUsdStocksAndEtfs() throws Exception {
         JsonNode matches = mapper.readTree("""

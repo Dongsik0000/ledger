@@ -56,6 +56,7 @@ public class SettingsApiController {
     @Autowired
     private AccountService accountService;
 
+    // 설정 화면
     @GetMapping
     public String settings() {
         return "settings/settingsMain";
@@ -73,6 +74,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 설정 화면 값: 주기·시작 잔액·카테고리·결제수단
     @ResponseBody
     @PostMapping("/load")
     public Response load(HttpSession session) {
@@ -86,6 +88,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 주기 시작일·주말 보정 저장
     @ResponseBody
     @PostMapping("/cycle/save")
     public Response saveCycle(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -114,6 +117,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 카테고리 추가·수정(같은 구분에 같은 이름 불가)
     @ResponseBody
     @PostMapping("/category/save")
     public Response saveCategory(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -203,6 +207,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 결제수단 추가·수정(같은 이름 불가)
     @ResponseBody
     @PostMapping("/payment/save")
     public Response savePayment(@RequestBody HashMap<String, Object> param, HttpSession session) {
@@ -232,6 +237,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 결제수단 삭제. 쓰고 있으면 지우지 않는다
     @Transactional
     @ResponseBody
     @PostMapping("/payment/delete")
@@ -251,6 +257,7 @@ public class SettingsApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 결제수단 표시 순서 변경(전체 id 를 새 순서로 받는다)
     @Transactional
     @ResponseBody
     @PostMapping("/payment/order")
@@ -319,6 +326,7 @@ public class SettingsApiController {
                 && new HashSet<>(saved).equals(new HashSet<>(requested));
     }
 
+    // 표시 순서 값이 허용 범위인지
     private static boolean isOrder(Integer sortOrder) {
         return sortOrder != null && sortOrder >= 0 && sortOrder <= ORDER_MAX;
     }

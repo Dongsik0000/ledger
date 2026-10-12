@@ -25,11 +25,13 @@ public class RecurringScheduler {
     @Autowired
     private TransferGenerator transferGenerator;
 
+    // 매일 00:05(한국 시간)
     @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Seoul")
     public void daily() {
         run("매일");
     }
 
+    // 앱이 뜰 때: 꺼져 있던 동안 빠진 기록을 채운다
     @EventListener(ContextRefreshedEvent.class)
     public void onStartup() {
         run("기동");

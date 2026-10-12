@@ -1,41 +1,41 @@
 App.entry = (function(){
 	var ED = 'entryEditor',
 		m$ = {
-			newButton: document.getElementById('entryNew'),
-			batchButton: document.getElementById('entryBatchOpen'),
-			monthTitle: document.getElementById('monthTitle'),
-			monthRange: document.getElementById('monthRange'),
-			prev: document.getElementById('prevMonth'),
-			next: document.getElementById('nextMonth'),
-			month: document.getElementById('month'),
-			keyword: document.getElementById('filterKeyword'),
-			type: document.getElementById('filterType'),
-			category: document.getElementById('filterCategory'),
-			payment: document.getElementById('filterPayment'),
-			reset: document.getElementById('filterReset'),
-			search: document.getElementById('filterSearch'),
-			count: document.getElementById('listCount'),
-			totals: document.getElementById('listTotals'),
-			truncated: document.getElementById('listTruncated'),
-			period: document.getElementById('period'),
-			monthField: document.getElementById('monthField'),
-			list: document.getElementById('entryList'),
-			dialog: document.getElementById(ED),
-			heading: document.getElementById(ED + '-heading'),
-			subtitle: document.getElementById(ED + '-subtitle'),
-			amount: document.getElementById(ED + '-amount'),
-			categories: document.getElementById(ED + '-categories'),
-			title: document.getElementById(ED + '-title'),
-			payments: document.getElementById(ED + '-payments'),
-			account: document.getElementById(ED + '-account'),
-			balance: document.getElementById(ED + '-balance'),
-			transferField: document.getElementById(ED + '-transfer-field'),
-			transferAsset: document.getElementById(ED + '-transfer-asset'),
-			date: document.getElementById(ED + '-date'),
-			memoBox: document.getElementById(ED + '-memoBox'),
-			memo: document.getElementById(ED + '-memo'),
-			del: document.getElementById(ED + '-delete'),
-			save: document.getElementById(ED + '-save')
+			newButton: document.getElementById('entryNew'),  /* 거래 추가 버튼 */
+			batchButton: document.getElementById('entryBatchOpen'),  /* 여러 건 입력 버튼 */
+			monthTitle: document.getElementById('monthTitle'),  /* 목록 제목(월·주기) */
+			monthRange: document.getElementById('monthRange'),  /* 조회 기간 설명 */
+			prev: document.getElementById('prevMonth'),  /* 이전 달·주기 버튼 */
+			next: document.getElementById('nextMonth'),  /* 다음 달·주기 버튼 */
+			month: document.getElementById('month'),  /* 조회 월 */
+			keyword: document.getElementById('filterKeyword'),  /* 검색어 */
+			type: document.getElementById('filterType'),  /* 구분 필터 */
+			category: document.getElementById('filterCategory'),  /* 카테고리 필터 */
+			payment: document.getElementById('filterPayment'),  /* 결제수단 필터 */
+			reset: document.getElementById('filterReset'),  /* 필터 초기화 버튼 */
+			search: document.getElementById('filterSearch'),  /* 조회 버튼 */
+			count: document.getElementById('listCount'),  /* 건수 */
+			totals: document.getElementById('listTotals'),  /* 수입·지출·차이 합계 */
+			truncated: document.getElementById('listTruncated'),  /* 500건까지만 보인다는 안내 */
+			period: document.getElementById('period'),  /* 기간 선택(달력 월·주기·최근 12개월·전체) */
+			monthField: document.getElementById('monthField'),  /* 조회 월 칸(달력 월일 때만) */
+			list: document.getElementById('entryList'),  /* 거래 목록 */
+			dialog: document.getElementById(ED),  /* 거래 추가·수정 창 */
+			heading: document.getElementById(ED + '-heading'),  /* 창 제목 */
+			subtitle: document.getElementById(ED + '-subtitle'),  /* 창 부제목 */
+			amount: document.getElementById(ED + '-amount'),  /* 금액 */
+			categories: document.getElementById(ED + '-categories'),  /* 카테고리 라디오 묶음 */
+			title: document.getElementById(ED + '-title'),  /* 내용 */
+			payments: document.getElementById(ED + '-payments'),  /* 결제수단 라디오 묶음 */
+			account: document.getElementById(ED + '-account'),  /* 통장 선택 */
+			balance: document.getElementById(ED + '-balance'),  /* 통장 잔액 안내 */
+			transferField: document.getElementById(ED + '-transfer-field'),  /* 적금·예금 이체 칸 */
+			transferAsset: document.getElementById(ED + '-transfer-asset'),  /* 이체할 자산 선택 */
+			date: document.getElementById(ED + '-date'),  /* 날짜 */
+			memoBox: document.getElementById(ED + '-memoBox'),  /* 메모 펼침 */
+			memo: document.getElementById(ED + '-memo'),  /* 메모 */
+			del: document.getElementById(ED + '-delete'),  /* 삭제 버튼 */
+			save: document.getElementById(ED + '-save')  /* 저장 버튼 */
 		},
 
 		settings = {
@@ -56,6 +56,7 @@ App.entry = (function(){
 			del: contextPath + '/ledger/entry/delete'
 		},
 
+		/* 조회 조건을 주소에서 읽고, 선택지를 받은 뒤 목록을 그린다 */
 		init = function(){
 			/* 조회 조건은 주소(?period=&month=&q=&type=&category=&payment=)에 남겨 새로고침·뒤로 가기에도 유지한다 */
 			var q = new URLSearchParams(location.search);
@@ -79,6 +80,7 @@ App.entry = (function(){
 			});
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			m$.period.addEventListener('change', function(){
 				showPeriod();
@@ -170,6 +172,7 @@ App.entry = (function(){
 			return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 		},
 
+		/* 조회 조건을 주소에 남긴다(새로고침·뒤로 가기에도 유지) */
 		saveQuery = function(){
 			var q = new URLSearchParams({month: settings.month});
 			if(m$.period.value !== 'MONTH') q.set('period', m$.period.value);
@@ -181,12 +184,14 @@ App.entry = (function(){
 			history.replaceState(null, '', location.pathname + '?' + q.toString());
 		},
 
+		/* 카테고리·결제수단·통장 선택지 받기 */
 		loadMaster = function(){
 			return App.post(url.master)
 				.then(handleMasterResult)
 				.catch(function(){});
 		},
 
+		/* 선택지를 저장하고 필터를 채운다 */
 		handleMasterResult = function(res){
 			App.result(res, {ok: function(){
 				settings.master = res.data;
@@ -194,6 +199,7 @@ App.entry = (function(){
 			}});
 		},
 
+		/* 카테고리·결제수단 필터 선택지 */
 		fillFilters = function(){
 			var categoryOptions = [App.h('option', {value: '', text: '전체'})],
 				paymentOptions = [App.h('option', {value: '', text: '전체'})];
@@ -208,6 +214,7 @@ App.entry = (function(){
 			m$.payment.replaceChildren.apply(m$.payment, paymentOptions);
 		},
 
+		/* 이전·다음 달(주기 보기면 이전·다음 주기) */
 		moveMonth = function(delta){
 			if(m$.period.value === 'CYCLE'){
 				/* 이전 주기는 시작일 전날, 다음 주기는 종료일 다음 날이 속한 주기 */
@@ -223,10 +230,12 @@ App.entry = (function(){
 			list();
 		},
 
+		/* 검색어나 필터를 하나라도 썼는지 */
 		filtered = function(){
 			return m$.keyword.value.trim() || m$.type.value || m$.category.value || m$.payment.value;
 		},
 
+		/* 조회 조건으로 목록 요청 */
 		list = function(){
 			var p = settings.month.split('-'),
 				lastDay = new Date(Number(p[0]), Number(p[1]), 0).getDate();
@@ -257,6 +266,7 @@ App.entry = (function(){
 				.catch(function(){});
 		},
 
+		/* 합계·목록 그리기. ?edit= 로 들어왔으면 그 거래의 수정 창을 연다 */
 		render = function(data){
 			var rows = data.rows, t = data.totals, net = t.income - t.expense;
 			if(m$.period.value === 'RECENT12' && data.from){
@@ -291,16 +301,19 @@ App.entry = (function(){
 			}
 		},
 
+		/* 구분 라디오 고르기 */
 		setType = function(type){
 			m$.dialog.querySelector('input[name="' + ED + '-type"][value="' + type + '"]').checked = true;
 		},
 
+		/* 지출일 때만 적금·예금 이체 칸을 보인다 */
 		showTransfer = function(){
 			var expense = App.entryForm.checked(ED + '-type') === 'EXPENSE';
 			m$.transferField.hidden = !expense;
 			if(!expense) m$.transferAsset.value = '';
 		},
 
+		/* 통장 잔액 안내 갱신 */
 		showBalance = function(){
 			App.entryForm.balanceHint(m$.balance, settings.balances, m$.account.value, App.entryForm.checked(ED + '-type'),
 				App.parseAmount(m$.amount.value), m$.date.value, !!settings.editing);
@@ -320,6 +333,7 @@ App.entry = (function(){
 				.catch(function(){});
 		},
 
+		/* 이체할 자산 선택지 받기. 늦게 도착한 이전 응답은 버린다 */
 		loadTransferAssets = function(selectedId){
 			var token = ++settings.assetLoadToken;
 			m$.save.disabled = true;
@@ -349,6 +363,7 @@ App.entry = (function(){
 				});
 		},
 
+		/* 거래 창 열기. e 가 있으면 수정, 없으면 추가 */
 		open = function(e){
 			settings.editing = e;
 			m$.heading.textContent = e ? '거래 수정' : '거래 추가';
@@ -379,6 +394,7 @@ App.entry = (function(){
 				m$.transferAsset.value]);
 		},
 
+		/* 작성 중이면 버릴지 물은 뒤 닫는다 */
 		requestClose = function(){
 			if(snapshot() === settings.snapshot){
 				m$.dialog.close();
@@ -387,10 +403,13 @@ App.entry = (function(){
 			_confirm('작성 중인 내용을 버릴까요?', '저장하지 않은 입력은 사라져요.', function(){ m$.dialog.close(); });
 		},
 
+		/* 새 거래 */
 		openNew = function(){ open(null); },
 
+		/* 거래 수정 */
 		openEdit = function(e){ open(e); },
 
+		/* 입력 확인 후 저장 요청 */
 		save = function(){
 			if(settings.submitting) return;
 			var amount = App.parseAmount(m$.amount.value),
@@ -431,6 +450,7 @@ App.entry = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 저장 성공: 통장 기억, 창 닫기, 목록 새로고침 */
 		handleSaveResult = function(res){
 			App.result(res, {ok: function(){
 				App.entryForm.rememberAccount(m$.account.value);
@@ -441,6 +461,7 @@ App.entry = (function(){
 			}});
 		},
 
+		/* 삭제 확인 후 요청 */
 		remove = function(){
 			var e = settings.editing;
 			if(!e) return;
@@ -454,6 +475,7 @@ App.entry = (function(){
 			});
 		},
 
+		/* 삭제 성공: 창 닫기, 목록 새로고침 */
 		handleRemoveResult = function(res){
 			App.result(res, {ok: function(){
 				m$.dialog.close();

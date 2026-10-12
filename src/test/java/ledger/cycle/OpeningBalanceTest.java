@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// 시작 잔액 기준 잔액 계산 테스트
 class OpeningBalanceTest {
 
     private static final LocalDate D = LocalDate.of(2026, 9, 23);

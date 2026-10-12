@@ -49,11 +49,13 @@ public class AuthApiController {
     // 없는 아이디도 BCrypt 비교를 한 번 해서 응답 시간으로 아이디 존재 여부가 드러나지 않게 한다
     private String dummyHash;
 
+    // 없는 아이디 비교에 쓸 더미 해시를 미리 만든다
     @PostConstruct
     public void init() {
         dummyHash = passwordEncoder.encode("ledger-dummy-password");
     }
 
+    // 로그인 화면. 이미 로그인했으면 대시보드로
     @GetMapping("/login")
     public String loginPage(HttpSession session) {
         if (SessionUtil.getUserId(session) != null) {
@@ -62,11 +64,13 @@ public class AuthApiController {
         return "login/loginMain";
     }
 
+    // 가입 화면
     @GetMapping("/signup")
     public String signupPage() {
         return "login/signupMain";
     }
 
+    // 로그인. 아이디·IP 별 5회 실패 시 5분 차단, 성공하면 세션 ID 교체
     @ResponseBody
     @PostMapping("/auth/login")
     public Response login(@RequestBody HashMap<String, Object> param, HttpServletRequest request) {
@@ -160,6 +164,7 @@ public class AuthApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 로그아웃: 세션 폐기
     @ResponseBody
     @PostMapping("/auth/logout")
     public Response logout(HttpServletRequest request) {
@@ -173,6 +178,7 @@ public class AuthApiController {
         return "login|" + (valid ? username.toLowerCase(Locale.ROOT) : "") + "|" + ip;
     }
 
+    // BCrypt 가 받을 수 있는 비밀번호인지(비어 있지 않고 72바이트 이하)
     private boolean fitsBcrypt(String password) {
         return !password.isEmpty() && password.getBytes(StandardCharsets.UTF_8).length <= PASSWORD_MAX_BYTES;
     }

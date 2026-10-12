@@ -4,6 +4,7 @@ package ledger.cmmn.util;
 // 매퍼에서는 반드시 ESCAPE '\' 와 함께 쓴다.
 public class LikeUtil {
 
+    // 정적 메서드만 쓰는 클래스
     private LikeUtil() {
     }
 

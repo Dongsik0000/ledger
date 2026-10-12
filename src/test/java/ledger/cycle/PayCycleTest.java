@@ -14,16 +14,19 @@ class PayCycleTest {
 
     private static final Set<LocalDate> NONE = Set.of();
 
+    // "YYYY-MM-DD" → 날짜
     private static LocalDate d(String s) {
         return LocalDate.parse(s);
     }
 
+    // 시작·끝 날짜로 기대 주기
     private static PayCycle.Cycle cycle(String start, String end) {
         return new PayCycle.Cycle(d(start), d(end));
     }
 
     // ---- payDate ----
 
+    // 31일 급여일은 짧은 달에 말일
     @Test
     void payDateClampsToMonthEnd() {
         assertEquals(d("2026-02-28"), PayCycle.payDate(YearMonth.of(2026, 2), 31, false, NONE));
@@ -31,17 +34,20 @@ class PayCycleTest {
         assertEquals(d("2026-04-30"), PayCycle.payDate(YearMonth.of(2026, 4), 31, false, NONE));
     }
 
+    // 주말이면 직전 평일
     @Test
     void payDateAdjustsWeekendToPreviousWeekday() {
         assertEquals(d("2026-10-23"), PayCycle.payDate(YearMonth.of(2026, 10), 25, true, NONE));
         assertEquals(d("2026-10-25"), PayCycle.payDate(YearMonth.of(2026, 10), 25, false, NONE));
     }
 
+    // 공휴일도 건너뛴다
     @Test
     void payDateSkipsHolidaysToo() {
         assertEquals(d("2026-10-22"), PayCycle.payDate(YearMonth.of(2026, 10), 25, true, Set.of(d("2026-10-23"))));
     }
 
+    // 보정으로 전달로 넘어갈 수 있다
     @Test
     void payDateCanMoveIntoPreviousMonth() {
         assertEquals(d("2026-10-30"), PayCycle.payDate(YearMonth.of(2026, 11), 1, true, NONE));
@@ -49,11 +55,13 @@ class PayCycleTest {
 
     // ---- cycleOf ----
 
+    // 급여일 1일이면 달력 월
     @Test
     void payDayOneIsCalendarMonth() {
         assertEquals(cycle("2026-10-01", "2026-10-31"), PayCycle.cycleOf(d("2026-10-15"), 1, false, NONE));
     }
 
+    // 25일이면 25일~다음 달 24일
     @Test
     void payDay25SpansMonths() {
         assertEquals(cycle("2026-09-25", "2026-10-24"), PayCycle.cycleOf(d("2026-10-15"), 25, false, NONE));
@@ -61,11 +69,13 @@ class PayCycleTest {
         assertEquals(cycle("2026-10-25", "2026-11-24"), PayCycle.cycleOf(d("2026-10-25"), 25, false, NONE));
     }
 
+    // 급여일 31일: 짧은 달은 말일부터(2/28~3/30)
     @Test
     void payDay31UsesMonthEnds() {
         assertEquals(cycle("2026-02-28", "2026-03-30"), PayCycle.cycleOf(d("2026-03-05"), 31, false, NONE));
     }
 
+    // 보정된 시작일부터 새 주기, 이전 주기는 그 전날까지
     @Test
     void adjustedStartIsInclusiveAndPreviousCycleEndsBeforeIt() {
         assertEquals(cycle("2026-10-23", "2026-11-24"), PayCycle.cycleOf(d("2026-10-23"), 25, true, NONE));
@@ -81,6 +91,7 @@ class PayCycleTest {
 
     // ---- dueDate ----
 
+    // 결제일 보정: 그대로·직전 영업일·다음 영업일
     @Test
     void dueDateAdjustments() {
         YearMonth oct = YearMonth.of(2026, 10);
@@ -92,6 +103,7 @@ class PayCycleTest {
 
     // ---- duesInCycle ----
 
+    // 주기 안의 결제일을 찾는다
     @Test
     void duesInCycleFindsTheDueDateInsideCycle() {
         PayCycle.Cycle c = cycle("2026-09-25", "2026-10-24");

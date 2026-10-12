@@ -32,6 +32,7 @@ public class TransferGenerator {
 
     private final TransactionTemplate tx;
 
+    // 정기 이체 한 건마다 트랜잭션을 따로 쓰려고 TransactionTemplate 을 만든다
     @Autowired
     public TransferGenerator(PlatformTransactionManager transactionManager) {
         this.tx = new TransactionTemplate(transactionManager);
@@ -64,6 +65,7 @@ public class TransferGenerator {
         generate(item, today, holidays(today));
     }
 
+    // 오늘까지 이체일 중 처리되지 않은 것을 기록하고 새로 만든 건수를 돌려준다
     private int generate(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
         int created = 0;
         for (PayCycle.Due due : RecurringGenerator.duesUpTo(day(item), (String) item.get("adjust"), today, holidays)) {
@@ -90,11 +92,13 @@ public class TransferGenerator {
         return true;
     }
 
+    // 이체일 보정에 쓰는 앞뒤 공휴일
     private Set<LocalDate> holidays(LocalDate today) {
         return new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
                 "from", today.minusMonths(2).withDayOfMonth(1), "to", today.plusMonths(1))));
     }
 
+    // 매월 이체일(1~31)
     private static int day(Map<String, Object> item) {
         return ((Number) item.get("dayOfMonth")).intValue();
     }

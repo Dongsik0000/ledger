@@ -11,6 +11,7 @@ import java.util.Locale;
 // 다른 출처에서 이 헤더나 JSON 본문을 보내려면 브라우저가 CORS 사전 요청을 하는데, 서버는 CORS 를 허용하지 않는다.
 public class ApiRequestInterceptor implements HandlerInterceptor {
 
+    // POST 가 Ajax + JSON 이 아니면 403
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!"POST".equalsIgnoreCase(request.getMethod())) {

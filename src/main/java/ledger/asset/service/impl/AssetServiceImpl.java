@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 
+// 자산 서비스: DAO 위임과 주식 시세 재평가
 @Service("assetService")
 public class AssetServiceImpl implements AssetService {
 
@@ -22,16 +23,19 @@ public class AssetServiceImpl implements AssetService {
     @Autowired
     private MarketDataClient marketData;
 
+    // 자산 목록(주식 평가 정보 포함)
     @Override
     public List<Map<String, Object>> selectAssetList(long userId) {
         return assetDAO.selectAssetList(userId);
     }
 
+    // 내 현금성 자산 하나(주식 제외). 없으면 null
     @Override
     public Map<String, Object> selectCashAsset(Map<String, Object> param) {
         return assetDAO.selectCashAsset(param);
     }
 
+    // 거래·고정 항목이 이 자산으로 이체하도록 연결돼 있는지
     @Override
     public boolean hasTransfers(Map<String, Object> param) {
         return assetDAO.hasTransfers(param);
@@ -63,16 +67,19 @@ public class AssetServiceImpl implements AssetService {
         }
     }
 
+    // 자산 추가
     @Override
     public int insertAsset(Map<String, Object> param) {
         return assetDAO.insertAsset(param);
     }
 
+    // 자산 수정
     @Override
     public int updateAsset(Map<String, Object> param) {
         return assetDAO.updateAsset(param);
     }
 
+    // 자산 삭제
     @Override
     public int deleteAsset(Map<String, Object> param) {
         return assetDAO.deleteAsset(param);

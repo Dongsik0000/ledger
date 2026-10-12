@@ -19,6 +19,7 @@ public class LoginAttemptLimiter {
     private final LongSupplier clock;
     private final int maxKeys;
 
+    // 운영용: 시스템 시계, 키 상한 10,000
     public LoginAttemptLimiter() {
         this(System::currentTimeMillis, DEFAULT_MAX_KEYS);
     }
@@ -58,10 +59,12 @@ public class LoginAttemptLimiter {
         return allowed[0];
     }
 
+    // 성공하면 그 키의 시도 기록을 지운다
     public void reset(String key) {
         attempts.remove(key);
     }
 
+    // 차단이 끝났고 마지막 시도도 오래돼 지워도 되는 기록인지
     private static boolean isStale(Attempt attempt, long now) {
         return attempt.lastAttempt + BLOCK_MILLIS < now && attempt.blockedUntil <= now;
     }

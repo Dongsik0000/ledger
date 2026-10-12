@@ -1,31 +1,31 @@
 App.dashboard = (function(){
 	var LAST_PAYMENT_KEY = 'ledger.lastPaymentMethodId',
 		m$ = {
-			cycleRange: document.getElementById('cycleRange'),
-			daysLeft: document.getElementById('daysLeft'),
-			dailyBudget: document.getElementById('dailyBudget'),
-			pendingFixed: document.getElementById('pendingFixed'),
-			todayLabel: document.getElementById('todayLabel'),
-			carryOver: document.getElementById('carryOver'),
-			cycleIncome: document.getElementById('cycleIncome'),
-			cycleExpense: document.getElementById('cycleExpense'),
-			cycleBalance: document.getElementById('cycleBalance'),
-			totalBalance: document.getElementById('totalBalance'),
-			totalDetail: document.getElementById('totalDetail'),
-			formula: document.getElementById('formula'),
-			amount: document.getElementById('quickAmount'),
-			categories: document.getElementById('quickCategories'),
-			title: document.getElementById('quickTitle'),
-			payments: document.getElementById('quickPayments'),
-			account: document.getElementById('quickAccount'),
-			balance: document.getElementById('quickBalance'),
-			optional: document.getElementById('quickOptional'),
-			date: document.getElementById('quickDate'),
-			memo: document.getElementById('quickMemo'),
-			save: document.getElementById('quickSave'),
-			form: document.getElementById('quickForm'),
-			jump: document.getElementById('quickJump'),
-			recent: document.getElementById('recentList')
+			cycleRange: document.getElementById('cycleRange'),  /* 이번 주기 기간 */
+			daysLeft: document.getElementById('daysLeft'),  /* 남은 일수 */
+			dailyBudget: document.getElementById('dailyBudget'),  /* 오늘 쓸 수 있는 돈 */
+			pendingFixed: document.getElementById('pendingFixed'),  /* 아직 나가지 않은 고정지출 */
+			todayLabel: document.getElementById('todayLabel'),  /* 기준일 */
+			carryOver: document.getElementById('carryOver'),  /* 이월 */
+			cycleIncome: document.getElementById('cycleIncome'),  /* 주기 수입 */
+			cycleExpense: document.getElementById('cycleExpense'),  /* 주기 지출 */
+			cycleBalance: document.getElementById('cycleBalance'),  /* 주기 잔액 */
+			totalBalance: document.getElementById('totalBalance'),  /* 총 잔액(가계부 + 자산) */
+			totalDetail: document.getElementById('totalDetail'),  /* 총 잔액 내역 */
+			formula: document.getElementById('formula'),  /* 오늘 쓸 수 있는 돈 계산식 */
+			amount: document.getElementById('quickAmount'),  /* 빠른 입력: 금액 */
+			categories: document.getElementById('quickCategories'),  /* 카테고리 라디오 묶음 */
+			title: document.getElementById('quickTitle'),  /* 내용 */
+			payments: document.getElementById('quickPayments'),  /* 결제수단 라디오 묶음 */
+			account: document.getElementById('quickAccount'),  /* 통장 선택 */
+			balance: document.getElementById('quickBalance'),  /* 통장 잔액 안내 */
+			optional: document.getElementById('quickOptional'),  /* 날짜·메모 펼침 */
+			date: document.getElementById('quickDate'),  /* 날짜 */
+			memo: document.getElementById('quickMemo'),  /* 메모 */
+			save: document.getElementById('quickSave'),  /* 기록하기 버튼 */
+			form: document.getElementById('quickForm'),  /* 빠른 입력 폼 */
+			jump: document.getElementById('quickJump'),  /* "바로 기록" 버튼 */
+			recent: document.getElementById('recentList')  /* 최근 기록 목록 */
 		},
 
 		settings = {
@@ -42,6 +42,7 @@ App.dashboard = (function(){
 			save: contextPath + '/ledger/entry/save'
 		},
 
+		/* 날짜 칸에 오늘을 넣고 선택지·잔액·내용 목록·요약·최근 기록을 불러온다 */
 		init = function(){
 			bindEvent();
 			m$.date.value = App.entryForm.today();
@@ -53,6 +54,7 @@ App.dashboard = (function(){
 			loadRecent();
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			App.bindAmountInput(m$.amount);
 			document.querySelectorAll('input[name="quickType"]').forEach(function(r){
@@ -92,6 +94,7 @@ App.dashboard = (function(){
 				return null;
 			}
 		},
+		/* 마지막 결제수단 저장(이 브라우저에만, 빈 값이면 지운다) */
 		rememberPayment = function(id){
 			try {
 				if(id) localStorage.setItem(LAST_PAYMENT_KEY, String(id));
@@ -99,12 +102,14 @@ App.dashboard = (function(){
 			} catch(e){ /* 저장 불가 환경: 무시 */ }
 		},
 
+		/* 카테고리·결제수단·통장 선택지 받기 */
 		loadMaster = function(){
 			App.post(url.master)
 				.then(handleMasterResult)
 				.catch(function(){});
 		},
 
+		/* 빠른 입력의 카테고리·결제수단(마지막 것)·통장 그리기 */
 		handleMasterResult = function(res){
 			App.result(res, {ok: function(){
 				settings.master = res.data;
@@ -117,6 +122,7 @@ App.dashboard = (function(){
 			}});
 		},
 
+		/* 통장 잔액 안내 갱신 */
 		showBalance = function(){
 			App.entryForm.balanceHint(m$.balance, settings.balances, m$.account.value, App.entryForm.checked('quickType'),
 				App.parseAmount(m$.amount.value), m$.date.value || App.entryForm.today(), false);
@@ -134,8 +140,10 @@ App.dashboard = (function(){
 				.catch(function(){});
 		},
 
+		/* "2026-10-12" → "2026.10.12" */
 		dotted = function(d){ return d.replace(/-/g, '.'); },
 
+		/* 이번 주기 요약 받기 */
 		loadSummary = function(){
 			App.post(url.summary)
 				.then(function(res){
@@ -144,6 +152,7 @@ App.dashboard = (function(){
 				.catch(function(){});
 		},
 
+		/* 요약 숫자와 오늘 쓸 수 있는 돈 계산식 그리기 */
 		renderSummary = function(s){
 			m$.cycleRange.textContent = dotted(s.cycleStart) + ' — ' + dotted(s.cycleEnd).slice(5);
 			m$.daysLeft.textContent = s.daysLeft + '일 남음';
@@ -169,12 +178,14 @@ App.dashboard = (function(){
 			location.href = contextPath + '/ledger/entry?' + new URLSearchParams({month: e.entryDate.slice(0, 7), edit: e.id}).toString();
 		},
 
+		/* 최근 기록 받기 */
 		loadRecent = function(){
 			App.post(url.recent)
 				.then(handleRecentResult)
 				.catch(function(){});
 		},
 
+		/* 최근 기록 그리기. 수정은 거래 내역 화면에서 */
 		handleRecentResult = function(res){
 			App.result(res, {ok: function(){
 				if(!res.data.length){
@@ -185,6 +196,7 @@ App.dashboard = (function(){
 			}});
 		},
 
+		/* 입력 확인 후 기록. 성공하면 칸을 비우고 잔액·요약·최근 기록 새로고침 */
 		save = function(){
 			if(settings.submitting) return;
 			var amount = App.parseAmount(m$.amount.value),

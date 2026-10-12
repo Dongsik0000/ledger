@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Map;
 
+// 인증 SQL 호출. 매퍼: sqlmap/mappers/ledger/auth/auth.xml
 @Repository("authDAO")
 public class AuthDAO {
 
@@ -14,10 +15,12 @@ public class AuthDAO {
 
     public static final String SQL_PATH = "ledger.auth.dao.AuthDAO";
 
+    // 아이디로 사용자(id·username·password_hash). 없으면 null
     public Map<String, Object> selectUserByUsername(String username) {
         return sqlSession.selectOne(SQL_PATH + ".selectUserByUsername", username);
     }
 
+    // 비밀번호 해시
     public String selectPasswordHash(long userId) {
         return sqlSession.selectOne(SQL_PATH + ".selectPasswordHash", userId);
     }

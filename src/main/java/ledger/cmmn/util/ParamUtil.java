@@ -15,6 +15,7 @@ public class ParamUtil {
     private static final Pattern ISO_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
     private static final Pattern ISO_MONTH = Pattern.compile("\\d{4}-\\d{2}");
 
+    // 정적 메서드만 쓰는 클래스
     private ParamUtil() {
     }
 
@@ -39,6 +40,7 @@ public class ParamUtil {
         return m;
     }
 
+    // 값이 있는지(공백만 있으면 없음)
     public static boolean has(Map<String, Object> param, String key) {
         return !str(param, key).isEmpty();
     }
@@ -49,6 +51,7 @@ public class ParamUtil {
         return INTEGER.matcher(s).matches() ? Long.valueOf(s) : null;
     }
 
+    // 정수(int 범위). 형식 오류·범위 초과는 null
     public static Integer integer(Map<String, Object> param, String key) {
         Long v = lng(param, key);
         return v == null || v < Integer.MIN_VALUE || v > Integer.MAX_VALUE ? null : v.intValue();
@@ -80,6 +83,7 @@ public class ParamUtil {
         }
     }
 
+    // true/false. 그 밖의 값은 null
     public static Boolean bool(Map<String, Object> param, String key) {
         Object v = param == null ? null : param.get(key);
         if (v instanceof Boolean b) {

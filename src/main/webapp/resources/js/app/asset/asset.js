@@ -1,26 +1,26 @@
 App.asset = (function(){
 	var ED = 'assetEditor',
 		m$ = {
-			newButton: document.getElementById('assetNew'),
-			totalBalance: document.getElementById('totalBalance'),
-			assetTotal: document.getElementById('assetTotal'),
-			ledgerBalance: document.getElementById('ledgerBalance'),
-			body: document.getElementById('assetBody'),
-			marketStatus: document.getElementById('assetMarketStatus'),
-			dialog: document.getElementById(ED),
-			heading: document.getElementById(ED + '-heading'),
-			subtitle: document.getElementById(ED + '-subtitle'),
-			name: document.getElementById(ED + '-name'),
-			amount: document.getElementById(ED + '-amount'),
-			stock: document.getElementById(ED + '-stock'),
-			symbol: document.getElementById(ED + '-symbol'),
-			stockSearch: document.getElementById(ED + '-stock-search'),
-			searchButton: document.getElementById(ED + '-stock-search-button'),
-			searchStatus: document.getElementById(ED + '-stock-search-status'),
-			searchResults: document.getElementById(ED + '-stock-search-results'),
-			quantity: document.getElementById(ED + '-quantity'),
-			del: document.getElementById(ED + '-delete'),
-			save: document.getElementById(ED + '-save')
+			newButton: document.getElementById('assetNew'),  /* 자산 추가 버튼 */
+			totalBalance: document.getElementById('totalBalance'),  /* 총 잔액(가계부 + 자산) */
+			assetTotal: document.getElementById('assetTotal'),  /* 자산 합계 */
+			ledgerBalance: document.getElementById('ledgerBalance'),  /* 가계부 잔액 */
+			body: document.getElementById('assetBody'),  /* 자산 표 본문 */
+			marketStatus: document.getElementById('assetMarketStatus'),  /* 시세 갱신 상태 */
+			dialog: document.getElementById(ED),  /* 자산 추가·수정 창 */
+			heading: document.getElementById(ED + '-heading'),  /* 창 제목 */
+			subtitle: document.getElementById(ED + '-subtitle'),  /* 창 부제목 */
+			name: document.getElementById(ED + '-name'),  /* 이름 */
+			amount: document.getElementById(ED + '-amount'),  /* 금액(현금성 자산) */
+			stock: document.getElementById(ED + '-stock'),  /* 미국 주식 시세로 평가 체크 */
+			symbol: document.getElementById(ED + '-symbol'),  /* 종목 코드 */
+			stockSearch: document.getElementById(ED + '-stock-search'),  /* 종목 검색어 */
+			searchButton: document.getElementById(ED + '-stock-search-button'),  /* 종목 검색 버튼 */
+			searchStatus: document.getElementById(ED + '-stock-search-status'),  /* 검색 상태 안내 */
+			searchResults: document.getElementById(ED + '-stock-search-results'),  /* 검색 결과 목록 */
+			quantity: document.getElementById(ED + '-quantity'),  /* 보유 수량 */
+			del: document.getElementById(ED + '-delete'),  /* 삭제 버튼 */
+			save: document.getElementById(ED + '-save')  /* 저장 버튼 */
 		},
 
 		settings = {
@@ -39,14 +39,18 @@ App.asset = (function(){
 			del: contextPath + '/ledger/asset/delete'
 		},
 
+		/* 천 단위 쉼표 */
 		num = function(n){ return Number(n).toLocaleString('ko-KR'); },
+		/* 음수면 − 를 붙인 숫자 */
 		signed = function(n){ return (n < 0 ? '−' : '') + num(Math.abs(n)); },
 
+		/* 화면 이벤트 연결 후 불러오기 */
 		init = function(){
 			bindEvent();
 			reload();
 		},
 
+		/* 화면 이벤트 연결 */
 		bindEvent = function(){
 			m$.newButton.addEventListener('click', function(){ open(null); });
 			App.bindAmountInput(m$.amount);
@@ -73,6 +77,7 @@ App.asset = (function(){
 			m$.del.addEventListener('click', remove);
 		},
 
+		/* 가계부 잔액(대시보드 요약)과 자산 목록 받기 */
 		reload = function(){
 			App.post(url.summary)
 				.then(handleSummaryResult)
@@ -84,6 +89,7 @@ App.asset = (function(){
 				.catch(function(){});
 		},
 
+		/* 가계부 잔액 표시 후 총 잔액 그리기 */
 		handleSummaryResult = function(res){
 			App.result(res, {ok: function(){
 				settings.ledgerBalance = res.data.cycleBalance;
@@ -98,6 +104,7 @@ App.asset = (function(){
 			m$.totalBalance.textContent = signed(settings.ledgerBalance + settings.assetTotal);
 		},
 
+		/* 시세 갱신 상태·자산 표·자산 합계 */
 		render = function(data){
 			var stocks = data.assets.filter(function(a){ return !!a.stockSymbol; });
 			m$.marketStatus.textContent = !stocks.length ? '' : !data.marketUpdated
@@ -128,12 +135,14 @@ App.asset = (function(){
 			}));
 		},
 
+		/* 주식·현금성 자산에 맞는 칸만 보인다 */
 		showAssetMode = function(){
 			var stock = m$.stock.checked;
 			m$.dialog.querySelectorAll('[data-stock]').forEach(function(el){ el.hidden = !stock; });
 			m$.dialog.querySelectorAll('[data-cash]').forEach(function(el){ el.hidden = stock; });
 		},
 
+		/* 미국 주식 종목 검색(2~60자) */
 		searchStocks = function(){
 			if(m$.searchButton.disabled) return;
 			var query = m$.stockSearch.value.trim();
@@ -175,6 +184,7 @@ App.asset = (function(){
 				.then(function(){ if(token === settings.searchToken) m$.searchButton.disabled = false; });
 		},
 
+		/* 자산 창 열기. a 가 있으면 수정 */
 		open = function(a){
 			settings.editing = a;
 			m$.heading.textContent = a ? '자산 수정' : '자산 추가';
@@ -197,6 +207,7 @@ App.asset = (function(){
 			m$.name.focus();
 		},
 
+		/* 입력 확인 후 저장 요청 */
 		save = function(){
 			if(settings.submitting) return;
 			var digits = m$.amount.value.replace(/[,\s]/g, '');
@@ -225,6 +236,7 @@ App.asset = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 저장 성공: 창 닫고 다시 불러오기 */
 		handleSaveResult = function(res){
 			App.result(res, {ok: function(){
 				m$.dialog.close();
@@ -233,6 +245,7 @@ App.asset = (function(){
 			}});
 		},
 
+		/* 삭제 확인 후 요청 */
 		remove = function(){
 			var a = settings.editing;
 			if(!a) return;
@@ -246,6 +259,7 @@ App.asset = (function(){
 			});
 		},
 
+		/* 삭제 성공: 창 닫고 다시 불러오기 */
 		handleRemoveResult = function(res){
 			App.result(res, {ok: function(){
 				m$.dialog.close();

@@ -3,11 +3,11 @@
 App.entryBatch = (function(){
 	var ID = 'entryBatch', MAX = 50,
 		m$ = {
-			dialog: document.getElementById(ID),
-			body: document.getElementById(ID + '-body'),
-			add: document.getElementById(ID + '-add'),
-			summary: document.getElementById(ID + '-summary'),
-			save: document.getElementById(ID + '-save')
+			dialog: document.getElementById(ID),  /* 여러 건 입력 창 */
+			body: document.getElementById(ID + '-body'),  /* 줄 목록(tbody) */
+			add: document.getElementById(ID + '-add'),  /* 줄 추가 버튼 */
+			summary: document.getElementById(ID + '-summary'),  /* 건수·합계·통장 잔액 변화 요약 */
+			save: document.getElementById(ID + '-save')  /* 저장 버튼 */
 		},
 
 		settings = {
@@ -24,10 +24,12 @@ App.entryBatch = (function(){
 			save: contextPath + '/ledger/entry/save-batch'
 		},
 
+		/* 화면 이벤트 연결 */
 		init = function(){
 			bindEvent();
 		},
 
+		/* 줄 추가·저장·입력 변경·닫기 이벤트 */
 		bindEvent = function(){
 			m$.add.addEventListener('click', function(){
 				var r = addRow();
@@ -40,6 +42,7 @@ App.entryBatch = (function(){
 			App.bindDialog(m$.dialog, isDirty, function(){});
 		},
 
+		/* 창 열기: 한 줄로 시작하고 통장 잔액을 받는다 */
 		open = function(master, onSaved){
 			settings.master = master;
 			settings.onSaved = onSaved;
@@ -69,6 +72,7 @@ App.entryBatch = (function(){
 				.catch(function(){});
 		},
 
+		/* select 선택지 하나 */
 		option = function(value, text, selected){
 			return App.h('option', {value: String(value), text: text, selected: !!selected});
 		},
@@ -149,6 +153,7 @@ App.entryBatch = (function(){
 			recompute();
 		},
 
+		/* 윗줄 값을 이어받은 줄 추가(최대 MAX 줄). 추가한 줄, 넘으면 null */
 		addRow = function(){
 			if(settings.rows.length >= MAX){
 				_error('알림', '한 번에 ' + MAX + '건까지 입력할 수 있어요.');
@@ -174,10 +179,12 @@ App.entryBatch = (function(){
 			recompute();
 		},
 
+		/* 내용·금액이 모두 빈 줄인지 */
 		blank = function(r){
 			return !r.title.value.trim() && !r.amount.value.trim();
 		},
 
+		/* 입력한 줄이 있는지(닫을 때 버릴지 묻는 기준) */
 		isDirty = function(){
 			return settings.rows.some(function(r){ return !blank(r); });
 		},
@@ -229,6 +236,7 @@ App.entryBatch = (function(){
 			m$.summary.replaceChildren.apply(m$.summary, lines);
 		},
 
+		/* 빈 줄을 빼고 줄마다 확인한 뒤 한 번에 저장 */
 		save = function(){
 			if(settings.submitting) return;
 			/* 비운 줄을 먼저 빼서 화면 번호와 서버가 알려 주는 "N번째 줄"이 같게 한다 */
@@ -271,6 +279,7 @@ App.entryBatch = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 저장 성공: 통장 기억, 창 닫기, 목록·내용 목록 새로고침 */
 		handleSaveResult = function(res){
 			App.result(res, {ok: function(){
 				App.entryForm.rememberAccount(settings.rows[settings.rows.length - 1].account.value);

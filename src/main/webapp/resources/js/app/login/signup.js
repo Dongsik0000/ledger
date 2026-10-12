@@ -1,6 +1,6 @@
 App.signup = (function(){
 	var m$ = {
-			form: document.getElementById('signupForm')
+			form: document.getElementById('signupForm')  /* 가입 폼 */
 		},
 
 		settings = {
@@ -11,10 +11,12 @@ App.signup = (function(){
 			signup: contextPath + '/auth/signup'
 		},
 
+		/* 화면 이벤트 연결 */
 		init = function(){
 			bindEvent();
 		},
 
+		/* 폼 제출을 Ajax 요청으로 바꾼다 */
 		bindEvent = function(){
 			m$.form.addEventListener('submit', function(e){
 				e.preventDefault();
@@ -22,6 +24,7 @@ App.signup = (function(){
 			});
 		},
 
+		/* 입력 확인 후 가입 요청 */
 		submit = function(){
 			if(settings.submitting) return;
 
@@ -50,6 +53,7 @@ App.signup = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
+		/* 결과 코드별 이동·안내 */
 		handleSignupResult = function(res){
 			switch(res.code){
 				case App.CODE.SUCCESS:

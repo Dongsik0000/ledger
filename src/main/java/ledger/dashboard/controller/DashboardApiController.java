@@ -53,6 +53,7 @@ public class DashboardApiController {
     @Autowired
     private EntryService entryService;
 
+    // 대시보드 화면
     @GetMapping
     public String dashboard() {
         return "dashboard/dashboardMain";
@@ -104,6 +105,7 @@ public class DashboardApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 최근 거래 RECENT_LIMIT 건(오늘까지)
     @ResponseBody
     @PostMapping("/recent")
     public Response recent(HttpSession session) {

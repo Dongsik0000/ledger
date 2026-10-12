@@ -12,10 +12,12 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// 고정 항목 결제일 계산과 할부 종료 테스트
 class RecurringGeneratorTest {
 
     private static final Set<LocalDate> NONE = Set.of();
 
+    // 기대 결제일(회차 월·날짜)
     private static PayCycle.Due due(int y, int m, String date) {
         return new PayCycle.Due(YearMonth.of(y, m), LocalDate.parse(date));
     }
@@ -66,6 +68,7 @@ class RecurringGeneratorTest {
                 RecurringGenerator.duesUpTo(31, "NEXT_BIZ", LocalDate.parse("2026-11-02"), NONE));
     }
 
+    // 할부 고정 항목 값
     private static Map<String, Object> installment(int day, String adjust, int months, String start) {
         Map<String, Object> item = new HashMap<>();
         item.put("dayOfMonth", day);

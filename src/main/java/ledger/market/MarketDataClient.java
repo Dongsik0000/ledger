@@ -41,6 +41,7 @@ public class MarketDataClient {
 
     public boolean isConfigured() { return apiKey != null && !apiKey.isBlank(); }
 
+    // USD/KRW 현재 환율. fresh 면 캐시를 쓰지 않는다
     public synchronized FxQuote usdKrw(boolean fresh) {
         JsonNode node = fetch("FX", "function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=KRW", fresh);
         JsonNode rate = node.path("Realtime Currency Exchange Rate");
@@ -72,6 +73,7 @@ public class MarketDataClient {
         return new FxQuote(rate, best.toString());
     }
 
+    // 미국 주식 최근 주가(캐시 사용)
     public synchronized StockQuote stock(String symbol) {
         if (symbol == null || !symbol.matches("[A-Z.]{1,12}")) throw new IllegalArgumentException("Invalid symbol");
         JsonNode node = fetch("STOCK:" + symbol, "function=GLOBAL_QUOTE&symbol=" + symbol
@@ -84,6 +86,7 @@ public class MarketDataClient {
         catch (RuntimeException e) { throw new MarketDataException(); }
     }
 
+    // 미국 상장·USD 종목 검색(캐시 사용)
     public synchronized List<StockMatch> searchUsStocks(String keywords) {
         String query = keywords == null ? "" : keywords.trim();
         if (query.length() < 2 || query.length() > 60) throw new IllegalArgumentException("Invalid search query");
@@ -93,6 +96,7 @@ public class MarketDataClient {
         return parseUsStockMatches(matches);
     }
 
+    // 검색 결과 중 미국 상장·USD 주식·ETF 만 최대 10개(같은 코드는 하나)
     static List<StockMatch> parseUsStockMatches(JsonNode matches) {
         Map<String, StockMatch> results = new LinkedHashMap<>();
         for (JsonNode row : matches) {
@@ -109,6 +113,7 @@ public class MarketDataClient {
         return List.copyOf(results.values());
     }
 
+    // Alpha Vantage 호출. 캐시·실패 후 대기·요청 간격을 지키고, 응답이 이상하면 MarketDataException
     private JsonNode fetch(String key, String query, boolean fresh) {
         if (!isConfigured()) throw new MarketDataException();
         Instant now = Instant.now();
@@ -157,14 +162,19 @@ public class MarketDataClient {
         }
     }
 
+    // 양수 숫자면 BigDecimal, 아니면 null
     private static BigDecimal positive(String text) {
         try { BigDecimal v = new BigDecimal(text); return v.signum() > 0 ? v : null; }
         catch (NumberFormatException e) { return null; }
     }
 
+    // 캐시 값과 만료 시각
     private record Cached(JsonNode value, Instant expiresAt) {}
+    // 환율과 기준 시각
     public record FxQuote(BigDecimal rate, String asOf) {}
+    // 주가와 기준일
     public record StockQuote(BigDecimal price, LocalDate asOf) {}
+    // 종목 검색 결과 하나
     public record StockMatch(String symbol, String name, String type) {}
     public static class MarketDataException extends RuntimeException {}
 }

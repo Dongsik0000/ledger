@@ -5,6 +5,7 @@ function _modalHost(modal){
     if (modal.parentNode !== host) host.appendChild(modal);
 }
 
+// 완료 안내 창. options.autoClose(ms)면 저절로 닫힌다
 function _alert(title, desc, callback, options){
     if(typeof desc === 'function'){
         options  = callback;
@@ -96,6 +97,7 @@ function _alert(title, desc, callback, options){
     }
 }
 
+// 경고 창. 확인을 누르면 callback
 function _error(title, desc, callback){
 	if(typeof desc === 'function'){
 		callback = desc;
@@ -127,6 +129,7 @@ function _error(title, desc, callback){
 			'</section>';
 		document.body.appendChild(modal);
 
+		// 경고 창을 닫고 callback 실행
 		function closeWarnModal(){
 			modal.classList.remove('is-open');
 			modal.setAttribute('aria-hidden', 'true');
@@ -166,6 +169,7 @@ function _error(title, desc, callback){
 	modal.focus();
 }
 
+// 확인·취소 창. 확인을 누르면 callback
 function _confirm(title, desc, callback){
 	if(typeof desc === 'function'){
 		callback = desc;

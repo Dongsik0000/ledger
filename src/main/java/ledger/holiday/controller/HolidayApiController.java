@@ -50,6 +50,7 @@ public class HolidayApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 공휴일 직접 추가
     @ResponseBody
     @PostMapping("/save")
     public Response save(@RequestBody HashMap<String, Object> param) {
@@ -65,6 +66,7 @@ public class HolidayApiController {
         return Response.of(Constants.SUCCESS);
     }
 
+    // 공휴일 삭제
     @ResponseBody
     @PostMapping("/delete")
     public Response delete(@RequestBody HashMap<String, Object> param) {

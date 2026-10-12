@@ -51,11 +51,13 @@ public class SummaryApiController {
     @Autowired
     private HolidayService holidayService;
 
+    // 요약 화면
     @GetMapping
     public String summary() {
         return "summary/summaryMain";
     }
 
+    // 시작~종료 월(최대 24개월)을 달력 월 또는 주기 기준으로 월별 표·카테고리·결제수단 집계
     @ResponseBody
     @PostMapping("/load")
     public Response load(@RequestBody HashMap<String, Object> param, HttpSession session) {

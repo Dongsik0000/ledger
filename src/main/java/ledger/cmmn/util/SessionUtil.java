@@ -3,6 +3,7 @@ package ledger.cmmn.util;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
+// 로그인 세션 도우미: 사용자 id 읽기, 로그인·로그아웃
 public class SessionUtil {
 
     // 로그인 사용자 id. 인터셉터를 지난 요청에서는 null 이 아니다.
@@ -19,6 +20,7 @@ public class SessionUtil {
         session.setAttribute(Constants.SESSION_USERNAME, username);
     }
 
+    // 세션 폐기
     public static void logout(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session != null) {
