@@ -7,7 +7,9 @@ import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.OpeningBalance;
 import ledger.cycle.PayCycle;
+import ledger.dashboard.service.DashboardService;
 import ledger.entry.controller.EntryApiController;
 import ledger.holiday.service.HolidayService;
 import ledger.recurring.controller.RecurringApiController;
@@ -33,7 +35,7 @@ import java.util.Set;
 
 // 통장: 통장별 잔액(기준 잔액 + 기준일 이후 이 통장을 고른 거래 + 이체)·통장 CRUD·이체 CRUD·정기 이체 CRUD.
 // 이체는 수입·지출이 아니라 ledger_entry 와 가계부 잔액·통계에 영향을 주지 않는다.
-// 기본 통장은 기준 잔액을 쓰지 않고 화면에서 "가계부 잔액 − 다른 통장" 으로 구해, 통장 합계가 가계부 잔액과 항상 같다.
+// 기본 통장은 기준 잔액을 쓰지 않고 "가계부 잔액 − 다른 통장" 으로 구해(accountsWithBalance), 통장 합계가 가계부 잔액과 항상 같다.
 @Controller
 @RequestMapping("/ledger/account")
 public class AccountApiController {
@@ -55,6 +57,9 @@ public class AccountApiController {
 
     @Autowired
     private TransferGenerator transferGenerator;
+
+    @Autowired
+    private DashboardService dashboardService;
 
     @GetMapping
     public String account() {
@@ -91,11 +96,52 @@ public class AccountApiController {
         }
 
         Map<String, Object> data = new HashMap<>();
-        data.put("accounts", accountService.selectAccountList(ParamUtil.map("userId", userId, "to", cycle.end())));
+        data.put("accounts", accountsWithBalance(userId, setting, cycle.end()));
         data.put("recurring", recurring);
         data.put("transfers", accountService.selectTransferList(ParamUtil.map("userId", userId, "limit", TRANSFER_LIMIT)));
         data.put("today", today.toString());
         return Response.of(Constants.SUCCESS, data);
+    }
+
+    // 거래 입력 창의 통장 잔액 안내. 통장 화면과 같은 잔액과, 새 거래가 잔액에 들어가는 기간(통장별 countFrom ~ to)
+    @ResponseBody
+    @PostMapping("/balances")
+    public Response balances(HttpSession session) {
+        long userId = SessionUtil.getUserId(session);
+        LocalDate today = LocalDate.now(SEOUL);
+        Map<String, Object> setting = settingsService.selectUserSetting(userId);
+        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
+                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
+        LocalDate to = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
+                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays).end();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("accounts", accountsWithBalance(userId, setting, to));
+        data.put("to", to.toString());
+        return Response.of(Constants.SUCCESS, data);
+    }
+
+    // 통장(잔액 포함). 기본 통장 = 가계부 잔액(대시보드 주기 잔액과 같은 값: 시작 잔액 + 기준일~to 거래) − 다른 통장.
+    // countFrom: 새로 적는 거래가 이 통장 잔액에 들어가는 첫날. 다른 통장은 기준일, 기본 통장은 시작 잔액 기준일(없으면 null = 처음부터)
+    private List<Map<String, Object>> accountsWithBalance(long userId, Map<String, Object> setting, LocalDate to) {
+        List<Map<String, Object>> accounts = accountService.selectAccountList(ParamUtil.map("userId", userId, "to", to));
+        OpeningBalance opening = OpeningBalance.of(setting);
+        long rest = opening.balanceAt(dashboardService.selectBalanceBefore(
+                ParamUtil.map("userId", userId, "date", to.plusDays(1), "from", opening.countFrom())));
+        Map<String, Object> def = null;
+        for (Map<String, Object> account : accounts) {
+            if (Boolean.TRUE.equals(account.get("isDefault"))) {
+                def = account;
+            } else {
+                rest -= ((Number) account.get("balance")).longValue();
+                account.put("countFrom", account.get("baseDate"));
+            }
+        }
+        if (def != null) {
+            def.put("balance", rest);
+            def.put("countFrom", opening.countFrom() == null ? null : opening.countFrom().toString());
+        }
+        return accounts;
     }
 
     // 통장 추가·수정. 기준 잔액은 음수 가능(마이너스 통장). 기본 통장은 기준 잔액을 쓰지 않아 0·오늘로 둔다

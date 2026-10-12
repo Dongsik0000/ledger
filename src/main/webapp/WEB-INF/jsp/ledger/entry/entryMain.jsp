@@ -4,6 +4,7 @@
 <t:layout title="거래 내역" page="entry">
     <jsp:attribute name="script">
         <script defer src="<c:url value='/resources/js/app/entry/entryForm.js'/>"></script>
+        <script defer src="<c:url value='/resources/js/app/entry/entryBatch.js'/>"></script>
         <script defer src="<c:url value='/resources/js/app/entry/entry.js'/>"></script>
     </jsp:attribute>
     <jsp:body>
@@ -13,8 +14,11 @@
                 <h1>거래 내역</h1>
                 <p class="page-description">언제, 어디에 썼는지 차분히 돌아봐요.</p>
             </div>
-            <button type="button" class="button primary" id="entryNew">
-                <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>거래 추가</button>
+            <div class="page-actions">
+                <button type="button" class="button" id="entryBatchOpen">여러 건</button>
+                <button type="button" class="button primary" id="entryNew">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>거래 추가</button>
+            </div>
         </header>
         <section class="panel reveal">
             <div class="panel-head">
@@ -81,5 +85,48 @@
         </section>
 
         <t:entryEditor id="entryEditor"/>
+
+        <%-- 여러 건 입력 창. 줄은 entryBatch.js 가 만든다 --%>
+        <dialog class="editor-dialog wide" id="entryBatch" aria-labelledby="entryBatch-heading">
+            <header class="dialog-head">
+                <div>
+                    <h2 id="entryBatch-heading">여러 건 입력</h2>
+                    <p>줄마다 그 통장의 거래 후 잔액이 이어서 보여요. 은행 앱 거래내역과 한 줄씩 맞춰 보세요.</p>
+                </div>
+                <button type="button" class="icon-button" data-close aria-label="닫기">×</button>
+            </header>
+            <div class="dialog-body">
+                <div class="table-scroll" tabindex="0" role="region" aria-label="입력할 거래">
+                    <table class="mobile-record-table data-table batch-table">
+                        <caption class="sr-only">입력할 거래</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">번호</th>
+                                <th scope="col">날짜</th>
+                                <th scope="col">구분</th>
+                                <th scope="col">카테고리</th>
+                                <th scope="col">내용</th>
+                                <th scope="col">금액 (원)</th>
+                                <th scope="col">결제수단</th>
+                                <th scope="col">통장</th>
+                                <th scope="col">거래 후 잔액</th>
+                                <th scope="col">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entryBatch-body"></tbody>
+                    </table>
+                </div>
+                <button type="button" class="button small batch-add" id="entryBatch-add">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>줄 추가</button>
+                <p class="form-note">새 줄은 윗줄의 날짜·구분·카테고리·결제수단·통장을 이어받아요. 마지막 줄에서 Enter 를 누르면 줄이 추가돼요. 비워 둔 줄은 저장하지 않아요.</p>
+            </div>
+            <footer class="dialog-footer">
+                <div class="batch-summary" id="entryBatch-summary"></div>
+                <div class="form-actions">
+                    <button type="button" class="button" data-close>닫기</button>
+                    <button type="button" class="button primary" id="entryBatch-save">저장</button>
+                </div>
+            </footer>
+        </dialog>
     </jsp:body>
 </t:layout>

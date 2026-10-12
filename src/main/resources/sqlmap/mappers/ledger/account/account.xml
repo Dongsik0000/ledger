@@ -4,7 +4,7 @@
 
     <!-- 잔액 = 기준 잔액 + 기준 뒤 ~ to 의 이 통장 거래 (수입 − 지출) + 받은 이체 − 보낸 이체.
          기준 뒤: 기준일 다음 날부터, 또는 기준일이면서 기준 잔액을 적은 뒤(base_at) 기록한 것.
-         to 는 가계부 잔액과 같은 이번 주기 마지막 날. 기본 통장 잔액은 화면이 가계부 잔액에서 다른 통장을 빼서 구한다 -->
+         to 는 가계부 잔액과 같은 이번 주기 마지막 날. 기본 통장 잔액은 AccountApiController 가 가계부 잔액에서 다른 통장을 빼서 구한다 -->
     <sql id="afterBase">
         AND (${date} &gt; a.base_date OR (${date} = a.base_date AND ${alias}.created_at &gt; a.base_at))
         AND ${date} &lt;= #{to}

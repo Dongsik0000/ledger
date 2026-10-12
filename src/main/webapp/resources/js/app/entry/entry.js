@@ -2,6 +2,7 @@ App.entry = (function(){
 	var ED = 'entryEditor',
 		m$ = {
 			newButton: document.getElementById('entryNew'),
+			batchButton: document.getElementById('entryBatchOpen'),
 			monthTitle: document.getElementById('monthTitle'),
 			monthRange: document.getElementById('monthRange'),
 			prev: document.getElementById('prevMonth'),
@@ -27,6 +28,7 @@ App.entry = (function(){
 			title: document.getElementById(ED + '-title'),
 			payments: document.getElementById(ED + '-payments'),
 			account: document.getElementById(ED + '-account'),
+			balance: document.getElementById(ED + '-balance'),
 			transferField: document.getElementById(ED + '-transfer-field'),
 			transferAsset: document.getElementById(ED + '-transfer-asset'),
 			date: document.getElementById(ED + '-date'),
@@ -41,12 +43,14 @@ App.entry = (function(){
 			month: '',                                        /* yyyy-MM */
 			master: {categories: [], paymentMethods: []},
 			editing: null,                                    /* 수정 중인 거래(추가면 null) */
-			assetLoadToken: 0
+			assetLoadToken: 0,
+			balances: null                                    /* 통장 잔액(창을 열 때마다 새로 받는다) */
 		},
 
 		url = {
 			master: contextPath + '/ledger/settings/master',
 			cashAssets: contextPath + '/ledger/asset/cash-list',
+			balances: contextPath + '/ledger/account/balances',
 			list: contextPath + '/ledger/entry/list',
 			save: contextPath + '/ledger/entry/save',
 			del: contextPath + '/ledger/entry/delete'
@@ -100,13 +104,18 @@ App.entry = (function(){
 			});
 
 			m$.newButton.addEventListener('click', openNew);
+			m$.batchButton.addEventListener('click', function(){ App.entryBatch.open(settings.master, list); });
 			App.bindAmountInput(m$.amount);
 			m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
 				r.addEventListener('change', function(){
 					App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, r.value, null);
 					showTransfer();
+					showBalance();
 				});
 			});
+			m$.amount.addEventListener('input', showBalance);
+			m$.account.addEventListener('change', showBalance);
+			m$.date.addEventListener('change', showBalance);
 			m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
 				b.addEventListener('click', requestClose);
 			});
@@ -285,6 +294,25 @@ App.entry = (function(){
 			if(!expense) m$.transferAsset.value = '';
 		},
 
+		showBalance = function(){
+			App.entryForm.balanceHint(m$.balance, settings.balances, m$.account.value, App.entryForm.checked(ED + '-type'),
+				App.parseAmount(m$.amount.value), m$.date.value, !!settings.editing);
+		},
+
+		/* 잔액 안내는 보조 정보라 실패해도 창을 막지 않고 안내 칸에 적는다 */
+		loadBalances = function(){
+			settings.balances = null;
+			m$.balance.textContent = '';
+			App.post(url.balances, null, {onError: function(){ m$.balance.textContent = '통장 잔액을 불러오지 못했어요.'; }})
+				.then(function(res){
+					App.result(res, {ok: function(){
+						settings.balances = res.data;
+						showBalance();
+					}});
+				})
+				.catch(function(){});
+		},
+
 		loadTransferAssets = function(selectedId){
 			var token = ++settings.assetLoadToken;
 			m$.save.disabled = true;
@@ -332,6 +360,7 @@ App.entry = (function(){
 			m$.del.hidden = !e;
 			settings.snapshot = snapshot();
 			loadTransferAssets(e ? e.transferAssetId : null);
+			loadBalances();
 			m$.dialog.showModal();
 			m$.amount.focus();
 		},

@@ -87,6 +87,7 @@
                         <label class="field" hidden>
                             <span>통장</span>
                             <select id="quickAccount"></select>
+                            <small class="form-note" id="quickBalance"></small>
                         </label>
                         <details class="optional-fields" id="quickOptional"><summary>날짜 · 메모 <span>기본 오늘</span></summary><div class="field-row">
                                 <label class="field">

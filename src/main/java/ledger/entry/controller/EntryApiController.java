@@ -23,13 +23,14 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// 거래: 달력 월 목록·필터·검색·추가·수정·삭제. 로직은 여기, EntryServiceImpl 은 DAO 연결만.
+// 거래: 달력 월 목록·필터·검색·추가(여러 건 포함)·수정·삭제. 입력 검사는 여기, 자산 잔액 반영과 트랜잭션은 EntryServiceImpl.
 @Controller
 @RequestMapping("/ledger/entry")
 public class EntryApiController {
@@ -43,6 +44,7 @@ public class EntryApiController {
     // 넓은 기간(최근 12개월·전체)은 최근 거래부터 WIDE_LIMIT 건까지만 보낸다
     private static final Set<String> PERIODS = Set.of("MONTH", "CYCLE", "RECENT12", "ALL");
     private static final int WIDE_LIMIT = 500;
+    private static final int BATCH_MAX = 50;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired
@@ -127,7 +129,56 @@ public class EntryApiController {
     @ResponseBody
     @PostMapping("/save")
     public Response save(@RequestBody HashMap<String, Object> param, HttpSession session) {
+        Map<String, Object> entry = new HashMap<>();
+        Response error = toEntry(param, SessionUtil.getUserId(session), entry);
+        if (error != null) {
+            return error;
+        }
+
+        try {
+            if (entry.get("id") == null) {
+                entryService.insertEntry(entry);
+            } else if (entryService.updateEntry(entry) == 0) {
+                return Response.of(Constants.NOT_FOUND);
+            }
+        } catch (IllegalStateException e) {
+            return Response.invalid("자산 잔액을 반영할 수 없어요. 연결된 자산과 금액을 확인해 주세요.");
+        }
+        return Response.of(Constants.SUCCESS);
+    }
+
+    // 여러 건 추가: 모든 줄을 먼저 검사하고, 하나라도 틀리면 몇 번째 줄인지 알려 주고 아무것도 저장하지 않는다.
+    // 저장은 한 트랜잭션(EntryServiceImpl.insertEntries)이라 자산 반영이 중간에 실패해도 전부 되돌린다
+    @ResponseBody
+    @PostMapping("/save-batch")
+    @SuppressWarnings("unchecked")
+    public Response saveBatch(@RequestBody HashMap<String, Object> param, HttpSession session) {
         long userId = SessionUtil.getUserId(session);
+        if (!(param.get("rows") instanceof List<?> rows) || rows.isEmpty() || rows.size() > BATCH_MAX) {
+            return Response.invalid("한 번에 1~" + BATCH_MAX + "건까지 저장할 수 있어요.");
+        }
+        List<Map<String, Object>> entries = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, Object> entry = new HashMap<>();
+            Response error = rows.get(i) instanceof Map<?, ?> row && !ParamUtil.has((Map<String, Object>) row, "id")
+                    ? toEntry((Map<String, Object>) row, userId, entry)
+                    : Response.invalid("새 거래만 추가할 수 있어요.");
+            if (error != null) {
+                return Response.invalid((i + 1) + "번째 줄: " + error.getMessage());
+            }
+            entries.add(entry);
+        }
+
+        try {
+            entryService.insertEntries(entries);
+        } catch (IllegalStateException e) {
+            return Response.invalid("자산 잔액을 반영할 수 없어 저장하지 않았어요. 연결된 자산과 금액을 확인해 주세요.");
+        }
+        return Response.of(Constants.SUCCESS, Map.of("count", entries.size()));
+    }
+
+    // 거래 한 건 입력 검사. 문제가 없으면 entry 에 저장할 값을 담고 null, 있으면 그 응답
+    private Response toEntry(Map<String, Object> param, long userId, Map<String, Object> entry) {
         Long id = ParamUtil.lng(param, "id");
         LocalDate entryDate = ParamUtil.date(param, "entryDate");
         String type = ParamUtil.str(param, "type");
@@ -166,21 +217,11 @@ public class EntryApiController {
         if (accountId != null && accountService.selectAccount(ParamUtil.map("id", accountId, "userId", userId)) == null) {
             return Response.invalid("통장을 다시 골라 주세요.");
         }
-        Map<String, Object> entry = ParamUtil.map("userId", userId, "id", id, "entryDate", entryDate, "type", type,
+        entry.putAll(ParamUtil.map("userId", userId, "id", id, "entryDate", entryDate, "type", type,
                 "categoryId", categoryId, "title", title, "amount", amount,
                 "paymentMethodId", paymentMethodId, "memo", memo.isEmpty() ? null : memo,
-                "transferAssetId", transferAssetId, "accountId", accountId);
-
-        try {
-            if (id == null) {
-                entryService.insertEntry(entry);
-            } else if (entryService.updateEntry(entry) == 0) {
-                return Response.of(Constants.NOT_FOUND);
-            }
-        } catch (IllegalStateException e) {
-            return Response.invalid("자산 잔액을 반영할 수 없어요. 연결된 자산과 금액을 확인해 주세요.");
-        }
-        return Response.of(Constants.SUCCESS);
+                "transferAssetId", transferAssetId, "accountId", accountId));
+        return null;
     }
 
     @ResponseBody

@@ -106,7 +106,7 @@ App.account = (function(){
 			m$.recurring.del.addEventListener('click', removeRecurring);
 		},
 
-		/* 기본 통장 잔액은 대시보드의 가계부 잔액에서 구하므로 두 응답이 모두 와야 그린다 */
+		/* 통장 합계와 비교할 가계부 잔액이 대시보드 요약에 있으므로 두 응답이 모두 와야 그린다 */
 		reload = function(){
 			Promise.all([App.post(url.list), App.post(url.summary)])
 				.then(function(res){
@@ -117,17 +117,11 @@ App.account = (function(){
 				.catch(function(){});
 		},
 
-		/* 기본 통장 = 가계부 잔액 − 다른 통장 잔액. 그래서 통장 합계가 가계부 잔액과 같다 */
+		/* 기본 통장 잔액(가계부 잔액 − 다른 통장)은 서버가 계산해 보낸다. 그래서 통장 합계가 가계부 잔액과 같다 */
 		render = function(data, ledgerBalance){
-			var def = data.accounts.filter(function(a){ return a.isDefault; })[0];
-			if(def){
-				def.balance = data.accounts.reduce(function(rest, a){
-					return a === def ? rest : rest - Number(a.balance);
-				}, ledgerBalance);
-			}
 			settings.accounts = data.accounts;
 			settings.today = data.today;
-			renderMetrics(data.accounts, ledgerBalance, !!def);
+			renderMetrics(data.accounts, ledgerBalance, data.accounts.some(function(a){ return a.isDefault; }));
 			renderAccounts(data.accounts);
 			renderRecurring(data.recurring);
 			renderTransfers(data.transfers);

@@ -557,3 +557,22 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
   .dialog-tools .button { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .cycle-track span, .cycle-ruler { transition: none; } }
+/* 거래 내역 머리 버튼 묶음 · 여러 건 입력 */
+.page-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.batch-table { min-width: 1080px; }
+.batch-table td { padding: 8px 6px; vertical-align: middle; }
+.batch-table td[data-cell=date] { min-width: 140px; }
+.batch-table td[data-cell=type] { min-width: 80px; }
+.batch-table td[data-cell=category], .batch-table td[data-cell=payment], .batch-table td[data-cell=account] { min-width: 120px; }
+.batch-table td[data-cell=title] { min-width: 150px; }
+.batch-table td[data-cell=amount] { min-width: 120px; }
+.batch-table td[data-cell=amount] input { text-align: right; font-variant-numeric: tabular-nums; }
+.batch-balance { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.batch-add { margin-top: 12px; }
+.batch-summary { display: grid; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+@media (max-width: 768px) {
+  .page-actions .button { font-size: 11px; padding: 9px 12px; }
+  .batch-table { min-width: 0; }
+  .batch-table td[data-cell] { min-width: 0; }
+  .batch-table td > input, .batch-table td > select { flex: 1; max-width: 62%; }
+}

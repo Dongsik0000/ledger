@@ -51,6 +51,16 @@ public class EntryServiceImpl implements EntryService {
 
     @Override
     @Transactional
+    public int insertEntries(List<Map<String, Object>> entries) {
+        for (Map<String, Object> entry : entries) {
+            entryDAO.insertEntry(entry);
+            adjust(entry, null, 0);
+        }
+        return entries.size();
+    }
+
+    @Override
+    @Transactional
     public int updateEntry(Map<String, Object> param) {
         Map<String, Object> old = entryDAO.selectEntryForUpdate(param);
         if (old == null) return 0;

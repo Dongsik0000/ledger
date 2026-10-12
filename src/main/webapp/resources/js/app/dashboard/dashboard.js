@@ -18,6 +18,7 @@ App.dashboard = (function(){
 			title: document.getElementById('quickTitle'),
 			payments: document.getElementById('quickPayments'),
 			account: document.getElementById('quickAccount'),
+			balance: document.getElementById('quickBalance'),
 			optional: document.getElementById('quickOptional'),
 			date: document.getElementById('quickDate'),
 			memo: document.getElementById('quickMemo'),
@@ -29,13 +30,15 @@ App.dashboard = (function(){
 
 		settings = {
 			submitting: false,
-			master: {categories: [], paymentMethods: []}
+			master: {categories: [], paymentMethods: []},
+			balances: null
 		},
 
 		url = {
 			summary: contextPath + '/ledger/dashboard/summary',
 			recent: contextPath + '/ledger/dashboard/recent',
 			master: contextPath + '/ledger/settings/master',
+			balances: contextPath + '/ledger/account/balances',
 			save: contextPath + '/ledger/entry/save'
 		},
 
@@ -44,6 +47,7 @@ App.dashboard = (function(){
 			m$.date.value = App.entryForm.today();
 
 			loadMaster();
+			loadBalances();
 			loadSummary();
 			loadRecent();
 		},
@@ -53,8 +57,12 @@ App.dashboard = (function(){
 			document.querySelectorAll('input[name="quickType"]').forEach(function(r){
 				r.addEventListener('change', function(){
 					App.entryForm.renderCategories(m$.categories, 'quickCategory', settings.master.categories, r.value, null);
+					showBalance();
 				});
 			});
+			m$.amount.addEventListener('input', showBalance);
+			m$.account.addEventListener('change', showBalance);
+			m$.date.addEventListener('change', showBalance);
 			/* Enter·휴대폰 키보드의 완료로도 저장된다 */
 			m$.form.addEventListener('submit', function(e){
 				e.preventDefault();
@@ -98,7 +106,25 @@ App.dashboard = (function(){
 					known = settings.master.paymentMethods.some(function(p){ return p.active && p.id === last; });
 				App.entryForm.renderPayments(m$.payments, 'quickPayment', settings.master.paymentMethods, known ? last : null);
 				App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], App.entryForm.lastAccount());
+				showBalance();
 			}});
+		},
+
+		showBalance = function(){
+			App.entryForm.balanceHint(m$.balance, settings.balances, m$.account.value, App.entryForm.checked('quickType'),
+				App.parseAmount(m$.amount.value), m$.date.value || App.entryForm.today(), false);
+		},
+
+		/* 잔액 안내는 보조 정보라 실패해도 입력을 막지 않고 안내 칸에 적는다 */
+		loadBalances = function(){
+			App.post(url.balances, null, {onError: function(){ m$.balance.textContent = '통장 잔액을 불러오지 못했어요.'; }})
+				.then(function(res){
+					App.result(res, {ok: function(){
+						settings.balances = res.data;
+						showBalance();
+					}});
+				})
+				.catch(function(){});
 		},
 
 		dotted = function(d){ return d.replace(/-/g, '.'); },
@@ -192,6 +218,7 @@ App.dashboard = (function(){
 						m$.date.value = App.entryForm.today();
 						m$.optional.open = false;
 						App.saved('기록했어요');
+						loadBalances();
 						loadSummary();
 						loadRecent();
 					}});
