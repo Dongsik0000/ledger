@@ -68,8 +68,10 @@
         <session-timeout>1440</session-timeout>
         <!-- Session ID URL 노출 차단 -->
         <tracking-mode>COOKIE</tracking-mode>
+        <!-- Secure: 운영은 nginx 뒤 HTTPS 로만 접속한다(80 은 nginx 가 301). http:// 로 들어온 첫 요청에 세션 쿠키가 평문으로 실리지 않게 한다 -->
         <cookie-config>
             <http-only>true</http-only>
+            <secure>true</secure>
         </cookie-config>
     </session-config>
 </web-app>
