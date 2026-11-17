@@ -26,4 +26,5 @@ public class Constants {
     // 세션 키
     public static final String SESSION_USER_ID  = "userId";   // Long, app_user.id — 모든 조회의 격리 기준
     public static final String SESSION_USERNAME = "username";
+    public static final String SESSION_PASSWORD_HASH = "passwordHash";   // 로그인 때의 password_hash. 다르면 LoginPageInterceptor 가 세션을 끊는다
 }

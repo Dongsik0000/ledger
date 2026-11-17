@@ -12,12 +12,14 @@ public class SessionUtil {
     }
 
     // 로그인 성공 시 세션 ID 를 새로 발급한다(세션 고정 공격 방지). 기존 속성은 유지된다.
-    public static void login(HttpServletRequest request, Long userId, String username) {
+    // passwordHash: 지금 비밀번호 해시. 나중에 비밀번호가 바뀌면 이 세션은 끊긴다(LoginPageInterceptor)
+    public static void login(HttpServletRequest request, Long userId, String username, String passwordHash) {
         request.getSession(true);
         request.changeSessionId();
         HttpSession session = request.getSession(false);
         session.setAttribute(Constants.SESSION_USER_ID, userId);
         session.setAttribute(Constants.SESSION_USERNAME, username);
+        session.setAttribute(Constants.SESSION_PASSWORD_HASH, passwordHash);
     }
 
     // 세션 폐기

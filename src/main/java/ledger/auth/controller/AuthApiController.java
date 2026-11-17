@@ -94,7 +94,7 @@ public class AuthApiController {
         }
 
         loginAttemptLimiter.reset(attemptKey);
-        SessionUtil.login(request, ((Number) user.get("id")).longValue(), (String) user.get("username"));
+        SessionUtil.login(request, ((Number) user.get("id")).longValue(), (String) user.get("username"), hash);
         return Response.of(Constants.SUCCESS);
     }
 
@@ -136,7 +136,7 @@ public class AuthApiController {
         return Response.of(Constants.SUCCESS);
     }
 
-    // 비밀번호 변경(로그인 필요: /ledger/** 인터셉터). 현재 비밀번호는 로그인처럼 5회 실패 시 잠시 차단하고, 바꾸면 세션 ID 를 교체한다
+    // 비밀번호 변경(로그인 필요: /ledger/** 인터셉터). 현재 비밀번호는 로그인처럼 5회 실패 시 잠시 차단하고, 바꾸면 세션 ID 를 교체하고 다른 기기의 로그인은 끊는다
     @ResponseBody
     @PostMapping("/ledger/account/password")
     public Response changePassword(@RequestBody HashMap<String, Object> param, HttpServletRequest request) {
@@ -159,8 +159,11 @@ public class AuthApiController {
         }
         loginAttemptLimiter.reset(attemptKey);
 
-        authService.updatePassword(ParamUtil.map("userId", userId, "passwordHash", passwordEncoder.encode(next)));
+        String hash = passwordEncoder.encode(next);
+        authService.updatePassword(ParamUtil.map("userId", userId, "passwordHash", hash));
         request.changeSessionId();
+        // 이 세션은 새 해시로 계속 쓰고, 예전 해시를 가진 다른 세션은 LoginPageInterceptor 가 끊는다
+        request.getSession().setAttribute(Constants.SESSION_PASSWORD_HASH, hash);
         return Response.of(Constants.SUCCESS);
     }
 
