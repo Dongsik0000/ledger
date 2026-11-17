@@ -95,7 +95,7 @@ App.entryBatch = (function(){
 					option('INCOME', '수입', prev && prev.type.value === 'INCOME')
 				]),
 				category: App.h('select', {attrs: {'aria-label': '카테고리'}}),
-				title: App.h('input', {type: 'text', maxLength: 100, placeholder: '예: 점심', autocomplete: 'off', attrs: {'aria-label': '내용', enterkeyhint: 'next', list: 'entryTitles'}}),
+				title: App.h('input', {type: 'text', maxLength: 100, placeholder: '예: 점심', attrs: {'aria-label': '내용', enterkeyhint: 'next'}}),
 				amount: App.h('input', {type: 'text', inputMode: 'numeric', autocomplete: 'off', placeholder: '0', attrs: {'aria-label': '금액 (원)', enterkeyhint: 'next'}}),
 				payment: App.h('select', {attrs: {'aria-label': '결제수단'}}),
 				account: App.h('select', {attrs: {'aria-label': '통장'}}),
@@ -110,7 +110,6 @@ App.entryBatch = (function(){
 				prev ? Number(prev.account.value) || null : App.entryForm.lastAccount());
 			App.bindAmountInput(r.amount);
 			r.type.addEventListener('change', function(){ fillCategories(r, null); });
-			r.title.addEventListener('change', function(){ fillFromSuggestion(r); });
 			/* 마지막 줄의 내용·금액에서 Enter 면 줄을 더하고, 아니면 다음 줄로. 한글 조합 중 Enter 는 조합 완료로 둔다 */
 			[r.title, r.amount].forEach(function(el){
 				el.addEventListener('keydown', function(e){
@@ -137,20 +136,6 @@ App.entryBatch = (function(){
 				})])
 			]);
 			return r;
-		},
-
-		/* 내용이 예전 거래와 같으면 그 구분·카테고리·결제수단·통장(금액은 비었을 때만)을 채운다.
-		   숨김·삭제된 카테고리면 그 구분의 첫 카테고리, 결제수단이면 "선택 안 함" */
-		fillFromSuggestion = function(r){
-			var s = App.entryForm.suggestionFor(r.title.value);
-			if(!s) return;
-			r.type.value = s.type;
-			fillCategories(r, s.categoryId);
-			r.payment.value = s.paymentMethodId === null || s.paymentMethodId === undefined ? '' : String(s.paymentMethodId);
-			if(r.payment.selectedIndex < 0) r.payment.value = '';
-			App.entryForm.setAccount(r.account, s.accountId);
-			if(!r.amount.value.trim()) r.amount.value = Number(s.amount).toLocaleString('ko-KR');
-			recompute();
 		},
 
 		/* 윗줄 값을 이어받은 줄 추가(최대 MAX 줄). 추가한 줄, 넘으면 null */
@@ -279,13 +264,12 @@ App.entryBatch = (function(){
 				.then(function(){ settings.submitting = false; });
 		},
 
-		/* 저장 성공: 통장 기억, 창 닫기, 목록·내용 목록 새로고침 */
+		/* 저장 성공: 통장 기억, 창 닫기, 목록 새로고침 */
 		handleSaveResult = function(res){
 			App.result(res, {ok: function(){
 				App.entryForm.rememberAccount(settings.rows[settings.rows.length - 1].account.value);
 				m$.dialog.close();
 				App.saved(res.data.count + '건 저장했어요');
-				App.entryForm.loadTitles();
 				if(settings.onSaved) settings.onSaved();
 			}});
 		};

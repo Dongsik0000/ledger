@@ -45,7 +45,6 @@ public class EntryApiController {
     private static final Set<String> PERIODS = Set.of("MONTH", "CYCLE", "RECENT12", "ALL");
     private static final int WIDE_LIMIT = 500;
     private static final int BATCH_MAX = 50;
-    private static final int SUGGEST_LIMIT = 200;
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired
@@ -79,12 +78,20 @@ public class EntryApiController {
         String type = ParamUtil.str(param, "type");
         Long categoryId = ParamUtil.lng(param, "categoryId");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
+        Long accountId = ParamUtil.lng(param, "accountId");
         String keyword = ParamUtil.str(param, "keyword");
 
         if (!PERIODS.contains(period) || ("MONTH".equals(period) && month == null) || date == null || (!type.isEmpty() && !TYPES.contains(type))
                 || (ParamUtil.has(param, "categoryId") && categoryId == null)
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
+                || (ParamUtil.has(param, "accountId") && accountId == null)
                 || keyword.length() > KEYWORD_MAX) {
+            return Response.invalid("조회 조건을 확인해 주세요.");
+        }
+        // 통장 필터는 내 통장만. 기본 통장이면 통장을 고르지 않은 거래도 그 통장 것으로 본다
+        Map<String, Object> account = accountId == null ? null
+                : accountService.selectAccount(ParamUtil.map("id", accountId, "userId", SessionUtil.getUserId(session)));
+        if (accountId != null && account == null) {
             return Response.invalid("조회 조건을 확인해 주세요.");
         }
 
@@ -115,6 +122,7 @@ public class EntryApiController {
                 "userId", SessionUtil.getUserId(session), "from", from, "to", to,
                 "type", type.isEmpty() ? null : type,
                 "categoryId", categoryId, "paymentMethodId", paymentMethodId,
+                "accountId", accountId, "accountDefault", account != null && Boolean.TRUE.equals(account.get("isDefault")),
                 "keyword", LikeUtil.contains(keyword),
                 "limit", "MONTH".equals(period) || "CYCLE".equals(period) ? null : WIDE_LIMIT + 1);
 
@@ -127,14 +135,6 @@ public class EntryApiController {
         data.put("from", from == null ? null : from.toString());
         data.put("to", to == null ? null : to.toString());
         return Response.of(Constants.SUCCESS, data);
-    }
-
-    // 내용 자동 채우기: 최근 1년 거래의 내용별 가장 최근 구분·카테고리·결제수단·통장·금액
-    @ResponseBody
-    @PostMapping("/titles")
-    public Response titles(HttpSession session) {
-        return Response.of(Constants.SUCCESS, entryService.selectTitleSuggestions(ParamUtil.map(
-                "userId", SessionUtil.getUserId(session), "from", LocalDate.now(SEOUL).minusYears(1), "limit", SUGGEST_LIMIT)));
     }
 
     // 거래 한 건 추가·수정

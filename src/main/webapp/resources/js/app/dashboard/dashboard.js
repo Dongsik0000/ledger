@@ -42,14 +42,13 @@ App.dashboard = (function(){
 			save: contextPath + '/ledger/entry/save'
 		},
 
-		/* 날짜 칸에 오늘을 넣고 선택지·잔액·내용 목록·요약·최근 기록을 불러온다 */
+		/* 날짜 칸에 오늘을 넣고 선택지·잔액·요약·최근 기록을 불러온다 */
 		init = function(){
 			bindEvent();
 			m$.date.value = App.entryForm.today();
 
 			loadMaster();
 			loadBalances();
-			App.entryForm.loadTitles();
 			loadSummary();
 			loadRecent();
 		},
@@ -65,12 +64,6 @@ App.dashboard = (function(){
 			});
 			m$.amount.addEventListener('input', showBalance);
 			m$.account.addEventListener('change', showBalance);
-			/* 내용이 예전 거래와 같으면 그 구분·카테고리·결제수단·통장(금액은 비었을 때만)을 채운다 */
-			m$.title.addEventListener('change', function(){
-				var s = App.entryForm.suggestionFor(m$.title.value);
-				if(s) App.entryForm.fillFromSuggestion(s, m$.form,
-					{type: 'quickType', category: 'quickCategory', payment: 'quickPayment'}, m$.account, m$.amount);
-			});
 			m$.date.addEventListener('change', showBalance);
 			/* Enter·휴대폰 키보드의 완료로도 저장된다 */
 			m$.form.addEventListener('submit', function(e){
@@ -238,7 +231,6 @@ App.dashboard = (function(){
 						m$.optional.open = false;
 						App.saved('기록했어요');
 						loadBalances();
-						App.entryForm.loadTitles();
 						loadSummary();
 						loadRecent();
 					}});

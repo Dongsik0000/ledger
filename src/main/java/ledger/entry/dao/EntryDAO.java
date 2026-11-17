@@ -31,11 +31,6 @@ public class EntryDAO {
         return sqlSession.selectList(SQL_PATH + ".selectRecentEntries", param);
     }
 
-    // 내용 자동 채우기: 내용별 가장 최근 구분·카테고리·결제수단·통장·금액
-    public List<Map<String, Object>> selectTitleSuggestions(Map<String, Object> param) {
-        return sqlSession.selectList(SQL_PATH + ".selectTitleSuggestions", param);
-    }
-
     // 내 거래 하나
     public Map<String, Object> selectEntry(Map<String, Object> param) {
         return sqlSession.selectOne(SQL_PATH + ".selectEntry", param);

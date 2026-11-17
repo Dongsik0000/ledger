@@ -12,6 +12,7 @@ App.entry = (function(){
 			type: document.getElementById('filterType'),  /* 구분 필터 */
 			category: document.getElementById('filterCategory'),  /* 카테고리 필터 */
 			payment: document.getElementById('filterPayment'),  /* 결제수단 필터 */
+			accountFilter: document.getElementById('filterAccount'),  /* 통장 필터 */
 			reset: document.getElementById('filterReset'),  /* 필터 초기화 버튼 */
 			search: document.getElementById('filterSearch'),  /* 조회 버튼 */
 			count: document.getElementById('listCount'),  /* 건수 */
@@ -58,7 +59,7 @@ App.entry = (function(){
 
 		/* 조회 조건을 주소에서 읽고, 선택지를 받은 뒤 목록을 그린다 */
 		init = function(){
-			/* 조회 조건은 주소(?period=&month=&q=&type=&category=&payment=)에 남겨 새로고침·뒤로 가기에도 유지한다 */
+			/* 조회 조건은 주소(?period=&month=&q=&type=&category=&payment=&account=)에 남겨 새로고침·뒤로 가기에도 유지한다 */
 			var q = new URLSearchParams(location.search);
 			bindEvent();
 			settings.month = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get('month') || '') ? q.get('month') : App.entryForm.today().slice(0, 7);
@@ -67,7 +68,6 @@ App.entry = (function(){
 			/* 주기 보기: 이 날짜가 속한 주기(없으면 오늘) */
 			settings.cycleDate = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : '';
 			showPeriod();
-			App.entryForm.loadTitles();
 			m$.keyword.value = q.get('q') || '';
 			m$.type.value = ['INCOME', 'EXPENSE'].indexOf(q.get('type')) >= 0 ? q.get('type') : '';
 			settings.editId = q.get('edit');
@@ -76,6 +76,7 @@ App.entry = (function(){
 				/* 선택지에 없는 값(지운 항목 등)이면 select 가 빈 값으로 남는다 */
 				m$.category.value = q.get('category') || '';
 				m$.payment.value = q.get('payment') || '';
+				m$.accountFilter.value = q.get('account') || '';
 				list();
 			});
 		},
@@ -103,6 +104,7 @@ App.entry = (function(){
 				m$.type.value = '';
 				m$.category.value = '';
 				m$.payment.value = '';
+				m$.accountFilter.value = '';
 				list();
 			});
 
@@ -118,12 +120,6 @@ App.entry = (function(){
 			});
 			m$.amount.addEventListener('input', showBalance);
 			m$.account.addEventListener('change', showBalance);
-			/* 새 거래의 내용이 예전 거래와 같으면 그 구분·카테고리·결제수단·통장(금액은 비었을 때만)을 채운다. 수정 중에는 건드리지 않는다 */
-			m$.title.addEventListener('change', function(){
-				var s = !settings.editing && App.entryForm.suggestionFor(m$.title.value);
-				if(s) App.entryForm.fillFromSuggestion(s, m$.dialog,
-					{type: ED + '-type', category: ED + '-category', payment: ED + '-payment'}, m$.account, m$.amount);
-			});
 			m$.date.addEventListener('change', showBalance);
 			m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
 				b.addEventListener('click', requestClose);
@@ -181,6 +177,7 @@ App.entry = (function(){
 			if(m$.type.value) q.set('type', m$.type.value);
 			if(m$.category.value) q.set('category', m$.category.value);
 			if(m$.payment.value) q.set('payment', m$.payment.value);
+			if(m$.accountFilter.value) q.set('account', m$.accountFilter.value);
 			history.replaceState(null, '', location.pathname + '?' + q.toString());
 		},
 
@@ -199,10 +196,12 @@ App.entry = (function(){
 			}});
 		},
 
-		/* 카테고리·결제수단 필터 선택지 */
+		/* 카테고리·결제수단·통장 필터 선택지. 통장이 없으면 통장 필터를 숨긴다 */
 		fillFilters = function(){
 			var categoryOptions = [App.h('option', {value: '', text: '전체'})],
-				paymentOptions = [App.h('option', {value: '', text: '전체'})];
+				paymentOptions = [App.h('option', {value: '', text: '전체'})],
+				accountOptions = [App.h('option', {value: '', text: '전체'})],
+				accounts = settings.master.accounts || [];
 			settings.master.categories.forEach(function(c){
 				var label = (c.type === 'INCOME' ? '수입 · ' : '지출 · ') + c.name + (c.active ? '' : ' (숨김)');
 				categoryOptions.push(App.h('option', {value: String(c.id), text: label}));
@@ -211,7 +210,12 @@ App.entry = (function(){
 				paymentOptions.push(App.h('option', {value: String(p.id), text: p.name + (p.active ? '' : ' (숨김)')}));
 			});
 			m$.category.replaceChildren.apply(m$.category, categoryOptions);
+			accounts.forEach(function(a){
+				accountOptions.push(App.h('option', {value: String(a.id), text: a.name + (a.isDefault ? ' (기본 통장)' : '')}));
+			});
 			m$.payment.replaceChildren.apply(m$.payment, paymentOptions);
+			m$.accountFilter.replaceChildren.apply(m$.accountFilter, accountOptions);
+			m$.accountFilter.closest('.field').hidden = !accounts.length;
 		},
 
 		/* 이전·다음 달(주기 보기면 이전·다음 주기) */
@@ -232,7 +236,7 @@ App.entry = (function(){
 
 		/* 검색어나 필터를 하나라도 썼는지 */
 		filtered = function(){
-			return m$.keyword.value.trim() || m$.type.value || m$.category.value || m$.payment.value;
+			return m$.keyword.value.trim() || m$.type.value || m$.category.value || m$.payment.value || m$.accountFilter.value;
 		},
 
 		/* 조회 조건으로 목록 요청 */
@@ -258,6 +262,7 @@ App.entry = (function(){
 				type: m$.type.value,
 				categoryId: m$.category.value,
 				paymentMethodId: m$.payment.value,
+				accountId: m$.accountFilter.value,
 				keyword: m$.keyword.value.trim()
 			})
 				.then(function(res){
@@ -456,7 +461,6 @@ App.entry = (function(){
 				App.entryForm.rememberAccount(m$.account.value);
 				m$.dialog.close();
 				App.saved();
-				App.entryForm.loadTitles();
 				list();
 			}});
 		},

@@ -40,12 +40,6 @@ public class EntryServiceImpl implements EntryService {
         return entryDAO.selectRecentEntries(param);
     }
 
-    // 내용 자동 채우기: 내용별 가장 최근 구분·카테고리·결제수단·통장·금액
-    @Override
-    public List<Map<String, Object>> selectTitleSuggestions(Map<String, Object> param) {
-        return entryDAO.selectTitleSuggestions(param);
-    }
-
     // 내 거래 하나
     @Override
     public Map<String, Object> selectEntry(Map<String, Object> param) {

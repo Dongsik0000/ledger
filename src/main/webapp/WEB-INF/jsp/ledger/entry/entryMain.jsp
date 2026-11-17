@@ -69,6 +69,10 @@
                             <span>결제수단</span>
                             <select id="filterPayment"><option value="">전체</option></select>
                         </label>
+                        <label class="field">
+                            <span>통장</span>
+                            <select id="filterAccount"><option value="">전체</option></select>
+                        </label>
                     </div>
                     <div class="filter-actions">
                         <button type="button" class="button" id="filterReset">초기화</button>

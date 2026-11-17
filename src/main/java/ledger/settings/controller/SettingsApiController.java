@@ -291,16 +291,24 @@ public class SettingsApiController {
         List<Map<String, Object>> entries = new ArrayList<>(entryService.selectEntryList(ParamUtil.map(
                 "userId", SessionUtil.getUserId(session), "from", fromDate, "to", toDate)));
         Collections.reverse(entries);   // 목록은 최신순이라 날짜 오름차순으로
+        // 통장 이름. 통장을 고르지 않은 거래(account_id NULL)는 기본 통장
+        Map<Object, Object> accountNames = new HashMap<>();
+        Object defaultAccount = null;
+        for (Map<String, Object> a : accountService.selectAccountOptions(SessionUtil.getUserId(session))) {
+            accountNames.put(a.get("id"), a.get("name"));
+            if (Boolean.TRUE.equals(a.get("isDefault"))) defaultAccount = a.get("name");
+        }
 
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"ledger-" + fromDate + "-" + toDate + ".csv\"");
         response.setHeader("Cache-Control", "no-store");
         Writer writer = response.getWriter();
         writer.write('﻿');   // 엑셀이 UTF-8 한글을 알아보도록 BOM
-        writer.write(CsvUtil.line(List.of("날짜", "구분", "카테고리", "내용", "금액", "결제수단", "메모")));
+        writer.write(CsvUtil.line(List.of("날짜", "구분", "카테고리", "내용", "금액", "결제수단", "통장", "메모")));
         for (Map<String, Object> e : entries) {
             writer.write(CsvUtil.line(Arrays.asList(e.get("entryDate"), "INCOME".equals(e.get("type")) ? "수입" : "지출",
-                    e.get("categoryName"), e.get("title"), e.get("amount"), e.get("paymentMethodName"), e.get("memo"))));
+                    e.get("categoryName"), e.get("title"), e.get("amount"), e.get("paymentMethodName"),
+                    e.get("accountId") == null ? defaultAccount : accountNames.get(e.get("accountId")), e.get("memo"))));
         }
         writer.flush();
     }

@@ -15,9 +15,6 @@ public interface EntryService {
     // 오늘까지의 최근 거래
     List<Map<String, Object>> selectRecentEntries(Map<String, Object> param);
 
-    // 내용 자동 채우기: 내용별 가장 최근 구분·카테고리·결제수단·통장·금액
-    List<Map<String, Object>> selectTitleSuggestions(Map<String, Object> param);
-
     // 내 거래 하나
     Map<String, Object> selectEntry(Map<String, Object> param);
 
