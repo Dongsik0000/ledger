@@ -43,8 +43,9 @@ ENV LEDGER_LOG_LEVEL=INFO \
 
 EXPOSE 8081
 
-# 세션을 만들지 않는 정적 파일로 확인한다 (로그인 화면은 호출마다 세션이 생겨 쌓인다)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-    CMD curl -fsS http://localhost:8081/p3/manifest.json > /dev/null || exit 1
+# DB 연결까지 확인하고 세션은 만들지 않는 /health 로 본다 (HealthController). deploy.sh 가 이 결과를 기다린다.
+# 기동 중(start-period)에는 5초마다 확인해 healthy 가 되는 즉시 배포가 끝난다
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --start-interval=5s --retries=3 \
+    CMD curl -fsS http://localhost:8081/p3/health > /dev/null || exit 1
 
 CMD ["catalina.sh", "run"]
