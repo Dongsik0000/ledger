@@ -306,7 +306,9 @@ public class SettingsApiController {
         writer.write('﻿');   // 엑셀이 UTF-8 한글을 알아보도록 BOM
         writer.write(CsvUtil.line(List.of("날짜", "구분", "카테고리", "내용", "금액", "결제수단", "통장", "메모")));
         for (Map<String, Object> e : entries) {
-            writer.write(CsvUtil.line(Arrays.asList(e.get("entryDate"), "INCOME".equals(e.get("type")) ? "수입" : "지출",
+            boolean income = "INCOME".equals(e.get("type"));
+            String kind = (income ? "수입" : "지출") + (Boolean.TRUE.equals(e.get("refund")) ? (income ? " 반납" : " 환불") : "");
+            writer.write(CsvUtil.line(Arrays.asList(e.get("entryDate"), kind,
                     e.get("categoryName"), e.get("title"), e.get("amount"), e.get("paymentMethodName"),
                     e.get("accountId") == null ? defaultAccount : accountNames.get(e.get("accountId")), e.get("memo"))));
         }

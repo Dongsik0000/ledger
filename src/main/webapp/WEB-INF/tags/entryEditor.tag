@@ -23,6 +23,10 @@
                     <label><input type="radio" name="${id}-type" value="INCOME"><span>수입</span></label>
                 </div>
             </fieldset>
+            <label class="checkbox-field">
+                <input type="checkbox" id="${id}-refund">
+                <span id="${id}-refund-label">환불받은 돈 (지출에서 빠지고 잔액에 더해져요)</span>
+            </label>
             <fieldset class="choice-field">
                 <legend>카테고리</legend>
                 <div class="choice-buttons" id="${id}-categories"></div>
@@ -61,6 +65,7 @@
     <footer class="dialog-footer">
         <div class="form-actions">
             <button type="button" class="button danger" id="${id}-delete" hidden>삭제</button>
+            <button type="button" class="button" id="${id}-refund-from" hidden>환불 기록</button>
             <button type="button" class="button" data-close>닫기</button>
             <button type="button" class="button primary" id="${id}-save">저장</button>
         </div>

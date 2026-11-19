@@ -25,6 +25,7 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
 - 달력 월 · 월급 주기 · 최근 12개월 · 전체 기간으로 조회하며 추가 · 수정 · 삭제
 - 조회 결과의 수입 · 지출 합계, 내용·메모 검색, 카테고리 · 결제수단 필터 (조회 조건은 주소에 남아 새로고침해도 유지)
 - 작성 중에 창을 닫으면 버릴지 먼저 묻습니다
+- **환불 · 반납**: 원래 거래와 같은 카테고리로 적으면 지출(수입)에서 빠지고 잔액만 반대로 움직입니다. 수정 창의 "환불 기록"으로 바로 적을 수 있습니다
 
 **고정 항목**
 - 수입과 지출 모두 등록, 결제일에 일반 거래로 자동 기록
@@ -98,6 +99,7 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
    psql -U ledger_app -d ledger -f db/007_asset_transfers.sql
    psql -U ledger_app -d ledger -f db/008_bank_account.sql
    psql -U ledger_app -d ledger -f db/009_default_account.sql
+   psql -U ledger_app -d ledger -f db/010_entry_refund.sql
    ```
 2. `mvn package` 로 만든 `target/ledger.war` 를 Tomcat 10.1 에 컨텍스트 `/p3` 로 배포합니다.
 3. http://localhost:8081/p3/ 에 접속합니다.

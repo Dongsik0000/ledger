@@ -246,8 +246,9 @@ public class EntryApiController {
         Long transferAssetId = ParamUtil.lng(param, "transferAssetId");
         Long accountId = ParamUtil.lng(param, "accountId");
         String memo = ParamUtil.str(param, "memo");
+        Boolean refund = ParamUtil.has(param, "refund") ? ParamUtil.bool(param, "refund") : Boolean.FALSE;
 
-        if ((ParamUtil.has(param, "id") && id == null) || entryDate == null
+        if ((ParamUtil.has(param, "id") && id == null) || entryDate == null || refund == null
                 || (ParamUtil.has(param, "accountId") && accountId == null) || !TYPES.contains(type)
                 || categoryId == null || title.isEmpty() || title.length() > TITLE_MAX
                 || amount == null || amount < 1 || amount > AMOUNT_MAX
@@ -256,6 +257,10 @@ public class EntryApiController {
                 || (transferAssetId != null && !"EXPENSE".equals(type))
                 || memo.length() > MEMO_MAX) {
             return Response.invalid("날짜·금액(1원~999억 원 미만)·카테고리·내용(100자 이하)·메모(500자 이하)를 확인해 주세요.");
+        }
+        // 환불·반납은 같은 구분의 반대 방향이라 자산 이체(지출 금액을 자산에 더함)와 함께 쓰지 않는다(DB CHECK 도 막는다)
+        if (refund && transferAssetId != null) {
+            return Response.invalid("환불·반납 거래는 적금·예금 자산으로 이체할 수 없어요.");
         }
 
         // 카테고리·결제수단은 같은 사용자 것이어야 하고, 카테고리는 거래 구분과 같아야 한다
@@ -277,7 +282,7 @@ public class EntryApiController {
         entry.putAll(ParamUtil.map("userId", userId, "id", id, "entryDate", entryDate, "type", type,
                 "categoryId", categoryId, "title", title, "amount", amount,
                 "paymentMethodId", paymentMethodId, "memo", memo.isEmpty() ? null : memo,
-                "transferAssetId", transferAssetId, "accountId", accountId));
+                "transferAssetId", transferAssetId, "accountId", accountId, "refund", refund));
         return null;
     }
 

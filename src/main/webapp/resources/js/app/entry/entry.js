@@ -30,6 +30,9 @@ App.entry = (function(){
 			payments: document.getElementById(ED + '-payments'),  /* 결제수단 라디오 묶음 */
 			account: document.getElementById(ED + '-account'),  /* 통장 선택 */
 			balance: document.getElementById(ED + '-balance'),  /* 통장 잔액 안내 */
+			refund: document.getElementById(ED + '-refund'),  /* 환불·반납 체크 */
+			refundLabel: document.getElementById(ED + '-refund-label'),  /* 환불·반납 설명(구분에 따라 바뀜) */
+			refundFrom: document.getElementById(ED + '-refund-from'),  /* 이 거래의 환불 기록 버튼(수정 창) */
 			transferField: document.getElementById(ED + '-transfer-field'),  /* 적금·예금 이체 칸 */
 			transferAsset: document.getElementById(ED + '-transfer-asset'),  /* 이체할 자산 선택 */
 			date: document.getElementById(ED + '-date'),  /* 날짜 */
@@ -114,6 +117,7 @@ App.entry = (function(){
 			m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
 				r.addEventListener('change', function(){
 					App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, r.value, null);
+					showRefund();
 					showTransfer();
 					showBalance();
 				});
@@ -121,6 +125,11 @@ App.entry = (function(){
 			m$.amount.addEventListener('input', showBalance);
 			m$.account.addEventListener('change', showBalance);
 			m$.date.addEventListener('change', showBalance);
+			m$.refund.addEventListener('change', function(){
+				showTransfer();
+				showBalance();
+			});
+			m$.refundFrom.addEventListener('click', refundFrom);
 			m$.dialog.querySelectorAll('[data-close]').forEach(function(b){
 				b.addEventListener('click', requestClose);
 			});
@@ -312,17 +321,23 @@ App.entry = (function(){
 			m$.dialog.querySelector('input[name="' + ED + '-type"][value="' + type + '"]').checked = true;
 		},
 
-		/* 지출일 때만 적금·예금 이체 칸을 보인다 */
+		/* 지출(환불 아님)일 때만 적금·예금 이체 칸을 보인다 */
 		showTransfer = function(){
-			var expense = App.entryForm.checked(ED + '-type') === 'EXPENSE';
+			var expense = App.entryForm.checked(ED + '-type') === 'EXPENSE' && !m$.refund.checked;
 			m$.transferField.hidden = !expense;
 			if(!expense) m$.transferAsset.value = '';
+		},
+
+		/* 환불·반납 설명: 지출이면 돌려받은 돈, 수입이면 돌려준 돈 */
+		showRefund = function(){
+			m$.refundLabel.textContent = App.entryForm.checked(ED + '-type') === 'INCOME'
+				? '돌려준 돈 (수입에서 빠지고 잔액에서 나가요)' : '환불받은 돈 (지출에서 빠지고 잔액에 더해져요)';
 		},
 
 		/* 통장 잔액 안내 갱신 */
 		showBalance = function(){
 			App.entryForm.balanceHint(m$.balance, settings.balances, m$.account.value, App.entryForm.checked(ED + '-type'),
-				App.parseAmount(m$.amount.value), m$.date.value, !!settings.editing);
+				App.parseAmount(m$.amount.value), m$.date.value, !!settings.editing, m$.refund.checked);
 		},
 
 		/* 잔액 안내는 보조 정보라 실패해도 창을 막지 않고 안내 칸에 적는다 */
@@ -369,23 +384,28 @@ App.entry = (function(){
 				});
 		},
 
-		/* 거래 창 열기. e 가 있으면 수정, 없으면 추가 */
-		open = function(e){
+		/* 거래 창 열기. e 가 있으면 수정, 없으면 추가. preset 은 추가 창에 미리 채울 값(환불 기록) */
+		open = function(e, preset){
+			var src = e || preset;
 			settings.editing = e;
-			m$.heading.textContent = e ? '거래 수정' : '거래 추가';
-			m$.subtitle.textContent = e ? e.title : '필요한 내용을 입력해 주세요.';
-			m$.amount.value = e ? Number(e.amount).toLocaleString('ko-KR') : '';
-			setType(e ? e.type : 'EXPENSE');
-			App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, e ? e.type : 'EXPENSE', e ? e.categoryId : null);
-			m$.title.value = e ? e.title : '';
-			App.entryForm.renderPayments(m$.payments, ED + '-payment', settings.master.paymentMethods, e ? e.paymentMethodId : null);
-			App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], e ? e.accountId : App.entryForm.lastAccount());
+			m$.heading.textContent = e ? '거래 수정' : preset ? '환불·반납 기록' : '거래 추가';
+			m$.subtitle.textContent = e ? e.title
+				: preset ? '‘' + preset.from + '’에서 돌려받거나 돌려준 돈을 적어요.' : '필요한 내용을 입력해 주세요.';
+			m$.amount.value = src ? Number(src.amount).toLocaleString('ko-KR') : '';
+			setType(src ? src.type : 'EXPENSE');
+			App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, src ? src.type : 'EXPENSE', src ? src.categoryId : null);
+			m$.title.value = src ? src.title : '';
+			App.entryForm.renderPayments(m$.payments, ED + '-payment', settings.master.paymentMethods, src ? src.paymentMethodId : null);
+			App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], src ? src.accountId : App.entryForm.lastAccount());
+			m$.refund.checked = preset ? true : !!(e && e.refund);
 			m$.date.value = e ? e.entryDate
-				: (settings.month === App.entryForm.today().slice(0, 7) ? App.entryForm.today() : settings.month + '-01');
+				: preset || settings.month === App.entryForm.today().slice(0, 7) ? App.entryForm.today() : settings.month + '-01';
 			m$.memo.value = e && e.memo ? e.memo : '';
 			m$.memoBox.open = !!(e && e.memo);
+			showRefund();
 			showTransfer();
 			m$.del.hidden = !e;
+			m$.refundFrom.hidden = !e || !!e.refund;
 			settings.snapshot = snapshot();
 			loadTransferAssets(e ? e.transferAssetId : null);
 			loadBalances();
@@ -397,7 +417,7 @@ App.entry = (function(){
 		snapshot = function(){
 			return JSON.stringify([m$.amount.value, App.entryForm.checked(ED + '-type'), App.entryForm.checked(ED + '-category'),
 				m$.title.value, App.entryForm.checked(ED + '-payment'), m$.account.value, m$.date.value, m$.memo.value,
-				m$.transferAsset.value]);
+				m$.refund.checked, m$.transferAsset.value]);   /* 이체 자산은 마지막(loadTransferAssets 가 바꾼다) */
 		},
 
 		/* 작성 중이면 버릴지 물은 뒤 닫는다 */
@@ -414,6 +434,18 @@ App.entry = (function(){
 
 		/* 거래 수정 */
 		openEdit = function(e){ open(e); },
+
+		/* 수정 중인 거래의 환불·반납 기록: 구분·카테고리·결제수단·통장·금액을 이어받은 새 거래 창. 금액은 부분 환불이면 고친다 */
+		refundFrom = function(){
+			var e = settings.editing,
+				go = function(){
+					m$.dialog.close();
+					open(null, {type: e.type, categoryId: e.categoryId, paymentMethodId: e.paymentMethodId, accountId: e.accountId,
+						amount: e.amount, title: e.title.slice(0, 97) + (e.type === 'INCOME' ? ' 반납' : ' 환불'), from: e.title});
+				};
+			if(snapshot() === settings.snapshot) go();
+			else _confirm('수정 중인 내용을 버릴까요?', '저장하지 않은 수정은 사라지고 환불 기록 창이 열려요.', go);
+		},
 
 		/* 입력 확인 후 저장 요청 */
 		save = function(){
@@ -449,6 +481,7 @@ App.entry = (function(){
 				paymentMethodId: App.entryForm.checked(ED + '-payment'),
 				transferAssetId: m$.transferField.hidden ? '' : m$.transferAsset.value,
 				accountId: m$.account.value,
+				refund: m$.refund.checked,
 				memo: m$.memo.value.trim()
 			})
 				.then(handleSaveResult)

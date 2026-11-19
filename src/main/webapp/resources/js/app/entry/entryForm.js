@@ -80,11 +80,11 @@ App.entryForm = (function(){
 			})[0] || null;
 		},
 
-		/* 새 거래 한 건이 통장 잔액에 주는 변화 {통장 id: 금액}. 통장 화면과 같은 규칙이다.
+		/* 새 거래 한 건이 통장 잔액에 주는 변화 {통장 id: 금액}. 통장 화면과 같은 규칙이다. refund 면 반대 방향.
 		   고른 통장(기본 통장 외)은 날짜가 그 통장의 countFrom ~ to 이면 바뀐다.
 		   기본 통장 = 가계부 잔액 − 다른 통장이라, 가계부 잔액(시작 잔액 기준일 ~ to)이 바뀐 만큼에서 다른 통장 변화를 뺀 만큼 바뀐다 */
-		balanceEffect = function(balances, accountId, type, amount, date){
-			var signed = (type === 'INCOME' ? 1 : -1) * amount,
+		balanceEffect = function(balances, accountId, type, amount, date, refund){
+			var signed = signOf(type, refund) * amount,
 				def = accountOf(balances, ''),
 				own = accountOf(balances, accountId),
 				ledger = def && date <= balances.to && (!def.countFrom || date >= def.countFrom) ? signed : 0,
@@ -97,14 +97,14 @@ App.entryForm = (function(){
 
 		/* 통장 칸 아래 안내: "생활비 통장 현재 잔액 X원 → 저장 후 Y원". balances 가 없으면(불러오는 중) 비운다.
 		   수정 중이면 그 거래가 이미 잔액에 들어 있으므로 현재 잔액만 보여 준다 */
-		balanceHint = function(el, balances, accountId, type, amount, date, editing){
+		balanceHint = function(el, balances, accountId, type, amount, date, editing, refund){
 			var own = balances && accountOf(balances, accountId), now, delta;
 			if(!own){
 				el.textContent = '';
 				return;
 			}
 			now = Number(own.balance);
-			delta = !editing && amount && date ? balanceEffect(balances, accountId, type, amount, date)[own.id] || 0 : 0;
+			delta = !editing && amount && date ? balanceEffect(balances, accountId, type, amount, date, refund)[own.id] || 0 : 0;
 			el.textContent = own.name + ' 현재 잔액 ' + App.money(now)
 				+ (delta ? ' → 저장 후 ' + App.money(now + delta)
 					: !editing && amount && date ? ' · 이 날짜는 통장 잔액 계산 기간(기준일 ~ 이번 주기 끝) 밖이에요' : '');
@@ -146,9 +146,14 @@ App.entryForm = (function(){
 			return Number(p[1]) + '월 ' + Number(p[2]) + '일';
 		},
 
-		/* 수입은 +, 지출은 − 를 붙인 금액 */
-		signedMoney = function(type, amount){
-			return (type === 'INCOME' ? '+' : '−') + App.money(amount);
+		/* 잔액에 주는 방향: 수입 +1, 지출 −1. 환불·반납이면 반대(지출 환불은 들어온 돈, 수입 반납은 나간 돈) */
+		signOf = function(type, refund){
+			return (type === 'INCOME') !== !!refund ? 1 : -1;
+		},
+
+		/* 들어온 돈은 +, 나간 돈은 − 를 붙인 금액 */
+		signedMoney = function(type, amount, refund){
+			return (signOf(type, refund) > 0 ? '+' : '−') + App.money(amount);
 		},
 
 		/* 금액 칸. 통장 필터로 조회해 balance 가 있으면(값이 null 이어도) 그 아래에 거래 후 잔액 */
@@ -181,7 +186,8 @@ App.entryForm = (function(){
 		row = function(e, onEdit){
 			var info = [
 				App.h('strong', {text: e.title}),
-				App.h('small', {text: e.categoryName + (e.paymentMethodName ? ' · ' + e.paymentMethodName : '')
+				App.h('small', {text: e.categoryName + (e.refund ? (e.type === 'INCOME' ? ' · 반납' : ' · 환불') : '')
+					+ (e.paymentMethodName ? ' · ' + e.paymentMethodName : '')
 					+ (e.transferAssetName ? ' · → ' + e.transferAssetName : '')})
 			];
 			if(e.memo){
@@ -190,7 +196,7 @@ App.entryForm = (function(){
 			var children = [
 				App.h('span', {className: 'category-icon' + (WARM[e.categoryName] ? ' warm' : '')}, [App.icon(iconOf(e.categoryName))]),
 				App.h('div', {className: 'transaction-info'}, info),
-				amountCell(e, e.type === 'INCOME', signedMoney(e.type, e.amount))
+				amountCell(e, signOf(e.type, e.refund) > 0, signedMoney(e.type, e.amount, e.refund))
 			];
 			if(onEdit){
 				children.push(App.h('button', {
@@ -212,7 +218,7 @@ App.entryForm = (function(){
 					groups.push(g);
 				}
 				g.items.push(e);
-				if(e.kind !== 'TRANSFER') g.total += (e.type === 'INCOME' ? 1 : -1) * e.amount;
+				if(e.kind !== 'TRANSFER') g.total += signOf(e.type, e.refund) * e.amount;
 			});
 			groups.forEach(function(g){
 				nodes.push(App.h('div', {className: 'date-label'}, [
