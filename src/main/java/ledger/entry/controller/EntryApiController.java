@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -129,12 +130,56 @@ public class EntryApiController {
         // 합계는 잘리지 않은 전체 조건 기준
         List<Map<String, Object>> rows = entryService.selectEntryList(query);
         boolean truncated = rows.size() > WIDE_LIMIT;
-        data.put("rows", truncated ? rows.subList(0, WIDE_LIMIT) : rows);
+        List<Map<String, Object>> shown = truncated ? rows.subList(0, WIDE_LIMIT) : rows;
+        if (account != null) {
+            shown = withBalance(shown, SessionUtil.getUserId(session), accountId, Boolean.TRUE.equals(account.get("isDefault")),
+                    type.isEmpty() && categoryId == null && paymentMethodId == null && keyword.isEmpty(), from, to, truncated);
+        }
+        data.put("rows", shown);
         data.put("truncated", truncated);
         data.put("totals", entryService.selectEntrySum(query));
         data.put("from", from == null ? null : from.toString());
         data.put("to", to == null ? null : to.toString());
         return Response.of(Constants.SUCCESS, data);
+    }
+
+    // 통장 필터를 고르면 거래마다 그 통장의 거래 후 잔액(balance, 모르면 null)을 붙인다. 통장 화면과 같은 기간(이번 주기 마지막 날까지)으로 센다.
+    // withTransfers(검색어·구분·카테고리·결제수단 필터 없음)면 조회 기간의 이 통장 이체(kind = TRANSFER)도 넣어 은행 앱 거래내역처럼 잔액이 이어지게 한다.
+    // 순서는 잔액을 쌓은 순서(seq)의 역순: 날짜 → 기록한 시각
+    private List<Map<String, Object>> withBalance(List<Map<String, Object>> rows, long userId, long accountId, boolean isDefault,
+                                                  boolean withTransfers, LocalDate from, LocalDate to, boolean truncated) {
+        LocalDate today = LocalDate.now(SEOUL);
+        Map<String, Object> setting = settingsService.selectUserSetting(userId);
+        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
+                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
+        LocalDate end = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
+                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays).end();
+        List<Map<String, Object>> trail = accountService.selectBalanceTrail(ParamUtil.map(
+                "userId", userId, "accountId", accountId, "isDefault", isDefault, "to", end));
+
+        // 목록이 잘렸으면 보이는 가장 오래된 거래 날짜보다 앞선 이체는 넣지 않는다
+        String oldest = truncated ? (String) rows.get(rows.size() - 1).get("entryDate") : null;
+        String first = from == null ? null : from.toString();
+        String last = to == null ? null : to.toString();
+        Map<Long, Map<String, Object>> entryTrail = new HashMap<>();
+        List<Map<String, Object>> merged = new ArrayList<>(rows);
+        for (Map<String, Object> t : trail) {
+            String date = (String) t.get("date");
+            if ("ENTRY".equals(t.get("kind"))) {
+                entryTrail.put(((Number) t.get("id")).longValue(), t);
+            } else if (withTransfers && (first == null || date.compareTo(first) >= 0) && (last == null || date.compareTo(last) <= 0)
+                    && (oldest == null || date.compareTo(oldest) >= 0)) {
+                t.put("entryDate", date);
+                merged.add(t);
+            }
+        }
+        for (Map<String, Object> e : rows) {
+            Map<String, Object> t = entryTrail.get(((Number) e.get("id")).longValue());
+            e.put("balance", t == null ? null : t.get("balance"));
+            e.put("seq", t == null ? Long.MAX_VALUE : t.get("seq"));   // 목록과 잔액 조회 사이에 들어온 거래는 맨 위(잔액 없음)
+        }
+        merged.sort(Comparator.comparingLong((Map<String, Object> r) -> ((Number) r.get("seq")).longValue()).reversed());
+        return merged;
     }
 
     // 거래 한 건 추가·수정

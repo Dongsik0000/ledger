@@ -151,6 +151,32 @@ App.entryForm = (function(){
 			return (type === 'INCOME' ? '+' : '−') + App.money(amount);
 		},
 
+		/* 금액 칸. 통장 필터로 조회해 balance 가 있으면(값이 null 이어도) 그 아래에 거래 후 잔액 */
+		amountCell = function(e, income, text){
+			var children = [text];
+			if('balance' in e){
+				children.push(App.h('small', {
+					text: e.balance === null ? '잔액 —' : '잔액 ' + App.money(e.balance),
+					attrs: e.balance === null ? {title: '통장 기준일 전이거나 이번 주기 뒤라 잔액을 알 수 없어요'} : null
+				}));
+			}
+			return App.h('strong', {className: 'amount ' + (income ? 'income' : 'expense')}, children);
+		},
+
+		/* 통장 간 이체 한 줄(통장 필터 조회에서만 온다). 수정은 통장 화면에서 */
+		transferRow = function(t){
+			return App.h('div', {className: 'transaction'}, [
+				App.h('span', {className: 'category-icon'}, [App.icon('bank')]),
+				App.h('div', {className: 'transaction-info'}, [
+					App.h('strong', {text: t.fromAccountName + ' → ' + t.toAccountName}),
+					App.h('small', {text: '이체' + (t.memo ? ' · ' + t.memo : '')})
+				]),
+				amountCell(t, t.amount > 0, (t.amount > 0 ? '+' : '−') + App.money(Math.abs(t.amount))),
+				App.h('a', {className: 'button small edit-button', text: '통장', href: contextPath + '/ledger/account',
+					attrs: {'aria-label': '이체는 통장 화면에서 수정'}})
+			]);
+		},
+
 		/* 거래 한 줄. onEdit 이 있으면 수정 버튼 */
 		row = function(e, onEdit){
 			var info = [
@@ -164,7 +190,7 @@ App.entryForm = (function(){
 			var children = [
 				App.h('span', {className: 'category-icon' + (WARM[e.categoryName] ? ' warm' : '')}, [App.icon(iconOf(e.categoryName))]),
 				App.h('div', {className: 'transaction-info'}, info),
-				App.h('strong', {className: 'amount ' + (e.type === 'INCOME' ? 'income' : 'expense'), text: signedMoney(e.type, e.amount)})
+				amountCell(e, e.type === 'INCOME', signedMoney(e.type, e.amount))
 			];
 			if(onEdit){
 				children.push(App.h('button', {
@@ -176,7 +202,7 @@ App.entryForm = (function(){
 			return App.h('div', {className: 'transaction'}, children);
 		},
 
-		/* 날짜별로 묶은 목록(날짜 줄 + 일 합계 + 거래들) */
+		/* 날짜별로 묶은 목록(날짜 줄 + 일 합계 + 거래들). 이체는 수입·지출이 아니라 일 합계에 넣지 않는다 */
 		grouped = function(entries, onEdit){
 			var groups = [], nodes = [];
 			entries.forEach(function(e){
@@ -186,7 +212,7 @@ App.entryForm = (function(){
 					groups.push(g);
 				}
 				g.items.push(e);
-				g.total += (e.type === 'INCOME' ? 1 : -1) * e.amount;
+				if(e.kind !== 'TRANSFER') g.total += (e.type === 'INCOME' ? 1 : -1) * e.amount;
 			});
 			groups.forEach(function(g){
 				nodes.push(App.h('div', {className: 'date-label'}, [
@@ -196,7 +222,7 @@ App.entryForm = (function(){
 						text: (g.total >= 0 ? '+' : '−') + App.money(Math.abs(g.total))
 					})])
 				]));
-				g.items.forEach(function(e){ nodes.push(row(e, onEdit)); });
+				g.items.forEach(function(e){ nodes.push(e.kind === 'TRANSFER' ? transferRow(e) : row(e, onEdit)); });
 			});
 			return nodes;
 		},

@@ -21,6 +21,12 @@ public class AccountServiceImpl implements AccountService {
         return accountDAO.selectAccountList(param);
     }
 
+    // 한 통장의 거래·이체별 거래 후 잔액(쌓은 순서)
+    @Override
+    public List<Map<String, Object>> selectBalanceTrail(Map<String, Object> param) {
+        return accountDAO.selectBalanceTrail(param);
+    }
+
     // 입력 창의 통장 선택지(기본 통장 먼저)
     @Override
     public List<Map<String, Object>> selectAccountOptions(long userId) {

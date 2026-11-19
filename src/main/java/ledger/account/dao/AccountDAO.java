@@ -21,6 +21,11 @@ public class AccountDAO {
         return sqlSession.selectList(SQL_PATH + ".selectAccountList", param);
     }
 
+    // 한 통장의 거래·이체별 거래 후 잔액(쌓은 순서)
+    public List<Map<String, Object>> selectBalanceTrail(Map<String, Object> param) {
+        return sqlSession.selectList(SQL_PATH + ".selectBalanceTrail", param);
+    }
+
     // 입력 창의 통장 선택지(기본 통장 먼저)
     public List<Map<String, Object>> selectAccountOptions(long userId) {
         return sqlSession.selectList(SQL_PATH + ".selectAccountOptions", userId);

@@ -273,7 +273,8 @@ App.entry = (function(){
 
 		/* 합계·목록 그리기. ?edit= 로 들어왔으면 그 거래의 수정 창을 연다 */
 		render = function(data){
-			var rows = data.rows, t = data.totals, net = t.income - t.expense;
+			var rows = data.rows, t = data.totals, net = t.income - t.expense,
+				entries = rows.filter(function(r){ return r.kind !== 'TRANSFER'; });   /* 통장 필터면 이체 줄이 섞여 온다 */
 			if(m$.period.value === 'RECENT12' && data.from){
 				m$.monthRange.textContent = data.from.split('-').join('.') + '부터';
 			}
@@ -290,7 +291,7 @@ App.entry = (function(){
 				' · 지출 ', App.h('b', {className: 'expense', text: (t.expense ? '−' : '') + App.money(t.expense)}),
 				' · 차이 ', App.h('b', {text: (net > 0 ? '+' : '') + App.money(net)}));
 			m$.truncated.hidden = !data.truncated;
-			m$.count.textContent = data.truncated ? t.count + '건 중 ' + rows.length + '건' : rows.length + '건';
+			m$.count.textContent = data.truncated ? t.count + '건 중 ' + entries.length + '건' : entries.length + '건';
 			if(!rows.length){
 				m$.list.replaceChildren(filtered()
 					? App.entryForm.empty('조건에 맞는 거래가 없어요', '검색어나 필터를 바꿔 보세요.')
@@ -300,7 +301,7 @@ App.entry = (function(){
 			m$.list.replaceChildren.apply(m$.list, App.entryForm.grouped(rows, openEdit));
 			/* 대시보드 최근 기록에서 "수정"으로 들어온 경우(?edit=id) 그 거래의 수정 창을 한 번 연다 */
 			if(settings.editId){
-				var target = rows.filter(function(r){ return String(r.id) === settings.editId; })[0];
+				var target = entries.filter(function(r){ return String(r.id) === settings.editId; })[0];
 				settings.editId = null;
 				if(target) openEdit(target);
 			}
