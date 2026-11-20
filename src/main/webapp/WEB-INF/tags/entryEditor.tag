@@ -27,10 +27,10 @@
                 <input type="checkbox" id="${id}-refund">
                 <span id="${id}-refund-label">환불받은 돈 (지출에서 빠지고 잔액에 더해져요)</span>
             </label>
-            <fieldset class="choice-field">
-                <legend>카테고리</legend>
-                <div class="choice-buttons" id="${id}-categories"></div>
-            </fieldset>
+            <label class="field">
+                <span>카테고리</span>
+                <select id="${id}-category"></select>
+            </label>
             <p class="form-note" id="${id}-budget" aria-live="polite" hidden></p>
             <label class="field">
                 <span>내용</span>

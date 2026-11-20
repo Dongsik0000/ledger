@@ -124,10 +124,10 @@
                                 <label><input type="radio" name="quickType" value="INCOME"><span>수입</span></label>
                             </div>
                         </fieldset>
-                        <fieldset class="choice-field">
-                            <legend>카테고리</legend>
-                            <div class="choice-buttons" id="quickCategories"></div>
-                        </fieldset>
+                        <label class="field">
+                            <span>카테고리</span>
+                            <select id="quickCategory"></select>
+                        </label>
                         <p class="form-note" id="quickBudget" aria-live="polite" hidden></p>
                         <label class="field">
                             <span>내용</span>
