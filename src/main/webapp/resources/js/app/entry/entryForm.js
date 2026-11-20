@@ -237,14 +237,14 @@ App.entryForm = (function(){
 			]);
 		},
 
-		/* 거래 한 줄. onEdit 이 있으면 수정 버튼 */
+		/* 거래 한 줄. 카테고리(환불·반납) 아래에 결제수단, 이체 자산을 한 줄씩 둔다. onEdit 이 있으면 수정 버튼 */
 		row = function(e, onEdit){
 			var info = [
 				App.h('strong', {text: e.title}),
-				App.h('small', {text: e.categoryName + (e.refund ? (e.type === 'INCOME' ? ' · 반납' : ' · 환불') : '')
-					+ (e.paymentMethodName ? ' · ' + e.paymentMethodName : '')
-					+ (e.transferAssetName ? ' · → ' + e.transferAssetName : '')})
-			];
+				App.h('small', {text: e.categoryName + (e.refund ? (e.type === 'INCOME' ? ' · 반납' : ' · 환불') : '')}),
+				e.paymentMethodName ? App.h('small', {text: e.paymentMethodName}) : null,
+				e.transferAssetName ? App.h('small', {text: '→ ' + e.transferAssetName}) : null
+			].filter(Boolean);
 			if(e.memo){
 				info.push(App.h('span', {className: 'memo-tag', attrs: {title: e.memo}}, [App.icon('edit'), App.h('span', {text: e.memo})]));
 			}

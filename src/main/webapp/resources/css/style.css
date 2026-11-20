@@ -222,7 +222,7 @@ summary::-webkit-details-marker { display: none; }
 .category-icon.warm { background: var(--accent-soft); color: var(--warn); }
 .transaction-info { flex: 1; min-width: 0; }
 .transaction-info strong { display: block; font-weight: 400; overflow-wrap: anywhere; }
-.transaction-info small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-3); }
+.transaction-info small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-3); word-break: keep-all; overflow-wrap: anywhere; }
 .amount { text-align: right; white-space: nowrap; font: 17px var(--font-heading); font-variant-numeric: tabular-nums; }
 .amount small { display: block; margin-top: 2px; font: 12px var(--font-body); color: var(--ink-3); }
 .memo-tag { display: flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--ink-3); font-size: 12px; }
