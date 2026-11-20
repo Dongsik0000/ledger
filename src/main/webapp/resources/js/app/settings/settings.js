@@ -14,6 +14,10 @@ App.settings = (function(){
 			currentPassword: document.getElementById('currentPassword'),  /* 현재 비밀번호 */
 			newPassword: document.getElementById('newPassword'),  /* 새 비밀번호 */
 			newPasswordConfirm: document.getElementById('newPasswordConfirm'),  /* 새 비밀번호 확인 */
+			dangerForm: document.getElementById('dangerForm'),  /* 기록 초기화·탈퇴 폼 */
+			dangerPassword: document.getElementById('dangerPassword'),  /* 초기화·탈퇴용 현재 비밀번호 */
+			resetData: document.getElementById('resetData'),  /* 기록 초기화 버튼 */
+			withdraw: document.getElementById('withdraw'),  /* 계정 탈퇴 버튼 */
 			expenseList: document.getElementById('expenseCategoryList'),  /* 지출 카테고리 목록 */
 			incomeList: document.getElementById('incomeCategoryList'),  /* 수입 카테고리 목록 */
 			categoryOrderStatus: document.getElementById('categoryOrderStatus'),  /* 카테고리 순서 변경 안내(화면 낭독기) */
@@ -58,6 +62,8 @@ App.settings = (function(){
 			cycleSave: contextPath + '/ledger/settings/cycle/save',
 			openingSave: contextPath + '/ledger/settings/opening/save',
 			password: contextPath + '/ledger/account/password',
+			reset: contextPath + '/ledger/account/reset',
+			withdraw: contextPath + '/ledger/account/withdraw',
 			categorySave: contextPath + '/ledger/settings/category/save',
 			categoryDelete: contextPath + '/ledger/settings/category/delete',
 			categoryOrder: contextPath + '/ledger/settings/category/order',
@@ -82,6 +88,10 @@ App.settings = (function(){
 				e.preventDefault();
 				changePassword();
 			});
+			/* 비밀번호 칸의 Enter 로는 아무것도 하지 않는다(되돌릴 수 없는 작업은 버튼으로만) */
+			m$.dangerForm.addEventListener('submit', function(e){ e.preventDefault(); });
+			m$.resetData.addEventListener('click', function(){ dangerAction(false); });
+			m$.withdraw.addEventListener('click', function(){ dangerAction(true); });
 			m$.openingBalance.addEventListener('input', function(){
 				settings.openingDirty = true;
 				formatSigned(m$.openingBalance);
@@ -432,6 +442,34 @@ App.settings = (function(){
 				.then(function(res){ App.result(res, handlers); })
 				.catch(function(){})
 				.then(function(){ settings.submitting = false; });
+		},
+
+		/* 기록 초기화(withdraw=false)·계정 탈퇴(true): 비밀번호를 받고 한 번 더 물은 뒤 보낸다.
+		   성공하면 초기화는 화면을 새로 열고, 탈퇴는 로그인 화면으로 */
+		dangerAction = function(withdraw){
+			if(!m$.dangerPassword.value){
+				_error('알림', '현재 비밀번호를 입력해주세요.');
+				return;
+			}
+			_confirm(withdraw ? '정말 탈퇴할까요?' : '기록을 모두 지울까요?',
+				withdraw ? '계정과 모든 기록이 지워지고 되돌릴 수 없어요.'
+					: '거래 · 이체 · 고정 항목 · 통장 · 자산 · 시작 잔액이 지워지고 되돌릴 수 없어요.',
+				function(){
+					if(settings.submitting) return;
+					settings.submitting = true;
+					var handlers = {ok: function(){
+						m$.dangerPassword.value = '';
+						if(withdraw) _alert('탈퇴했어요', '그동안 써 주셔서 고마워요.', function(){ location.href = contextPath + '/login'; });
+						else _alert('기록을 초기화했어요', '카테고리 · 결제수단 · 예산 · 주기 설정은 그대로예요.', function(){ location.reload(); });
+					}};
+					handlers[App.CODE.LOGIN_BLOCKED] = function(){
+						_error('잠시 후 다시 시도해 주세요', '현재 비밀번호를 여러 번 틀렸어요. 5분 뒤에 다시 시도해 주세요.');
+					};
+					App.post(withdraw ? url.withdraw : url.reset, {password: m$.dangerPassword.value})
+						.then(function(res){ App.result(res, handlers); })
+						.catch(function(){})
+						.then(function(){ settings.submitting = false; });
+				});
 		},
 
 		/* 주기 시작일·보정 저장 */

@@ -16,6 +16,20 @@
         UPDATE app_user SET password_hash = #{passwordHash} WHERE id = #{userId}
     </update>
 
+    <!-- 기록 초기화·탈퇴: AuthServiceImpl 이 이 순서대로 한 트랜잭션에서 실행한다(자식 → 부모. 외래 키가 NO ACTION 이라 순서가 바뀌면 실패하고 전부 되돌려진다).
+         정기 이체 처리 기록·고정 항목 처리 기록은 ON DELETE CASCADE 로 함께 지워진다 -->
+    <delete id="deleteRecurringTransfers" parameterType="long">DELETE FROM recurring_transfer WHERE user_id = #{userId}</delete>
+    <delete id="deleteTransfers" parameterType="long">DELETE FROM account_transfer WHERE user_id = #{userId}</delete>
+    <delete id="deleteRecurringItems" parameterType="long">DELETE FROM recurring_item WHERE user_id = #{userId}</delete>
+    <delete id="deleteEntries" parameterType="long">DELETE FROM ledger_entry WHERE user_id = #{userId}</delete>
+    <delete id="deleteBankAccounts" parameterType="long">DELETE FROM bank_account WHERE user_id = #{userId}</delete>
+    <delete id="deleteAssets" parameterType="long">DELETE FROM asset WHERE user_id = #{userId}</delete>
+    <update id="resetOpeningBalance" parameterType="long">UPDATE app_user SET opening_balance = 0, opening_date = NULL WHERE id = #{userId}</update>
+    <!-- 탈퇴만: 위의 기록을 지운 뒤 -->
+    <delete id="deleteCategories" parameterType="long">DELETE FROM category WHERE user_id = #{userId}</delete>
+    <delete id="deletePaymentMethods" parameterType="long">DELETE FROM payment_method WHERE user_id = #{userId}</delete>
+    <delete id="deleteUser" parameterType="long">DELETE FROM app_user WHERE id = #{userId}</delete>
+
     <insert id="insertUser" parameterType="map" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO app_user (username, password_hash)
         VALUES (#{username}, #{passwordHash})

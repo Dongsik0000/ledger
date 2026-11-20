@@ -11,6 +11,12 @@ public interface AuthService {
     // 비밀번호 해시
     String selectPasswordHash(long userId);
 
+    // 기록 초기화: 거래·이체·고정 항목·통장·자산·시작 잔액. 카테고리·결제수단·예산·주기 설정은 남긴다
+    void resetData(long userId);
+
+    // 탈퇴: 기록 초기화 + 카테고리·결제수단·계정
+    void deleteUser(long userId);
+
     // 비밀번호 해시 변경
     int updatePassword(Map<String, Object> param);
 

@@ -150,14 +150,10 @@ public class AuthApiController {
             return Response.invalid("새 비밀번호 확인이 일치하지 않아요.");
         }
 
-        String attemptKey = "password|" + userId;
-        if (!loginAttemptLimiter.tryAcquire(attemptKey)) {
-            return Response.of(Constants.LOGIN_BLOCKED);
+        Response denied = checkPassword(userId, current);
+        if (denied != null) {
+            return denied;
         }
-        if (!fitsBcrypt(current) || !passwordEncoder.matches(current, authService.selectPasswordHash(userId))) {
-            return Response.invalid("현재 비밀번호가 맞지 않아요.");
-        }
-        loginAttemptLimiter.reset(attemptKey);
 
         String hash = passwordEncoder.encode(next);
         authService.updatePassword(ParamUtil.map("userId", userId, "passwordHash", hash));
@@ -179,6 +175,47 @@ public class AuthApiController {
     static String loginAttemptKey(String username, String ip) {
         boolean valid = !username.isEmpty() && username.length() <= USERNAME_MAX;
         return "login|" + (valid ? username.toLowerCase(Locale.ROOT) : "") + "|" + ip;
+    }
+
+    // 기록 초기화(로그인 필요). 거래·이체·고정 항목·통장·자산·시작 잔액을 지우고 카테고리·결제수단·예산·주기 설정은 남긴다
+    @ResponseBody
+    @PostMapping("/ledger/account/reset")
+    public Response resetData(@RequestBody HashMap<String, Object> param, HttpServletRequest request) {
+        long userId = SessionUtil.getUserId(request.getSession());
+        Response denied = checkPassword(userId, ParamUtil.raw(param, "password"));
+        if (denied != null) {
+            return denied;
+        }
+        authService.resetData(userId);
+        return Response.of(Constants.SUCCESS);
+    }
+
+    // 탈퇴(로그인 필요). 이 사용자의 모든 행을 한 트랜잭션으로 지우고 세션을 끊는다.
+    // 다른 기기의 세션은 LoginPageInterceptor 가 끊는다(DB 의 비밀번호 해시가 없어져 세션 값과 달라진다)
+    @ResponseBody
+    @PostMapping("/ledger/account/withdraw")
+    public Response withdraw(@RequestBody HashMap<String, Object> param, HttpServletRequest request) {
+        long userId = SessionUtil.getUserId(request.getSession());
+        Response denied = checkPassword(userId, ParamUtil.raw(param, "password"));
+        if (denied != null) {
+            return denied;
+        }
+        authService.deleteUser(userId);
+        SessionUtil.logout(request);
+        return Response.of(Constants.SUCCESS);
+    }
+
+    // 현재 비밀번호 확인. 맞으면 null. 비밀번호 변경·초기화·탈퇴가 같은 횟수를 써서 5회 틀리면 잠시 모두 막힌다
+    private Response checkPassword(long userId, String password) {
+        String attemptKey = "password|" + userId;
+        if (!loginAttemptLimiter.tryAcquire(attemptKey)) {
+            return Response.of(Constants.LOGIN_BLOCKED);
+        }
+        if (!fitsBcrypt(password) || !passwordEncoder.matches(password, authService.selectPasswordHash(userId))) {
+            return Response.invalid("현재 비밀번호가 맞지 않아요.");
+        }
+        loginAttemptLimiter.reset(attemptKey);
+        return null;
     }
 
     // BCrypt 가 받을 수 있는 비밀번호인지(비어 있지 않고 72바이트 이하)

@@ -15,7 +15,7 @@
                 <p class="page-description">기록의 기준을 정하고, 익숙한 방식으로 관리해요.</p>
             </div>
         </header>
-        <nav class="section-jumps" aria-label="설정 바로가기"><a href="#cycle-settings">기록 주기</a><a href="#opening-settings">시작 잔액</a><a href="#export-settings">기록 내보내기</a><a href="#list-settings">목록 관리</a><a href="#account-settings">계정</a></nav>
+        <nav class="section-jumps" aria-label="설정 바로가기"><a href="#cycle-settings">기록 주기</a><a href="#opening-settings">시작 잔액</a><a href="#export-settings">기록 내보내기</a><a href="#list-settings">목록 관리</a><a href="#account-settings">계정</a><a href="#data-settings">초기화·탈퇴</a></nav>
         <div class="settings-grid">
             <section class="panel settings-card">
                 <div class="panel-head">
@@ -162,6 +162,30 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="button primary">비밀번호 변경</button>
+                </div>
+            </form>
+        </section>
+        <%-- 되돌릴 수 없는 작업: 현재 비밀번호를 받고 한 번 더 물은 뒤 보낸다(settings.js dangerAction) --%>
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2 id="data-settings" tabindex="-1">기록 초기화 · 계정 탈퇴</h2>
+                    <p>되돌릴 수 없어요. 먼저 위의 ‘기록 내보내기’로 CSV 를 받아 두세요.</p>
+                </div>
+            </div>
+            <form id="dangerForm" class="form-stack" novalidate>
+                <input type="text" name="username" autocomplete="username" value="<c:out value='${sessionScope.username}'/>" hidden>
+                <label class="field">
+                    <span>현재 비밀번호</span>
+                    <input type="password" id="dangerPassword" autocomplete="current-password">
+                </label>
+                <ul class="form-note">
+                    <li><strong>기록 초기화</strong>: 거래 · 이체 · 고정 항목 · 통장 · 자산 · 시작 잔액을 지워요. 카테고리 · 결제수단 · 예산 · 주기 설정은 남아요.</li>
+                    <li><strong>계정 탈퇴</strong>: 계정과 모든 기록을 지우고 로그아웃해요. 서버 백업에는 최대 30일 동안 남은 뒤 지워져요.</li>
+                </ul>
+                <div class="form-actions">
+                    <button type="button" class="button danger" id="resetData">기록 초기화</button>
+                    <button type="button" class="button danger" id="withdraw">계정 탈퇴</button>
                 </div>
             </form>
         </section>
