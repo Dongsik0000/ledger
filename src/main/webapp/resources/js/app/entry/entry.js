@@ -63,7 +63,7 @@ App.entry = (function(){
 			range: null,                                      /* 달력 기간 {from, to} */
 			selDay: '',                                       /* 달력에서 고른 날 */
 			calFocus: false,                                  /* 달력을 다시 그린 뒤 고른 칸에 포커스 */
-			dailyRef: 0,                                      /* 칸 색 기준: 오늘 쓸 수 있는 돈(못 받으면 평균) */
+			dailyRef: 0,                                      /* 지출 막대 기준: 오늘 쓸 수 있는 돈(못 받으면 평균) */
 			newDate: null                                     /* 추가 창에 미리 넣을 날짜(달력에서 연 경우) */
 		},
 
@@ -248,7 +248,7 @@ App.entry = (function(){
 			history.replaceState(null, '', location.pathname + '?' + q.toString());
 		},
 
-		/* 칸 색 기준(오늘 쓸 수 있는 돈). 보조 정보라 실패하면 그 기간의 하루 평균 지출을 기준으로 쓴다 */
+		/* 지출 막대 기준(오늘 쓸 수 있는 돈). 보조 정보라 실패하면 그 기간의 하루 평균 지출을 기준으로 쓴다 */
 		loadDailyRef = function(){
 			App.post(url.summary, null, {onError: function(){}})
 				.then(function(res){
@@ -288,17 +288,22 @@ App.entry = (function(){
 			return new Date(iso + 'T00:00:00').getDay();
 		},
 
-		/* 칸에 들어가는 짧은 금액: 1만 이상은 "8.9만" */
+		/* 휴대폰 달력 칸에 들어가는 짧은 금액(4~5글자): 800 · 3.4천 · 1.4만 · 125만 · 1.2억 */
 		shortMoney = function(n){
-			return n >= 10000 ? String(Math.round(n / 1000) / 10) + '만' : n.toLocaleString('ko-KR');
+			var thousand = Math.round(n / 100) / 10, man1 = Math.round(n / 1000) / 10, man = Math.round(n / 10000);
+			if(n < 1000) return String(n);
+			if(thousand < 10) return thousand + '천';   /* 단위는 반올림한 값으로 고른다(9,999 → 1만) */
+			if(man1 < 10) return man1 + '만';
+			if(man < 10000) return man + '만';
+			return Math.round(n / 10000000) / 10 + '억';
 		},
 
-		/* 칸 색 단계: 0 없음 · 1~3 많을수록 진하게 · 4 기준(오늘 쓸 수 있는 돈)보다 많이 씀 */
-		heatLevel = function(spend, ref){
-			if(spend <= 0) return 0;
-			if(spend > ref) return 4;
-			if(spend > ref * 0.7) return 3;
-			return spend > ref * 0.35 ? 2 : 1;
+		/* 칸 아래 지출 막대: 기준(오늘 쓸 수 있는 돈) 대비 그날 지출. 70% 넘으면 주의, 기준을 넘으면 초과(예산 막대와 같은 규칙) */
+		spendMeter = function(spend, ref){
+			var fill = App.h('span');
+			fill.style.width = Math.min(100, spend / ref * 100) + '%';
+			return App.h('span', {className: 'cal-meter' + (spend > ref ? ' is-over' : spend > ref * 0.7 ? ' is-warn' : ''),
+				attrs: {'aria-hidden': 'true'}}, [fill]);
 		},
 
 		/* 고른 날 바꾸기 */
@@ -309,17 +314,20 @@ App.entry = (function(){
 			renderCalendar();
 		},
 
-		/* 달력 그리기: 기간을 일요일~토요일 주로 채우고, 기간 밖 칸은 흐리게(고를 수 없음) */
+		/* 달력 그리기: 기간을 일요일~토요일 주로 채우고, 기간 밖 칸은 흐리게(고를 수 없음).
+		   칸 오른쪽 아래에 그날 수입(+, 초록)·지출(−, 빨강) 합계(환불·반납은 뺀 값), 그 아래 지출 막대(오늘까지만).
+		   휴대폰 폭은 "1.4만"처럼 줄여 쓰고, 480px 이하는 CSS 가 기호를 숨겨 색과 줄 위치(수입 위 · 지출 아래)로 구분한다 */
 		renderCalendar = function(){
 			var r = settings.range;
 			if(!r) return;
 			var today = App.entryForm.today(), spend = {}, income = {}, cells = [], vals, ref, d,
 				compact = window.matchMedia('(max-width: 768px)').matches,
+				amt = function(n){ return compact ? shortMoney(n) : n.toLocaleString('ko-KR'); },
 				start = shiftDate(r.from, -dowOf(r.from)), end = shiftDate(r.to, 6 - dowOf(r.to));
 			settings.rows.forEach(function(x){
 				if(x.kind === 'TRANSFER') return;
-				if(x.type === 'EXPENSE') spend[x.entryDate] = (spend[x.entryDate] || 0) + (x.refund ? -x.amount : x.amount);
-				else if(!x.refund) income[x.entryDate] = true;
+				var sum = x.type === 'EXPENSE' ? spend : income;
+				sum[x.entryDate] = (sum[x.entryDate] || 0) + (x.refund ? -x.amount : x.amount);
 			});
 			if(!settings.selDay || settings.selDay < r.from || settings.selDay > r.to){
 				settings.selDay = today >= r.from && today <= r.to ? today : r.from;
@@ -330,23 +338,23 @@ App.entry = (function(){
 				cells.push(App.h('div', {className: 'cal-dow', text: c, attrs: {'aria-hidden': 'true'}}));
 			});
 			for(d = start; d <= end; d = shiftDate(d, 1)){
-				var inRange = d >= r.from && d <= r.to, sp = spend[d] || 0,
-					level = inRange && d <= today ? heatLevel(sp, ref) : 0,
+				var inRange = d >= r.from && d <= r.to, sp = spend[d] || 0, inc = income[d] || 0,
+					metered = inRange && d <= today && sp > 0, over = metered && sp > ref,
 					p = d.split('-'),
 					attrs = {'data-date': d, 'aria-pressed': String(d === settings.selDay),
-						'aria-label': Number(p[1]) + '월 ' + Number(p[2]) + '일' + (sp > 0 ? ', ' + App.money(sp) + ' 씀' : '')
-							+ (income[d] ? ', 수입 있음' : '') + (level === 4 ? ', 오늘 쓸 수 있는 돈보다 많이 씀' : '')};
-				if(level) attrs['data-h'] = String(level);
+						'aria-label': Number(p[1]) + '월 ' + Number(p[2]) + '일' + (sp > 0 ? ', 지출 ' + App.money(sp) : '')
+							+ (inc > 0 ? ', 수입 ' + App.money(inc) : '') + (over ? ', 오늘 쓸 수 있는 돈보다 많이 씀' : '')};
 				if(d === today) attrs['aria-current'] = 'date';
 				cells.push(App.h('button', {
 					type: 'button', className: 'cal-cell' + (inRange ? '' : ' out') + (d === today ? ' today' : ''),
 					tabIndex: d === settings.selDay ? 0 : -1, disabled: !inRange, attrs: attrs
 				}, [
-					App.h('span', {className: 'cal-top'}, [
-						App.h('span', {className: 'cal-d', text: String(Number(p[2]))}),
-						income[d] ? App.h('span', {className: 'cal-inc', text: '+', attrs: {'aria-hidden': 'true'}}) : null
-					]),
-					sp > 0 ? App.h('span', {className: 'cal-amt', text: compact ? shortMoney(sp) : sp.toLocaleString('ko-KR'), attrs: {'aria-hidden': 'true'}}) : null
+					App.h('span', {className: 'cal-top'}, [App.h('span', {className: 'cal-d', text: String(Number(p[2]))})]),
+					sp > 0 || inc > 0 ? App.h('span', {className: 'cal-amts', attrs: {'aria-hidden': 'true'}}, [
+						inc > 0 ? App.h('span', {className: 'cal-amt income'}, [App.h('span', {className: 'cal-sign', text: '+'}), amt(inc)]) : null,
+						sp > 0 ? App.h('span', {className: 'cal-amt'}, [App.h('span', {className: 'cal-sign', text: '−'}), amt(sp)]) : null
+					]) : null,
+					metered ? spendMeter(sp, ref) : null
 				]));
 			}
 			m$.cal.replaceChildren.apply(m$.cal, cells);
