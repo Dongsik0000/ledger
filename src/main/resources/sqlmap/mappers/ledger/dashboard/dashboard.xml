@@ -23,6 +23,18 @@
         SELECT COALESCE(SUM(amount), 0) FROM asset WHERE user_id = #{userId}
     </select>
 
+    <!-- 예산을 정한 (보이는) 지출 카테고리와 기간(from~to) 지출. 환불은 뺀다 -->
+    <select id="selectBudgetUsage" parameterType="map" resultType="java.util.HashMap">
+        SELECT c.id, c.name, c.budget,
+               COALESCE(SUM(CASE WHEN e.refund THEN -e.amount ELSE e.amount END), 0) AS "spent"
+        FROM category c
+        LEFT JOIN ledger_entry e ON e.category_id = c.id AND e.user_id = c.user_id
+             AND e.entry_date BETWEEN #{from} AND #{to}
+        WHERE c.user_id = #{userId} AND c.type = 'EXPENSE' AND c.active AND c.budget IS NOT NULL
+        GROUP BY c.id, c.name, c.budget, c.sort_order
+        ORDER BY c.sort_order, c.id
+    </select>
+
     <!-- 예정 고정지출 계산용: 활성 지출 고정 항목 -->
     <select id="selectActiveExpenseItems" parameterType="long" resultType="java.util.HashMap">
         SELECT id, amount, day_of_month AS "dayOfMonth", adjust,

@@ -20,6 +20,7 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
 - 이번 주기의 이월 · 수입 · 지출 · 잔액을 한눈에
 - **오늘 쓸 수 있는 돈** = (주기 잔액 − 아직 나가지 않은 고정지출) ÷ 남은 날
 - 빠른 거래 입력(Enter 로 저장)과 최근 기록, 이번 주기 거래로 바로 이동
+- **카테고리 예산**: 설정에서 지출 카테고리마다 주기 예산을 정하면 이번 주기 사용액(환불 제외)을 막대로 보여 주고, 입력할 때 남은 예산을 안내하며, 80%를 넘기거나 예산을 넘으면 저장 직후 경고합니다
 
 **거래 내역**
 - 달력 월 · 월급 주기 · 최근 12개월 · 전체 기간으로 조회하며 추가 · 수정 · 삭제
@@ -100,6 +101,7 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
    psql -U ledger_app -d ledger -f db/008_bank_account.sql
    psql -U ledger_app -d ledger -f db/009_default_account.sql
    psql -U ledger_app -d ledger -f db/010_entry_refund.sql
+   psql -U ledger_app -d ledger -f db/011_category_budget.sql
    ```
 2. `mvn package` 로 만든 `target/ledger.war` 를 Tomcat 10.1 에 컨텍스트 `/p3` 로 배포합니다.
 3. http://localhost:8081/p3/ 에 접속합니다.

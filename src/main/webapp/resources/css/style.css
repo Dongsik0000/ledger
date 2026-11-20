@@ -268,6 +268,18 @@ summary:focus-visible { outline: 3px solid #8baf74; outline-offset: 4px; border-
 .budget-grid { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(290px,1fr); gap: 22px; margin-bottom: 22px; }
 @media (max-width: 1150px) { .budget-grid { grid-template-columns: minmax(0,1.15fr) minmax(275px,1fr); } }
 .budget-grid > .panel { margin: 0; }
+/* 카테고리 예산 막대: 80% 이상 주의(.is-warn), 100% 이상 초과(.is-over) */
+.limit-panel { margin: 0 0 22px; }
+.limit-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px 24px; }
+.limit-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.limit-head span { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.limit-bar { height: 8px; margin: 7px 0 5px; border-radius: 999px; background: #edf0e6; overflow: hidden; }
+.limit-bar span { display: block; height: 100%; border-radius: inherit; background: var(--color-success); }
+.limit-item small { font-size: 11px; color: var(--color-text-secondary); }
+.limit-item.is-warn .limit-bar span { background: var(--color-warning); }
+.limit-item.is-over .limit-bar span { background: var(--color-danger); }
+.limit-item.is-warn small { color: var(--color-text-primary); font-weight: 600; }
+.limit-item.is-over small { color: var(--color-danger); font-weight: 600; }
 .budget-hero { background: #45654c; border-color: #45654c; color: #fffefa; padding: var(--space-8); position: relative; overflow: hidden; }
 .budget-hero::after { content: ''; position: absolute; right: -45px; top: -55px; width: 240px; height: 240px; border: 1px solid #ffffff13; border-radius: 50%; pointer-events: none; }
 .budget-hero .metric-label { font-size: 15px; }

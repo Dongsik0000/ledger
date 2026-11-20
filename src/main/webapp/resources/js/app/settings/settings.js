@@ -511,24 +511,34 @@ App.settings = (function(){
 			]);
 		},
 
-		/* 카테고리 한 줄(이름·그룹·사용 여부·저장·삭제·손잡이) */
+		/* 카테고리 한 줄(이름·그룹·주기 예산(지출만)·사용 여부·저장·삭제·손잡이) */
 		categoryItem = function(c){
 			var name = App.h('input', {type: 'text', value: c.name, maxLength: 50}),
 				group = App.h('input', {type: 'text', value: c.groupName || '', maxLength: 50, placeholder: '그룹 없음'}),
+				expense = c.type === 'EXPENSE',
+				budget = App.h('input', {type: 'text', inputMode: 'numeric', autocomplete: 'off', placeholder: '예산 없음',
+					value: c.budget ? Number(c.budget).toLocaleString('ko-KR') : '', attrs: {'aria-label': c.name + ' 주기 예산(원)'}}),
 				active = App.h('input', {type: 'checkbox', checked: !!c.active, attrs: {'aria-label': c.name + ' 거래에서 보이기'}}),
-				key = 'c' + c.id;
+				key = 'c' + c.id,
+				inputs = {name: name, group: group, active: active},
+				original = {name: c.name, group: c.groupName || '', active: !!c.active},
+				fields = [field('이름', name, 'sort-name'), field('그룹', group, 'sort-group', true)];
 
-			bindDraft(key, {name: name, group: group, active: active},
-				{name: c.name, group: c.groupName || '', active: !!c.active});
+			if(expense){
+				App.bindAmountInput(budget);
+				inputs.budget = budget;
+				original.budget = budget.value;
+				fields.push(field('예산', budget, 'sort-group', true));
+			}
+			bindDraft(key, inputs, original);
 
-			return sortItem(key, c.id, c.name, c.active, [
-				field('이름', name, 'sort-name'),
-				field('그룹', group, 'sort-group', true)
-			], [
+			return sortItem(key, c.id, c.name, c.active, fields, [
 				switchField(active),
 				smallButton('저장', function(){
-					send(url.categorySave, {id: c.id, type: c.type, name: name.value, groupName: group.value, active: active.checked},
-						{done: clearDraft(key)});
+					/* 예산은 지출 카테고리만 보낸다(빈 값 = 예산 없음). 보내지 않으면 서버가 저장된 예산을 그대로 둔다 */
+					var body = {id: c.id, type: c.type, name: name.value, groupName: group.value, active: active.checked};
+					if(expense) body.budget = budget.value;
+					send(url.categorySave, body, {done: clearDraft(key)});
 				}),
 				smallButton('삭제', function(){
 					/* 숨기기는 저장된 원래 값으로(입력칸에서 고치다 만 값까지 저장하지 않게) */

@@ -15,6 +15,9 @@ App.dashboard = (function(){
 			formula: document.getElementById('formula'),  /* 오늘 쓸 수 있는 돈 계산식 */
 			amount: document.getElementById('quickAmount'),  /* 빠른 입력: 금액 */
 			categories: document.getElementById('quickCategories'),  /* 카테고리 라디오 묶음 */
+			budget: document.getElementById('quickBudget'),  /* 카테고리 예산 안내 */
+			limitPanel: document.getElementById('limitPanel'),  /* 이번 주기 예산 패널 */
+			limitList: document.getElementById('limitList'),  /* 예산 막대 목록 */
 			title: document.getElementById('quickTitle'),  /* 내용 */
 			payments: document.getElementById('quickPayments'),  /* 결제수단 라디오 묶음 */
 			account: document.getElementById('quickAccount'),  /* 통장 선택 */
@@ -31,7 +34,8 @@ App.dashboard = (function(){
 		settings = {
 			submitting: false,
 			master: {categories: [], paymentMethods: []},
-			balances: null
+			balances: null,
+			budgets: null
 		},
 
 		url = {
@@ -39,6 +43,7 @@ App.dashboard = (function(){
 			recent: contextPath + '/ledger/dashboard/recent',
 			master: contextPath + '/ledger/settings/master',
 			balances: contextPath + '/ledger/account/balances',
+			budgets: contextPath + '/ledger/dashboard/budgets',
 			save: contextPath + '/ledger/entry/save'
 		},
 
@@ -49,6 +54,7 @@ App.dashboard = (function(){
 
 			loadMaster();
 			loadBalances();
+			loadBudgets();
 			loadSummary();
 			loadRecent();
 		},
@@ -60,11 +66,15 @@ App.dashboard = (function(){
 				r.addEventListener('change', function(){
 					App.entryForm.renderCategories(m$.categories, 'quickCategory', settings.master.categories, r.value, null);
 					showBalance();
+					showBudget();
 				});
 			});
 			m$.amount.addEventListener('input', showBalance);
+			m$.amount.addEventListener('input', showBudget);
+			m$.categories.addEventListener('change', showBudget);
 			m$.account.addEventListener('change', showBalance);
 			m$.date.addEventListener('change', showBalance);
+			m$.date.addEventListener('change', showBudget);
 			/* Enter·휴대폰 키보드의 완료로도 저장된다 */
 			m$.form.addEventListener('submit', function(e){
 				e.preventDefault();
@@ -112,6 +122,7 @@ App.dashboard = (function(){
 				App.entryForm.renderPayments(m$.payments, 'quickPayment', settings.master.paymentMethods, known ? last : null);
 				App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], App.entryForm.lastAccount());
 				showBalance();
+				showBudget();
 			}});
 		},
 
@@ -119,6 +130,26 @@ App.dashboard = (function(){
 		showBalance = function(){
 			App.entryForm.balanceHint(m$.balance, settings.balances, m$.account.value, App.entryForm.checked('quickType'),
 				App.parseAmount(m$.amount.value), m$.date.value || App.entryForm.today(), false);
+		},
+
+		/* 카테고리 예산 안내 갱신 */
+		showBudget = function(){
+			App.entryForm.budgetHint(m$.budget, settings.budgets, App.entryForm.checked('quickCategory'), App.entryForm.checked('quickType'),
+				App.parseAmount(m$.amount.value), m$.date.value || App.entryForm.today(), false, false);
+		},
+
+		/* 이번 주기 예산 받기: 막대를 그리고 입력 안내를 갱신. 예산이 없으면 패널을 숨긴다 */
+		loadBudgets = function(){
+			App.post(url.budgets)
+				.then(function(res){
+					App.result(res, {ok: function(){
+						settings.budgets = res.data;
+						m$.limitPanel.hidden = !res.data.items.length;
+						m$.limitList.replaceChildren.apply(m$.limitList, App.entryForm.budgetBars(res.data));
+						showBudget();
+					}});
+				})
+				.catch(function(){});
 		},
 
 		/* 잔액 안내는 보조 정보라 실패해도 입력을 막지 않고 안내 칸에 적는다 */
@@ -209,10 +240,12 @@ App.dashboard = (function(){
 				return;
 			}
 
+			var type = App.entryForm.checked('quickType'),
+				entryDate = m$.date.value || App.entryForm.today();
 			settings.submitting = true;
 			App.post(url.save, {
-				entryDate: m$.date.value || App.entryForm.today(),
-				type: App.entryForm.checked('quickType'),
+				entryDate: entryDate,
+				type: type,
 				categoryId: categoryId,
 				title: title,
 				amount: amount,
@@ -222,6 +255,8 @@ App.dashboard = (function(){
 			})
 				.then(function(res){
 					App.result(res, {ok: function(){
+						/* 새 지출이 예산 80%·100%를 넘기면 저장 안내 대신 경고 */
+						var warn = App.entryForm.budgetAlert(settings.budgets, categoryId, type, amount, entryDate, false);
 						rememberPayment(paymentMethodId);
 						App.entryForm.rememberAccount(m$.account.value);
 						m$.amount.value = '';
@@ -229,8 +264,9 @@ App.dashboard = (function(){
 						m$.memo.value = '';
 						m$.date.value = App.entryForm.today();
 						m$.optional.open = false;
-						App.saved('기록했어요');
+						if(warn) _alert(warn.title, warn.desc); else App.saved('기록했어요');
 						loadBalances();
+						loadBudgets();
 						loadSummary();
 						loadRecent();
 					}});

@@ -48,6 +48,18 @@
                 </dl>
             </section>
         </div>
+        <%-- 카테고리 예산(설정에서 정한 것만). 예산이 하나도 없으면 dashboard.js 가 숨겨 둔다 --%>
+        <section class="panel limit-panel reveal" id="limitPanel" hidden>
+            <div class="panel-head">
+                <div>
+                    <h2>이번 주기 예산</h2>
+                    <p>카테고리별 예산 대비 지출 · 환불은 빼고 계산해요</p>
+                </div>
+                <a class="text-link" href="<c:url value='/ledger/settings'/>">예산 바꾸기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg>
+                </a>
+            </div>
+            <ul class="limit-list" id="limitList"></ul>
+        </section>
         <div class="dashboard-grid">
             <section class="panel quick-entry reveal" id="quick-entry" tabindex="-1">
                 <div class="panel-head">
@@ -76,6 +88,7 @@
                             <legend>카테고리</legend>
                             <div class="choice-buttons" id="quickCategories"></div>
                         </fieldset>
+                        <p class="form-note" id="quickBudget" aria-live="polite" hidden></p>
                         <label class="field">
                             <span>내용</span>
                             <input type="text" id="quickTitle" enterkeyhint="done" placeholder="어디에 사용하셨나요?" maxlength="100">

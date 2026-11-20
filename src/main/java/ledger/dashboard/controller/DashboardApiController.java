@@ -105,6 +105,26 @@ public class DashboardApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
+    // 오늘이 속한 주기의 카테고리 예산과 사용액(환불 제외). 대시보드 막대와 거래 입력 창의 예산 안내가 쓴다
+    @ResponseBody
+    @PostMapping("/budgets")
+    public Response budgets(HttpSession session) {
+        long userId = SessionUtil.getUserId(session);
+        LocalDate today = LocalDate.now(SEOUL);
+        Map<String, Object> setting = settingsService.selectUserSetting(userId);
+        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
+                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
+        PayCycle.Cycle cycle = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
+                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("from", cycle.start().toString());
+        data.put("to", cycle.end().toString());
+        data.put("items", dashboardService.selectBudgetUsage(
+                ParamUtil.map("userId", userId, "from", cycle.start(), "to", cycle.end())));
+        return Response.of(Constants.SUCCESS, data);
+    }
+
     // 최근 거래 RECENT_LIMIT 건(오늘까지)
     @ResponseBody
     @PostMapping("/recent")

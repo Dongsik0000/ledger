@@ -31,6 +31,11 @@ public class DashboardDAO {
         return sqlSession.selectOne(SQL_PATH + ".selectAssetTotal", userId);
     }
 
+    // 예산을 정한 지출 카테고리별 기간 지출(환불 제외)
+    public List<Map<String, Object>> selectBudgetUsage(Map<String, Object> param) {
+        return sqlSession.selectList(SQL_PATH + ".selectBudgetUsage", param);
+    }
+
     // 예정 고정지출 계산용 활성 지출 고정 항목
     public List<Map<String, Object>> selectActiveExpenseItems(long userId) {
         return sqlSession.selectList(SQL_PATH + ".selectActiveExpenseItems", userId);

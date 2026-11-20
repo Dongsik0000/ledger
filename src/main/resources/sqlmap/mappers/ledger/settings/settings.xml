@@ -25,14 +25,14 @@
 
     <!-- 카테고리: 지출 먼저, 표시 순서대로 -->
     <select id="selectCategoryList" parameterType="long" resultType="java.util.HashMap">
-        SELECT id, type, name, group_name AS "groupName", sort_order AS "sortOrder", active
+        SELECT id, type, name, group_name AS "groupName", sort_order AS "sortOrder", active, budget
         FROM category
         WHERE user_id = #{userId}
         ORDER BY CASE type WHEN 'EXPENSE' THEN 0 ELSE 1 END, sort_order, id
     </select>
 
     <select id="selectCategory" parameterType="map" resultType="java.util.HashMap">
-        SELECT id, type, name, group_name AS "groupName", sort_order AS "sortOrder", active
+        SELECT id, type, name, group_name AS "groupName", sort_order AS "sortOrder", active, budget
         FROM category
         WHERE id = #{id} AND user_id = #{userId}
     </select>
@@ -65,13 +65,14 @@
     </select>
 
     <insert id="insertCategory" parameterType="map">
-        INSERT INTO category (user_id, type, name, group_name, sort_order, active)
-        VALUES (#{userId}, #{type}, #{name}, #{groupName}, #{sortOrder}, #{active})
+        INSERT INTO category (user_id, type, name, group_name, sort_order, active, budget)
+        VALUES (#{userId}, #{type}, #{name}, #{groupName}, #{sortOrder}, #{active}, #{budget})
     </insert>
 
     <update id="updateCategory" parameterType="map">
         UPDATE category
-        SET type = #{type}, name = #{name}, group_name = #{groupName}, sort_order = #{sortOrder}, active = #{active}
+        SET type = #{type}, name = #{name}, group_name = #{groupName}, sort_order = #{sortOrder}, active = #{active},
+            budget = #{budget}
         WHERE id = #{id} AND user_id = #{userId}
     </update>
 

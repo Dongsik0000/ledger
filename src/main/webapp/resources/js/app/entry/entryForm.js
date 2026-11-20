@@ -110,6 +110,64 @@ App.entryForm = (function(){
 					: !editing && amount && date ? ' · 이 날짜는 통장 잔액 계산 기간(기준일 ~ 이번 주기 끝) 밖이에요' : '');
 		},
 
+		/* 카테고리의 예산 항목(/ledger/dashboard/budgets 응답에서). 예산이 없거나 아직 못 받았으면 null */
+		budgetOf = function(budgets, categoryId){
+			return budgets && budgets.items.filter(function(b){ return b.id === Number(categoryId); })[0] || null;
+		},
+
+		/* 새 거래가 예산 사용액에 더하는 금액: 이번 주기(from~to) 지출만, 환불이면 뺀다 */
+		budgetDelta = function(budgets, type, amount, date, refund){
+			return type === 'EXPENSE' && amount && date >= budgets.from && date <= budgets.to ? (refund ? -amount : amount) : 0;
+		},
+
+		/* 사용률(%, 반올림) */
+		percent = function(spent, budget){ return Math.round(spent / budget * 100); },
+
+		/* 카테고리 아래 예산 안내: "식비 예산 300,000원 중 240,000원 (80%) → 저장 후 252,000원 (84%)". 80% 이상이면 경고 색.
+		   수정 중이면 그 거래가 이미 사용액에 들어 있어 현재 사용액만 보여 준다. 예산이 없는 카테고리면 숨긴다 */
+		budgetHint = function(el, budgets, categoryId, type, amount, date, editing, refund){
+			var b = type === 'EXPENSE' ? budgetOf(budgets, categoryId) : null, now, after;
+			el.hidden = !b;
+			if(!b) return;
+			now = Number(b.spent);
+			after = now + (editing ? 0 : budgetDelta(budgets, type, amount, date, refund));
+			el.textContent = b.name + ' 예산 ' + App.money(b.budget) + ' 중 ' + App.money(now) + ' (' + percent(now, b.budget) + '%)'
+				+ (after !== now ? ' → 저장 후 ' + App.money(after) + ' (' + percent(after, b.budget) + '%)'
+					: !editing && amount && date ? ' · 이 날짜는 이번 주기 밖이라 예산에 들어가지 않아요' : '');
+			el.classList.toggle('expense', after >= b.budget * 0.8);
+		},
+
+		/* 저장한 새 지출이 예산의 80%를 처음 넘기거나, 예산을 다 쓰거나 넘으면 알릴 문구 {title, desc}. 없으면 null */
+		budgetAlert = function(budgets, categoryId, type, amount, date, refund){
+			var b = type === 'EXPENSE' ? budgetOf(budgets, categoryId) : null, budget, before, after;
+			if(!b) return null;
+			budget = Number(b.budget);
+			before = Number(b.spent);
+			after = before + budgetDelta(budgets, type, amount, date, refund);
+			if(after <= before) return null;   /* 환불·주기 밖 */
+			if(after > budget) return {title: b.name + ' 예산을 넘었어요', desc: '이번 주기 ' + App.money(after) + ' 사용 · ' + App.money(after - budget) + ' 초과'};
+			if(after === budget) return {title: b.name + ' 예산을 다 썼어요', desc: '이번 주기 예산 ' + App.money(budget) + '을 모두 썼어요.'};
+			if(before < budget * 0.8 && after >= budget * 0.8) return {title: b.name + ' 예산의 ' + percent(after, budget) + '%를 썼어요', desc: '이번 주기에 ' + App.money(budget - after) + ' 남았어요.'};
+			return null;
+		},
+
+		/* 대시보드 예산 막대: 이름 · 사용액/예산 · 막대(80% 이상 주의, 100% 이상 초과) · 남은(넘은) 금액 */
+		budgetBars = function(budgets){
+			return budgets.items.map(function(b){
+				var spent = Number(b.spent), budget = Number(b.budget), rate = spent / budget,
+					fill = App.h('span');
+				fill.style.width = Math.max(0, Math.min(100, rate * 100)) + '%';
+				return App.h('li', {className: 'limit-item' + (rate >= 1 ? ' is-over' : rate >= 0.8 ? ' is-warn' : '')}, [
+					App.h('div', {className: 'limit-head'}, [
+						App.h('strong', {text: b.name}),
+						App.h('span', {text: App.money(spent) + ' / ' + App.money(budget) + ' (' + percent(spent, budget) + '%)'})
+					]),
+					App.h('div', {className: 'limit-bar', attrs: {'aria-hidden': 'true'}}, [fill]),
+					App.h('small', {text: spent > budget ? App.money(spent - budget) + ' 초과' : App.money(budget - spent) + ' 남음'})
+				]);
+			});
+		},
+
 		/* 마지막으로 고른 통장(이 브라우저에만 저장). 저장소를 못 쓰는 환경이면 기억하지 않는다 */
 		lastAccount = function(){
 			try {
@@ -249,6 +307,9 @@ App.entryForm = (function(){
 		accountOf: accountOf,
 		balanceEffect: balanceEffect,
 		balanceHint: balanceHint,
+		budgetHint: budgetHint,
+		budgetAlert: budgetAlert,
+		budgetBars: budgetBars,
 		lastAccount: lastAccount,
 		rememberAccount: rememberAccount,
 		checked: checked,

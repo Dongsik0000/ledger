@@ -31,6 +31,7 @@
                 <legend>카테고리</legend>
                 <div class="choice-buttons" id="${id}-categories"></div>
             </fieldset>
+            <p class="form-note" id="${id}-budget" aria-live="polite" hidden></p>
             <label class="field">
                 <span>내용</span>
                 <input type="text" id="${id}-title" maxlength="100" placeholder="예: 점심, 월급">

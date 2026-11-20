@@ -128,7 +128,14 @@ public class SettingsApiController {
         String groupName = ParamUtil.str(param, "groupName");
         Integer sortOrder = ParamUtil.integer(param, "sortOrder");
         Boolean active = ParamUtil.has(param, "active") ? ParamUtil.bool(param, "active") : Boolean.TRUE;
+        // 주기 예산(지출 카테고리만). 빈 값이면 예산 없음, 키가 없으면(숨기기 등) 저장된 값을 그대로 둔다
+        boolean budgetGiven = param.containsKey("budget");
+        Long budget = ParamUtil.lng(param, "budget");
 
+        if ((ParamUtil.has(param, "budget") && (budget == null || budget < 1 || budget > EntryApiController.AMOUNT_MAX))
+                || (budget != null && !"EXPENSE".equals(type))) {
+            return Response.invalid("예산은 지출 카테고리에만, 1원~999억 원 미만으로 입력해 주세요.");
+        }
         if ((ParamUtil.has(param, "id") && id == null) || !TYPES.contains(type)
                 || name.isEmpty() || name.length() > NAME_MAX || groupName.length() > NAME_MAX
                 || (ParamUtil.has(param, "sortOrder") && !isOrder(sortOrder)) || active == null) {
@@ -136,7 +143,8 @@ public class SettingsApiController {
         }
 
         Map<String, Object> category = ParamUtil.map("userId", userId, "id", id, "type", type, "name", name,
-                "groupName", groupName.isEmpty() ? null : groupName, "sortOrder", sortOrder, "active", active);
+                "groupName", groupName.isEmpty() ? null : groupName, "sortOrder", sortOrder, "active", active,
+                "budget", budget);
 
         if (id != null) {
             Map<String, Object> key = ParamUtil.map("id", id, "userId", userId);
@@ -150,6 +158,9 @@ public class SettingsApiController {
             }
             if (sortOrder == null) {
                 category.put("sortOrder", saved.get("sortOrder"));
+            }
+            if (!budgetGiven) {
+                category.put("budget", "EXPENSE".equals(type) ? saved.get("budget") : null);
             }
         }
         if (settingsService.countCategoryName(category) > 0) {
