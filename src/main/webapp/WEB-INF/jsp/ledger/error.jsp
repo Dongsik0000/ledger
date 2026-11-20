@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#45654c">
+    <meta name="theme-color" content="#f3f8fa">
     <title>오류 안내 · 나의 가계부</title>
     <link rel="icon" href="<c:url value='/resources/images/ledger-leaf.svg'/>">
     <link rel="manifest" href="<c:url value='/manifest.json'/>">

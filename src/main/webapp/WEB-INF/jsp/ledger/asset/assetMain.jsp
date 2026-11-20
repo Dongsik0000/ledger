@@ -8,7 +8,7 @@
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">MY LITTLE GROWTH</p>
+                <p class="eyebrow">돈 관리 · 지금의 잔액</p>
                 <h1>자산</h1>
                 <p class="page-description">지금의 잔액을 기록하고, 나의 여유를 살펴봐요.</p>
             </div>

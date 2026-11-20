@@ -1,15 +1,15 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ include file="/common/taglib.jsp"%>
 <%-- 요약: 표·차트는 summary.js 가 /ledger/summary/load·donut, 주기 지표는 /ledger/dashboard/summary 로 채운다 --%>
-<t:layout title="요약" page="summary">
+<t:layout title="흐름" page="summary">
     <jsp:attribute name="script">
         <script defer src="<c:url value='/resources/js/app/summary/summary.js'/>"></script>
     </jsp:attribute>
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">MONEY IN PERSPECTIVE</p>
-                <h1>요약 / 통계</h1>
+                <p class="eyebrow">기록을 모아 보면</p>
+                <h1>흐름</h1>
                 <p class="page-description">기록을 모아, 나에게 맞는 소비의 흐름을 찾아요.</p>
             </div>
         </header>

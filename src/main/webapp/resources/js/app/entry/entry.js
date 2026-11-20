@@ -21,6 +21,13 @@ App.entry = (function(){
 			period: document.getElementById('period'),  /* 기간 선택(달력 월·주기·최근 12개월·전체) */
 			monthField: document.getElementById('monthField'),  /* 조회 월 칸(달력 월일 때만) */
 			list: document.getElementById('entryList'),  /* 거래 목록 */
+			viewButtons: document.querySelectorAll('[data-view]'),  /* 달력 · 목록 보기 전환 */
+			calWrap: document.getElementById('entryCalendarWrap'),  /* 달력 보기 영역 */
+			cal: document.getElementById('entryCalendar'),  /* 달력 칸 */
+			dayTitle: document.getElementById('entryDayTitle'),  /* 고른 날 제목 */
+			daySum: document.getElementById('entryDaySum'),  /* 고른 날 합계 */
+			dayList: document.getElementById('entryDayList'),  /* 고른 날 기록 */
+			dayAdd: document.getElementById('entryDayAdd'),  /* 고른 날에 기록 추가 */
 			dialog: document.getElementById(ED),  /* 거래 추가·수정 창 */
 			heading: document.getElementById(ED + '-heading'),  /* 창 제목 */
 			subtitle: document.getElementById(ED + '-subtitle'),  /* 창 부제목 */
@@ -50,7 +57,14 @@ App.entry = (function(){
 			editing: null,                                    /* 수정 중인 거래(추가면 null) */
 			assetLoadToken: 0,
 			balances: null,                                   /* 통장 잔액(창을 열 때마다 새로 받는다) */
-			budgets: null                                     /* 이번 주기 카테고리 예산(창을 열 때마다 새로 받는다) */
+			budgets: null,                                    /* 이번 주기 카테고리 예산(창을 열 때마다 새로 받는다) */
+			view: 'calendar',                                 /* calendar | list */
+			rows: [],                                         /* 마지막으로 받은 목록(달력이 쓴다) */
+			range: null,                                      /* 달력 기간 {from, to} */
+			selDay: '',                                       /* 달력에서 고른 날 */
+			calFocus: false,                                  /* 달력을 다시 그린 뒤 고른 칸에 포커스 */
+			dailyRef: 0,                                      /* 칸 색 기준: 오늘 쓸 수 있는 돈(못 받으면 평균) */
+			newDate: null                                     /* 추가 창에 미리 넣을 날짜(달력에서 연 경우) */
 		},
 
 		url = {
@@ -59,6 +73,7 @@ App.entry = (function(){
 			balances: contextPath + '/ledger/account/balances',
 			budgets: contextPath + '/ledger/dashboard/budgets',
 			list: contextPath + '/ledger/entry/list',
+			summary: contextPath + '/ledger/dashboard/summary',
 			save: contextPath + '/ledger/entry/save',
 			del: contextPath + '/ledger/entry/delete'
 		},
@@ -77,6 +92,10 @@ App.entry = (function(){
 			m$.keyword.value = q.get('q') || '';
 			m$.type.value = ['INCOME', 'EXPENSE'].indexOf(q.get('type')) >= 0 ? q.get('type') : '';
 			settings.editId = q.get('edit');
+			/* 보기(?view=list)와 달력에서 고른 날(?day=, 오늘 화면의 이번 주 칸에서 온다) */
+			settings.view = q.get('view') === 'list' ? 'list' : 'calendar';
+			settings.selDay = /^\d{4}-\d{2}-\d{2}$/.test(q.get('day') || '') ? q.get('day') : '';
+			loadDailyRef();
 
 			loadMaster().then(function(){
 				/* 선택지에 없는 값(지운 항목 등)이면 select 가 빈 값으로 남는다 */
@@ -84,6 +103,8 @@ App.entry = (function(){
 				m$.payment.value = q.get('payment') || '';
 				m$.accountFilter.value = q.get('account') || '';
 				list();
+				/* 다른 화면의 아래 + 로 들어오면(?new=1) 추가 창을 바로 연다 */
+				if(q.get('new')) openNew(settings.selDay);
 			});
 		},
 
@@ -114,7 +135,34 @@ App.entry = (function(){
 				list();
 			});
 
-			m$.newButton.addEventListener('click', openNew);
+			m$.newButton.addEventListener('click', function(){ openNew(calendarShown() ? settings.selDay : null); });
+			/* 휴대폰 아래 + : 이 화면에서는 새로 열지 않고 추가 창을 바로 연다 */
+			document.addEventListener('click', function(e){
+				var add = e.target.closest ? e.target.closest('[data-quick-add]') : null;
+				if(!add) return;
+				e.preventDefault();
+				if(!m$.dialog.open) openNew(calendarShown() ? settings.selDay : null);
+			});
+			m$.viewButtons.forEach(function(b){
+				b.addEventListener('click', function(){
+					settings.view = b.getAttribute('data-view');
+					saveQuery();
+					showView();
+				});
+			});
+			m$.cal.addEventListener('click', function(e){
+				var cell = e.target.closest('.cal-cell');
+				if(cell && !cell.disabled) selectDay(cell.getAttribute('data-date'));
+			});
+			/* 방향키로 하루·한 주씩 옮긴다(기간 밖으로는 가지 않는다) */
+			m$.cal.addEventListener('keydown', function(e){
+				var step = {ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7}[e.key], next;
+				if(!step || !settings.range) return;
+				e.preventDefault();
+				next = shiftDate(settings.selDay, step);
+				if(next >= settings.range.from && next <= settings.range.to) selectDay(next);
+			});
+			m$.dayAdd.addEventListener('click', function(){ openNew(settings.selDay); });
 			m$.batchButton.addEventListener('click', function(){ App.entryBatch.open(settings.master, list); });
 			App.bindAmountInput(m$.amount);
 			m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
@@ -195,7 +243,137 @@ App.entry = (function(){
 			if(m$.category.value) q.set('category', m$.category.value);
 			if(m$.payment.value) q.set('payment', m$.payment.value);
 			if(m$.accountFilter.value) q.set('account', m$.accountFilter.value);
+			if(settings.view === 'list') q.set('view', 'list');
+			else if(settings.selDay) q.set('day', settings.selDay);
 			history.replaceState(null, '', location.pathname + '?' + q.toString());
+		},
+
+		/* 칸 색 기준(오늘 쓸 수 있는 돈). 보조 정보라 실패하면 그 기간의 하루 평균 지출을 기준으로 쓴다 */
+		loadDailyRef = function(){
+			App.post(url.summary, null, {onError: function(){}})
+				.then(function(res){
+					if(!res || res.code !== App.CODE.SUCCESS) return;
+					settings.dailyRef = Number(res.data.dailyBudget) || 0;
+					if(calendarShown()) App.guard(renderCalendar);
+				})
+				.catch(function(){});
+		},
+
+		/* 달력은 달력 월·주기에서만 볼 수 있다(최근 12개월·전체는 목록) */
+		calendarAllowed = function(){
+			return m$.period.value === 'MONTH' || m$.period.value === 'CYCLE';
+		},
+
+		/* 지금 달력 보기인지 */
+		calendarShown = function(){
+			return calendarAllowed() && settings.view === 'calendar';
+		},
+
+		/* 달력 · 목록 전환 */
+		showView = function(){
+			var shown = calendarShown(), allowed = calendarAllowed();
+			m$.viewButtons.forEach(function(b){
+				var isCal = b.getAttribute('data-view') === 'calendar';
+				b.setAttribute('aria-pressed', String(isCal === shown));
+				b.disabled = isCal && !allowed;
+				b.title = isCal && !allowed ? '달력은 달력 월 · 주기에서 볼 수 있어요' : '';
+			});
+			m$.calWrap.hidden = !shown;
+			m$.list.hidden = shown;
+			if(shown) renderCalendar();
+		},
+
+		/* "2026-09-23" 의 요일(0 = 일요일) */
+		dowOf = function(iso){
+			return new Date(iso + 'T00:00:00').getDay();
+		},
+
+		/* 칸에 들어가는 짧은 금액: 1만 이상은 "8.9만" */
+		shortMoney = function(n){
+			return n >= 10000 ? String(Math.round(n / 1000) / 10) + '만' : n.toLocaleString('ko-KR');
+		},
+
+		/* 칸 색 단계: 0 없음 · 1~3 많을수록 진하게 · 4 기준(오늘 쓸 수 있는 돈)보다 많이 씀 */
+		heatLevel = function(spend, ref){
+			if(spend <= 0) return 0;
+			if(spend > ref) return 4;
+			if(spend > ref * 0.7) return 3;
+			return spend > ref * 0.35 ? 2 : 1;
+		},
+
+		/* 고른 날 바꾸기 */
+		selectDay = function(iso){
+			settings.selDay = iso;
+			settings.calFocus = true;
+			saveQuery();
+			renderCalendar();
+		},
+
+		/* 달력 그리기: 기간을 일요일~토요일 주로 채우고, 기간 밖 칸은 흐리게(고를 수 없음) */
+		renderCalendar = function(){
+			var r = settings.range;
+			if(!r) return;
+			var today = App.entryForm.today(), spend = {}, income = {}, cells = [], vals, ref, d,
+				compact = window.matchMedia('(max-width: 768px)').matches,
+				start = shiftDate(r.from, -dowOf(r.from)), end = shiftDate(r.to, 6 - dowOf(r.to));
+			settings.rows.forEach(function(x){
+				if(x.kind === 'TRANSFER') return;
+				if(x.type === 'EXPENSE') spend[x.entryDate] = (spend[x.entryDate] || 0) + (x.refund ? -x.amount : x.amount);
+				else if(!x.refund) income[x.entryDate] = true;
+			});
+			if(!settings.selDay || settings.selDay < r.from || settings.selDay > r.to){
+				settings.selDay = today >= r.from && today <= r.to ? today : r.from;
+			}
+			vals = Object.keys(spend).map(function(k){ return spend[k]; }).filter(function(v){ return v > 0; });
+			ref = settings.dailyRef > 0 ? settings.dailyRef : (vals.length ? vals.reduce(function(a, b){ return a + b; }, 0) / vals.length : 1);
+			'일월화수목금토'.split('').forEach(function(c){
+				cells.push(App.h('div', {className: 'cal-dow', text: c, attrs: {'aria-hidden': 'true'}}));
+			});
+			for(d = start; d <= end; d = shiftDate(d, 1)){
+				var inRange = d >= r.from && d <= r.to, sp = spend[d] || 0,
+					level = inRange && d <= today ? heatLevel(sp, ref) : 0,
+					p = d.split('-'),
+					attrs = {'data-date': d, 'aria-pressed': String(d === settings.selDay),
+						'aria-label': Number(p[1]) + '월 ' + Number(p[2]) + '일' + (sp > 0 ? ', ' + App.money(sp) + ' 씀' : '')
+							+ (income[d] ? ', 수입 있음' : '') + (level === 4 ? ', 오늘 쓸 수 있는 돈보다 많이 씀' : '')};
+				if(level) attrs['data-h'] = String(level);
+				if(d === today) attrs['aria-current'] = 'date';
+				cells.push(App.h('button', {
+					type: 'button', className: 'cal-cell' + (inRange ? '' : ' out') + (d === today ? ' today' : ''),
+					tabIndex: d === settings.selDay ? 0 : -1, disabled: !inRange, attrs: attrs
+				}, [
+					App.h('span', {className: 'cal-top'}, [
+						App.h('span', {className: 'cal-d', text: String(Number(p[2]))}),
+						income[d] ? App.h('span', {className: 'cal-inc', text: '+', attrs: {'aria-hidden': 'true'}}) : null
+					]),
+					sp > 0 ? App.h('span', {className: 'cal-amt', text: compact ? shortMoney(sp) : sp.toLocaleString('ko-KR'), attrs: {'aria-hidden': 'true'}}) : null
+				]));
+			}
+			m$.cal.replaceChildren.apply(m$.cal, cells);
+			renderDay();
+			if(settings.calFocus){
+				settings.calFocus = false;
+				var sel = m$.cal.querySelector('[data-date="' + settings.selDay + '"]');
+				if(sel) sel.focus();
+			}
+		},
+
+		/* 고른 날의 기록(수정은 목록과 같은 창) */
+		renderDay = function(){
+			var d = settings.selDay, p = d.split('-'),
+				rows = settings.rows.filter(function(x){ return x.entryDate === d; }),
+				out = 0, inc = 0;
+			rows.forEach(function(x){
+				if(x.kind === 'TRANSFER') return;
+				var v = x.refund ? -x.amount : x.amount;
+				if(x.type === 'EXPENSE') out += v; else inc += v;
+			});
+			m$.dayTitle.textContent = Number(p[1]) + '월 ' + Number(p[2]) + '일 ' + '일월화수목금토'.charAt(dowOf(d)) + '요일';
+			m$.daySum.textContent = rows.length ? '지출 ' + App.money(out) + (inc ? ' · 수입 ' + App.money(inc) : '') : '기록 없음';
+			m$.dayList.replaceChildren.apply(m$.dayList, rows.length
+				? App.entryForm.grouped(rows, openEdit)
+				: [App.entryForm.empty('이날은 조용했어요', '아래 버튼으로 이날의 기록을 바로 적을 수 있어요.')]);
+			m$.dayAdd.lastChild.textContent = Number(p[1]) + '월 ' + Number(p[2]) + '일에 기록 추가';
 		},
 
 		/* 카테고리·결제수단·통장 선택지 받기 */
@@ -309,6 +487,16 @@ App.entry = (function(){
 				' · 차이 ', App.h('b', {text: (net > 0 ? '+' : '') + App.money(net)}));
 			m$.truncated.hidden = !data.truncated;
 			m$.count.textContent = data.truncated ? t.count + '건 중 ' + entries.length + '건' : entries.length + '건';
+			/* 달력 기간: 달력 월은 그 달, 주기는 서버가 알려 준 주기 */
+			settings.rows = rows;
+			if(m$.period.value === 'MONTH'){
+				var mp = settings.month.split('-');
+				settings.range = {from: settings.month + '-01', to: settings.month + '-' + String(new Date(Number(mp[0]), Number(mp[1]), 0).getDate()).padStart(2, '0')};
+			} else {
+				settings.range = m$.period.value === 'CYCLE' ? {from: data.from, to: data.to} : null;
+			}
+			showView();
+			if(calendarShown()) saveQuery();   /* 고른 날이 기간에 맞게 바뀌었을 수 있다 */
 			if(!rows.length){
 				m$.list.replaceChildren(filtered()
 					? App.entryForm.empty('조건에 맞는 거래가 없어요', '검색어나 필터를 바꿔 보세요.')
@@ -430,7 +618,9 @@ App.entry = (function(){
 			App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], src ? src.accountId : App.entryForm.lastAccount());
 			m$.refund.checked = preset ? true : !!(e && e.refund);
 			m$.date.value = e ? e.entryDate
+				: !preset && settings.newDate ? settings.newDate
 				: preset || settings.month === App.entryForm.today().slice(0, 7) ? App.entryForm.today() : settings.month + '-01';
+			settings.newDate = null;
 			m$.memo.value = e && e.memo ? e.memo : '';
 			m$.memoBox.open = !!(e && e.memo);
 			showRefund();
@@ -461,8 +651,11 @@ App.entry = (function(){
 			_confirm('작성 중인 내용을 버릴까요?', '저장하지 않은 입력은 사라져요.', function(){ m$.dialog.close(); });
 		},
 
-		/* 새 거래 */
-		openNew = function(){ open(null); },
+		/* 새 거래. date 를 주면(달력에서 고른 날) 그 날짜로 연다 */
+		openNew = function(date){
+			settings.newDate = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+			open(null);
+		},
 
 		/* 거래 수정 */
 		openEdit = function(e){ open(e); },
@@ -527,6 +720,7 @@ App.entry = (function(){
 				var warn = settings.editing ? null : App.entryForm.budgetAlert(settings.budgets, App.entryForm.checked(ED + '-category'),
 					App.entryForm.checked(ED + '-type'), App.parseAmount(m$.amount.value), m$.date.value, m$.refund.checked);
 				App.entryForm.rememberAccount(m$.account.value);
+				settings.selDay = m$.date.value;   /* 달력은 방금 저장한 날을 보여 준다(기간 밖이면 기본값으로) */
 				m$.dialog.close();
 				if(warn) _alert(warn.title, warn.desc); else App.saved();
 				list();

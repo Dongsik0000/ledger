@@ -1,7 +1,8 @@
 App.summary = (function(){
-	var INCOME_COLOR = '#547851',
-		EXPENSE_COLOR = '#bc9856',
-		DONUT_COLORS = ['#547851', '#bc9856', '#879975', '#a27560', '#6f8f9c', '#c9b98a', '#8a6f8f', '#9aa98a'],
+	/* 바다 유리 테마 색(style.css 의 --brand-strong · --heat-4 와 같은 값). 차트는 캔버스라 CSS 변수를 못 쓴다 */
+	var INCOME_COLOR = '#2a6a80',
+		EXPENSE_COLOR = '#e2b45c',
+		DONUT_COLORS = ['#2a6a80', '#e2b45c', '#7fb8a0', '#8fb3d9', '#c9a46a', '#9c8fd0', '#5f9c8a', '#d4a28a'],
 		m$ = {
 			basis: document.getElementById('basis'),  /* 기준 선택(달력 월·주기) */
 			basisNote: document.getElementById('basisNote'),  /* 기준 설명 */
@@ -179,8 +180,8 @@ App.summary = (function(){
 				data: {
 					labels: labels,
 					datasets: [
-						{label: '수입', data: monthly.map(function(r){ return r.income; }), backgroundColor: INCOME_COLOR, borderRadius: 5},
-						{label: '지출', data: monthly.map(function(r){ return r.expense; }), backgroundColor: EXPENSE_COLOR, borderRadius: 5}
+						{label: '수입', data: monthly.map(function(r){ return r.income; }), backgroundColor: INCOME_COLOR, borderRadius: 8},
+						{label: '지출', data: monthly.map(function(r){ return r.expense; }), backgroundColor: EXPENSE_COLOR, borderRadius: 8}
 					]
 				},
 				options: {

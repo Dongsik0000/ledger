@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#45654c">
+    <meta name="theme-color" content="#f3f8fa">
     <title>로그인 · 나의 가계부</title>
     <link rel="icon" href="<c:url value='/resources/images/ledger-leaf.svg'/>">
     <link rel="manifest" href="<c:url value='/manifest.json'/>">
@@ -36,7 +36,7 @@
             </span>
         </div>
         <div class="auth-story-copy">
-            <p class="eyebrow">A LITTLE NOTE FOR YOUR DAY</p>
+            <p class="eyebrow">작은 기록이 모여 한 달의 흐름</p>
             <h2>작은 기록이 모여,<br>더 나은 내일로.</h2>
             <p>오늘의 커피 한 잔부터 내일을 위한 저축까지.<br>나의 일상을 담는 편안한 가계부.</p>
             <div class="auth-art" aria-hidden="true">
@@ -72,7 +72,7 @@
                     <span class="brand-caption">LITTLE BY LITTLE</span>
                 </span>
             </div>
-            <p class="eyebrow">WELCOME BACK</p>
+            <p class="eyebrow">다시 만나서 반가워요</p>
             <h1>다시 만나 반가워요</h1>
             <p class="auth-intro">오늘의 이야기를 가계부에 남겨볼까요?</p>
             <div class="inline-error" role="alert" hidden>아이디 또는 비밀번호를 확인해 주세요.</div>

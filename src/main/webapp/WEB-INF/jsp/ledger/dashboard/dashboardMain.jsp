@@ -1,7 +1,8 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ include file="/common/taglib.jsp"%>
-<%-- 대시보드: 값은 dashboard.js 가 /ledger/dashboard/summary·recent, 선택지는 /ledger/settings/master 로 채운다 --%>
-<t:layout title="대시보드" page="dashboard">
+<%-- 오늘: 값은 dashboard.js 가 /ledger/dashboard/summary·recent·budgets, 이번 주는 /ledger/entry/list,
+     다가오는 고정 항목은 /ledger/recurring/list, 선택지는 /ledger/settings/master 로 채운다 --%>
+<t:layout title="오늘" page="dashboard">
     <jsp:attribute name="script">
         <script defer src="<c:url value='/resources/js/app/entry/entryForm.js'/>"></script>
         <script defer src="<c:url value='/resources/js/app/dashboard/dashboard.js'/>"></script>
@@ -9,67 +10,106 @@
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">MY DAILY NOTE</p>
-                <h1>오늘의 가계부</h1>
-                <p class="page-description">오늘의 작은 소비부터 내일의 여유까지.</p>
+                <p class="eyebrow" id="todayLabel">—</p>
+                <h1>오늘</h1>
             </div>
-            <a class="button primary" href="#quick-entry" id="quickJump">바로 기록</a>
+            <button type="button" class="button primary" id="quickJump">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>기록하기</button>
         </header>
-        <div class="cycle-strip">
-            <span>
-                <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>현재 주기 <strong id="cycleRange">—</strong>
-                <span class="chip" id="daysLeft">—</span>
-            </span>
-            <a class="text-link" href="<c:url value='/ledger/entry?period=CYCLE'/>">이번 주기 거래 보기</a>
-        </div>
-        <div class="budget-grid">
-            <section class="panel budget-hero reveal">
-                <div class="metric-label">오늘 쓸 수 있는 돈<svg class="icon" aria-hidden="true"><use href="#i-sun"></use></svg>
+        <div class="today-grid">
+            <section class="panel hero-card t-hero reveal" aria-labelledby="dailyLabel">
+                <div class="mascot pop" id="mascot" aria-hidden="true"></div>
+                <div>
+                    <p class="allow-label" id="dailyLabel">오늘 쓸 수 있는 돈</p>
+                    <p class="daily-budget"><span id="dailyBudget">—</span><span>원</span></p>
+                    <p class="allow-sub"><span id="daysLeft">—</span> · 나갈 고정지출 <span id="pendingFixed">—</span>은 미리 뺐어요</p>
                 </div>
-                <p class="daily-budget"><span id="dailyBudget">—</span><span>원</span></p>
-                <p>예정된 고정지출을 남겨두고, 오늘의 여유를 확인해요.</p>
-                <div class="budget-foot">
-                    <span>예정 고정지출 <strong id="pendingFixed">—</strong></span>
-                    <span id="todayLabel">기준일 —</span>
+                <p class="bubble" id="mascotLine" aria-live="polite">오늘의 기록을 살펴보고 있어요.</p>
+                <div class="cycle-progress">
+                    <div class="bar" aria-hidden="true"><span id="cycleBar" style="width:0"></span></div>
+                    <div class="hero-foot">
+                        <span>이번 주기 <strong id="cycleRange">—</strong></span>
+                        <a class="text-link" href="<c:url value='/ledger/entry?period=CYCLE'/>">이번 주기 거래 보기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg></a>
+                    </div>
                 </div>
             </section>
-            <section class="panel cycle-summary reveal">
+            <section class="panel t-sum reveal">
                 <div class="panel-head">
                     <div>
-                        <h2>이번 주기의 기록</h2>
+                        <h2>이번 주기</h2>
                         <p>급여일부터 다음 급여일 전날까지</p>
                     </div>
                 </div>
-                <dl class="summary-lines">
-                    <div><dt>이월 금액</dt><dd id="carryOver">—</dd></div>
-                    <div><dt>주기 수입</dt><dd class="income" id="cycleIncome">—</dd></div>
-                    <div><dt>주기 지출</dt><dd class="expense" id="cycleExpense">—</dd></div>
-                    <div class="summary-total"><dt>주기 잔액</dt><dd id="cycleBalance">—</dd></div>
+                <dl class="tiles">
+                    <div class="tile"><dt>이월</dt><dd id="carryOver">—</dd></div>
+                    <div class="tile"><dt>수입</dt><dd class="income" id="cycleIncome">—</dd></div>
+                    <div class="tile"><dt>지출</dt><dd class="expense" id="cycleExpense">—</dd></div>
+                    <div class="tile total"><dt>잔액</dt><dd id="cycleBalance">—</dd></div>
                 </dl>
-            </section>
-        </div>
-        <%-- 카테고리 예산(설정에서 정한 것만). 예산이 하나도 없으면 dashboard.js 가 숨겨 둔다 --%>
-        <section class="panel limit-panel reveal" id="limitPanel" hidden>
-            <div class="panel-head">
-                <div>
-                    <h2>이번 주기 예산</h2>
-                    <p>카테고리별 예산 대비 지출 · 환불은 빼고 계산해요</p>
+                <div class="total-line">
+                    <span>나의 총 잔액</span>
+                    <strong id="totalBalance">—</strong>
+                    <small id="totalDetail">가계부 — + 자산 —</small>
                 </div>
-                <a class="text-link" href="<c:url value='/ledger/settings'/>">예산 바꾸기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg>
-                </a>
-            </div>
-            <ul class="limit-list" id="limitList"></ul>
-        </section>
-        <div class="dashboard-grid">
-            <section class="panel quick-entry reveal" id="quick-entry" tabindex="-1">
+            </section>
+            <section class="panel t-week reveal">
                 <div class="panel-head">
                     <div>
-                        <h2>빠른 거래 입력</h2>
-                        <p>잊기 전에, 오늘의 기록을 남겨요.</p>
+                        <h2>이번 주</h2>
+                        <p id="weekTotal">칸을 누르면 기록 달력에서 그날을 열어요</p>
                     </div>
-                    <svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg>
+                    <a class="button small" href="<c:url value='/ledger/entry'/>">달력 보기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg></a>
                 </div>
-                <form id="quickForm" novalidate>
+                <div class="week" id="weekStrip" role="group" aria-label="이번 주 날짜별 지출"></div>
+            </section>
+            <section class="panel t-bud reveal" id="limitPanel">
+                <div class="panel-head">
+                    <div>
+                        <h2>카테고리 예산</h2>
+                        <p>이번 주기 · 환불은 빼고 계산해요</p>
+                    </div>
+                    <a class="text-link" href="<c:url value='/ledger/settings#list-settings'/>">바꾸기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg></a>
+                </div>
+                <ul class="limit-list t-body" id="limitList"></ul>
+            </section>
+            <section class="panel t-up reveal">
+                <div class="panel-head">
+                    <div>
+                        <h2>다가오는 고정 항목</h2>
+                        <p>결제일에 알아서 기록돼요</p>
+                    </div>
+                    <a class="text-link" href="<c:url value='/ledger/recurring'/>">관리<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg></a>
+                </div>
+                <div class="up-list t-body" id="upcomingList"></div>
+            </section>
+            <section class="panel t-rec reveal">
+                <div class="panel-head">
+                    <div>
+                        <h2>최근 기록</h2>
+                        <p>가장 최근 5건</p>
+                    </div>
+                    <a class="text-link" href="<c:url value='/ledger/entry?view=list'/>">전체 보기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg></a>
+                </div>
+                <div class="t-body" id="recentList"></div>
+            </section>
+        </div>
+        <details class="formula-note">
+            <summary>오늘 쓸 수 있는 돈은 어떻게 계산하나요?</summary>
+            <p id="formula">—</p>
+            <p>달력의 월과 관계없이 오늘이 속한 주기를 기준으로 표시합니다.</p>
+        </details>
+
+        <%-- 빠른 기록 창: 머리의 "기록하기"·휴대폰 아래 + 로 연다. Enter 로 저장 --%>
+        <dialog class="editor-dialog" id="quickDialog" aria-labelledby="quickDialog-heading">
+            <form id="quickForm" novalidate>
+                <header class="dialog-head">
+                    <div>
+                        <h2 id="quickDialog-heading">빠른 기록</h2>
+                        <p>잊기 전에, 오늘의 기록을 남겨요. Enter 로 저장돼요.</p>
+                    </div>
+                    <button type="button" class="icon-button" data-close aria-label="닫기">×</button>
+                </header>
+                <div class="dialog-body">
                     <fieldset class="form-stack">
                         <legend class="sr-only">거래 입력</legend>
                         <label class="field">
@@ -112,33 +152,16 @@
                                     <input type="text" id="quickMemo" placeholder="기억하고 싶은 한 줄" maxlength="500">
                                 </label>
                         </div></details>
-                        <button type="submit" class="button primary full-button" id="quickSave">
-                            <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>기록하기</button>
                     </fieldset>
-                </form>
-            </section>
-            <section class="panel recent-panel reveal">
-                <div class="panel-head">
-                    <div>
-                        <h2>최근의 기록</h2>
-                        <p>가장 최근 거래 10건</p>
-                    </div>
-                    <a class="text-link" href="<c:url value='/ledger/entry'/>">전체 보기<svg class="icon" aria-hidden="true"><use href="#i-right"></use></svg>
-                    </a>
                 </div>
-                <div id="recentList"></div>
-            </section>
-        </div>
-        <section class="total-strip">
-            <span>
-                <svg class="icon" aria-hidden="true"><use href="#i-wallet"></use></svg>나의 총 잔액</span>
-            <strong id="totalBalance">—</strong>
-            <small id="totalDetail">가계부 — + 자산 —</small>
-        </section>
-        <details class="formula-note">
-            <summary>오늘 쓸 수 있는 돈은 어떻게 계산하나요?</summary>
-            <p id="formula">—</p>
-            <p>달력의 월과 관계없이 오늘이 속한 주기를 기준으로 표시합니다.</p>
-        </details>
+                <footer class="dialog-footer">
+                    <div class="form-actions">
+                        <button type="button" class="button" data-close>닫기</button>
+                        <button type="submit" class="button primary" id="quickSave">
+                            <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>기록하기</button>
+                    </div>
+                </footer>
+            </form>
+        </dialog>
     </jsp:body>
 </t:layout>

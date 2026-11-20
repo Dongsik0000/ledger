@@ -10,7 +10,7 @@
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">MAKE IT YOURS</p>
+                <p class="eyebrow">기록의 기준</p>
                 <h1>설정</h1>
                 <p class="page-description">기록의 기준을 정하고, 익숙한 방식으로 관리해요.</p>
             </div>

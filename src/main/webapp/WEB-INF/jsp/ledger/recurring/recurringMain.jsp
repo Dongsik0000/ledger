@@ -8,7 +8,7 @@
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">ON REPEAT</p>
+                <p class="eyebrow">돈 관리 · 반복되는 돈</p>
                 <h1>고정 항목</h1>
                 <p class="page-description">구독부터 월급까지, 반복되는 돈의 흐름을 챙겨요.</p>
             </div>

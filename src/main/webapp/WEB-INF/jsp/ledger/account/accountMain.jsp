@@ -8,7 +8,7 @@
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">MY ACCOUNTS</p>
+                <p class="eyebrow">돈 관리 · 통장마다 남은 돈</p>
                 <h1>통장</h1>
                 <p class="page-description">통장마다 남은 돈과 통장 사이의 이체를 살펴봐요.</p>
             </div>

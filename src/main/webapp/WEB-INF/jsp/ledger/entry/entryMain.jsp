@@ -1,7 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ include file="/common/taglib.jsp"%>
 <%-- 거래 내역: 목록·필터 선택지는 entry.js 가 채운다 --%>
-<t:layout title="거래 내역" page="entry">
+<t:layout title="기록" page="entry">
     <jsp:attribute name="script">
         <script defer src="<c:url value='/resources/js/app/entry/entryForm.js'/>"></script>
         <script defer src="<c:url value='/resources/js/app/entry/entryBatch.js'/>"></script>
@@ -10,11 +10,15 @@
     <jsp:body>
         <header class="page-head">
             <div>
-                <p class="eyebrow">MY TRANSACTIONS</p>
-                <h1>거래 내역</h1>
-                <p class="page-description">언제, 어디에 썼는지 차분히 돌아봐요.</p>
+                <p class="eyebrow">언제, 어디에 썼는지</p>
+                <h1>기록</h1>
+                <p class="page-description">달력에서 날짜를 고르면 그날의 기록이 바로 보여요.</p>
             </div>
             <div class="page-actions">
+                <div class="view-switch" role="group" aria-label="보기">
+                    <button type="button" data-view="calendar" aria-pressed="true">달력</button>
+                    <button type="button" data-view="list" aria-pressed="false">목록</button>
+                </div>
                 <button type="button" class="button" id="entryBatchOpen">여러 건</button>
                 <button type="button" class="button primary" id="entryNew">
                     <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>거래 추가</button>
@@ -85,6 +89,30 @@
                 <span id="listTotals" aria-live="polite"></span>
             </div>
             <p class="form-note" id="listTruncated" hidden>최근 500건까지만 보여요. 검색어나 필터로 좁혀 보세요. 위 합계는 조건에 맞는 전체 거래 기준이에요.</p>
+            <%-- 달력 보기(달력 월·주기): 칸 색 = 그날 쓴 돈, 고른 날의 기록은 오른쪽(휴대폰은 아래). entry.js 가 그린다 --%>
+            <div class="cal-wrap" id="entryCalendarWrap" hidden>
+                <div>
+                    <div class="cal-grid" id="entryCalendar" role="group" aria-label="날짜별 지출 달력, 방향키로 날짜 이동"></div>
+                    <div class="cal-legend">
+                        <span>그날 쓴 돈</span>
+                        <span class="sw" aria-hidden="true"><i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-4)"></i></span>
+                        <span>조금 → 많이</span>
+                        <span><i class="over-dot" aria-hidden="true"></i>오늘 쓸 수 있는 돈보다 많이 쓴 날</span>
+                        <span><b class="income">+</b> 수입이 있는 날</span>
+                    </div>
+                </div>
+                <aside class="day-panel" aria-labelledby="entryDayTitle">
+                    <div class="panel-head">
+                        <div>
+                            <h2 id="entryDayTitle">—</h2>
+                            <p id="entryDaySum" aria-live="polite"></p>
+                        </div>
+                    </div>
+                    <div id="entryDayList"></div>
+                    <button type="button" class="button primary full-button" id="entryDayAdd">
+                        <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg><span>이날 기록 추가</span></button>
+                </aside>
+            </div>
             <div id="entryList"></div>
         </section>
 
