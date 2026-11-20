@@ -35,12 +35,19 @@
                 </span>
                 <span class="sr-only">내 메뉴 열기</span>
             </summary>
+            <%-- 항목마다 그 설정의 창을 연다(설정 화면에서는 이동 없이, 다른 화면에서는 설정 화면으로 가서 바로 연다) --%>
             <div class="profile-pop">
-                <p>설정</p>
-                <a href="<c:url value='/ledger/settings#cycle-settings'/>"><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>기록 주기 · 시작 잔액</a>
-                <a href="<c:url value='/ledger/settings#list-settings'/>"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>카테고리 · 결제수단 · 예산</a>
-                <a href="<c:url value='/ledger/settings#export-settings'/>"><svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>기록 내보내기</a>
-                <a href="<c:url value='/ledger/settings#account-settings'/>"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>비밀번호 · 초기화 · 탈퇴</a>
+                <p>기록</p>
+                <a href="<c:url value='/ledger/settings?open=cycle'/>" data-settings-open="cycle"><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>기록 주기</a>
+                <a href="<c:url value='/ledger/settings?open=opening'/>" data-settings-open="opening"><svg class="icon" aria-hidden="true"><use href="#i-wallet"></use></svg>시작 잔액</a>
+                <a href="<c:url value='/ledger/settings?open=export'/>" data-settings-open="export"><svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>기록 내보내기</a>
+                <p>목록</p>
+                <a href="<c:url value='/ledger/settings?open=category'/>" data-settings-open="category"><svg class="icon" aria-hidden="true"><use href="#i-bag"></use></svg>카테고리 · 예산</a>
+                <a href="<c:url value='/ledger/settings?open=payment'/>" data-settings-open="payment"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg>결제수단</a>
+                <a href="<c:url value='/ledger/settings?open=holiday'/>" data-settings-open="holiday"><svg class="icon" aria-hidden="true"><use href="#i-sun"></use></svg>공휴일</a>
+                <p>계정</p>
+                <a href="<c:url value='/ledger/settings?open=password'/>" data-settings-open="password"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>비밀번호 변경</a>
+                <a href="<c:url value='/ledger/settings?open=data'/>" data-settings-open="data"><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>초기화 · 탈퇴</a>
                 <hr>
                 <button type="button" data-logout><svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg>로그아웃</button>
             </div>
