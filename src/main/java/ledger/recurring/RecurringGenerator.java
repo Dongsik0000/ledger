@@ -1,12 +1,12 @@
 package ledger.recurring;
 
+import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cycle.PayCycle;
 import ledger.entry.service.EntryService;
 import ledger.holiday.service.HolidayService;
 import ledger.market.MarketDataClient;
 import ledger.market.MarketValue;
-import ledger.entry.controller.EntryApiController;
 import ledger.recurring.service.RecurringService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +45,7 @@ public class RecurringGenerator {
 
     private final TransactionTemplate tx;
 
-    // 고정 항목 한 건마다 트랜잭션을 따로 쓰려고 TransactionTemplate 을 만든다
+    // 항목 한 건마다 트랜잭션을 따로 쓴다(한 건 실패가 다른 항목을 되돌리지 않게)
     @Autowired
     public RecurringGenerator(PlatformTransactionManager transactionManager) {
         this.tx = new TransactionTemplate(transactionManager);
@@ -66,10 +65,10 @@ public class RecurringGenerator {
         return created;
     }
 
-    // 신규·결제일 변경·재활성화 직후: 이미 지난 결제일은 건너뜀(entry_id 없는 기록)으로 둔다.
-    // item: id, userId, name, type, amount, categoryId, paymentMethodId, dayOfMonth, adjust, memo, installment*
+    // 신규·결제일 변경·재활성화 직후: 이미 지난 결제일은 건너뜀(entry_id 없는 기록)으로 둔다
     public void skipPassed(Map<String, Object> item, LocalDate today) {
-        for (PayCycle.Due due : duesBefore(day(item), (String) item.get("adjust"), today, holidays(today))) {
+        for (PayCycle.Due due : RecurringSchedule.duesBefore(RecurringSchedule.day(item), (String) item.get("adjust"),
+                today, holidays(today))) {
             if (Installment.amountFor(item, due.month()) == null) {
                 continue;   // 할부 기간 밖
             }
@@ -78,94 +77,54 @@ public class RecurringGenerator {
         }
     }
 
-    // 저장 직후: 결제일이 오늘까지인데 아직 처리되지 않은 분을 바로 기록(오늘이 결제일이면 오늘 기록)
+    // 저장 직후: 결제일이 오늘까지인데 아직 처리되지 않은 분을 바로 기록
     public void generate(Map<String, Object> item, LocalDate today) {
         generate(item, today, holidays(today));
     }
 
-    // 저장 전 확인용: 할부 마지막 회차 결제일이 이미 왔는지
+    // 저장 전 확인: 할부 마지막 회차 결제일이 이미 왔는지
     public boolean isFinished(Map<String, Object> item, LocalDate today) {
-        return isFinished(item, today, holidays(today));
+        return RecurringSchedule.isFinished(item, today, holidays(today));
     }
 
-    // 할부의 마지막 회차 결제일이 오늘까지 왔으면 끝(그 회차는 기록 또는 건너뜀 처리됨). 일반 항목은 끝나지 않는다
-    static boolean isFinished(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
-        if (!Installment.isInstallment(item)) {
-            return false;
-        }
-        YearMonth last = Installment.lastMonth(Installment.start(item), Installment.months(item));
-        return !PayCycle.dueDate(last, day(item), (String) item.get("adjust"), holidays).isAfter(today);
-    }
-
-    // 지난달·이번 달 결제일 중 today 이하(생성 대상)
-    public static List<PayCycle.Due> duesUpTo(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
-        List<PayCycle.Due> dues = new ArrayList<>();
-        for (PayCycle.Due due : candidates(day, adjust, today, holidays)) {
-            if (!due.date().isAfter(today)) {
-                dues.add(due);
-            }
-        }
-        return dues;
-    }
-
-    // 지난달·이번 달 결제일 중 today 보다 앞선 것(건너뛸 대상)
-    public static List<PayCycle.Due> duesBefore(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
-        List<PayCycle.Due> dues = new ArrayList<>();
-        for (PayCycle.Due due : candidates(day, adjust, today, holidays)) {
-            if (due.date().isBefore(today)) {
-                dues.add(due);
-            }
-        }
-        return dues;
-    }
-
-    // 지난달·이번 달·다음 달분. 다음 달분은 PREV_BIZ 보정으로 이번 달로 당겨질 수 있다(예: 11/1 일요일 → 10/30)
-    private static List<PayCycle.Due> candidates(int day, String adjust, LocalDate today, Set<LocalDate> holidays) {
-        YearMonth thisMonth = YearMonth.from(today);
-        List<PayCycle.Due> dues = new ArrayList<>();
-        for (YearMonth m : List.of(thisMonth.minusMonths(1), thisMonth, thisMonth.plusMonths(1))) {
-            dues.add(new PayCycle.Due(m, PayCycle.dueDate(m, day, adjust, holidays)));
-        }
-        return dues;
-    }
-
-    // 할부는 마지막 회차 결제일이 지나면 항목을 지운다(기록된 거래는 남는다)
+    // 처리되지 않은 결제일을 기록하고 새로 만든 건수를 돌려준다. 할부는 마지막 회차가 지나면 항목을 지운다(거래는 남는다)
     private int generate(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
         int created = 0;
-        List<PayCycle.Due> dueDates = duesUpTo(day(item), (String) item.get("adjust"), today, holidays);
+        List<PayCycle.Due> dueDates = RecurringSchedule.duesUpTo(RecurringSchedule.day(item), (String) item.get("adjust"),
+                today, holidays);
         Set<String> handled = new HashSet<>();
         if (!dueDates.isEmpty()) {
             List<String> months = dueDates.stream().map(d -> d.month().toString()).toList();
             for (Map<String, Object> run : recurringService.selectRuns(ParamUtil.map(
                     "userId", item.get("userId"), "months", months))) {
-                if (((Number) run.get("recurringId")).longValue() == ((Number) item.get("id")).longValue()) {
+                if (((Number) run.get("recurringId")).longValue() == RecurringSchedule.id(item)) {
                     handled.add((String) run.get("periodYm"));
                 }
             }
         }
         for (PayCycle.Due due : dueDates) {
-            if (handled.contains(due.month().toString())) continue;
+            if (handled.contains(due.month().toString())) {
+                continue;
+            }
             Long amount = Installment.amountFor(item, due.month());
             if (amount == null) {
                 continue;   // 할부 기간 밖
             }
             MarketDataClient.FxQuote fx = null;
             if (item.get("usdAmount") != null) {
-                BigDecimal dollars = (BigDecimal) item.get("usdAmount");
                 fx = marketData.usdKrwAt(due.date(), today);
-                amount = MarketValue.krw(dollars, fx.rate());
-                if (amount < 1 || amount > EntryApiController.AMOUNT_MAX) {
+                amount = MarketValue.krw((BigDecimal) item.get("usdAmount"), fx.rate());
+                if (amount < 1 || amount > Constants.AMOUNT_MAX) {
                     throw new IllegalStateException("외화 고정지출 계산 금액이 허용 범위를 넘었습니다");
                 }
             }
             long recordedAmount = amount;
             MarketDataClient.FxQuote usedFx = fx;
-            Boolean done = tx.execute(status -> generateOne(item, due, recordedAmount, usedFx));
-            if (Boolean.TRUE.equals(done)) {
+            if (Boolean.TRUE.equals(tx.execute(status -> generateOne(item, due, recordedAmount, usedFx)))) {
                 created++;
             }
         }
-        if (isFinished(item, today, holidays)) {
+        if (RecurringSchedule.isFinished(item, today, holidays)) {
             recurringService.deleteItem(ParamUtil.map("id", item.get("id"), "userId", item.get("userId")));
             logger.info("할부 마지막 회차 이후 고정 항목 삭제: id={}", item.get("id"));
         }
@@ -173,8 +132,7 @@ public class RecurringGenerator {
     }
 
     // 한 트랜잭션: 처리 기록 → 거래 → 기록에 거래 연결. 기록이 이미 있으면(처리됨·건너뜀) 아무것도 하지 않는다
-    private boolean generateOne(Map<String, Object> item, PayCycle.Due due, long amount,
-                                MarketDataClient.FxQuote fx) {
+    private boolean generateOne(Map<String, Object> item, PayCycle.Due due, long amount, MarketDataClient.FxQuote fx) {
         String periodYm = due.month().toString();
         if (recurringService.insertRun(ParamUtil.map(
                 "recurringId", item.get("id"), "periodYm", periodYm, "entryId", null,
@@ -190,7 +148,7 @@ public class RecurringGenerator {
         return true;
     }
 
-    // 결제일 보정에 쓰는 앞뒤 공휴일
+    // 결제일 보정에 쓰는 앞뒤 공휴일(지난달·이번 달·다음 달 결제일을 덮는 범위)
     private Set<LocalDate> holidays(LocalDate today) {
         return new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
                 "from", today.minusMonths(2).withDayOfMonth(1), "to", today.plusMonths(1))));
@@ -205,10 +163,5 @@ public class RecurringGenerator {
         int months = Installment.months(item);
         String suffix = " (" + Installment.roundOf(Installment.start(item), months, period) + "/" + months + ")";
         return name.length() + suffix.length() > TITLE_MAX ? name.substring(0, TITLE_MAX - suffix.length()) + suffix : name + suffix;
-    }
-
-    // 매월 결제일(1~31)
-    private static int day(Map<String, Object> item) {
-        return ((Number) item.get("dayOfMonth")).intValue();
     }
 }

@@ -22,9 +22,6 @@ App.entryForm = (function(){
 			return 'book';
 		},
 
-		/* 한 자리 수 앞에 0 */
-		pad = function(n){ return (n < 10 ? '0' : '') + n; },
-
 		/* 선택지: 활성 항목 + 이미 고른 항목(비활성이어도 기존 거래 수정이 되도록) */
 		visible = function(list, selectedId){
 			return list.filter(function(x){ return x.active || x.id === selectedId; });
@@ -195,7 +192,7 @@ App.entryForm = (function(){
 		/* 오늘 "YYYY-MM-DD"(브라우저 시간) */
 		today = function(){
 			var d = new Date();
-			return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+			return d.getFullYear() + '-' + App.pad(d.getMonth() + 1) + '-' + App.pad(d.getDate());
 		},
 
 		/* "2026-10-08" -> "10월 8일" */

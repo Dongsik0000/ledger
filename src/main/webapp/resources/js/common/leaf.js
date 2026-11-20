@@ -14,6 +14,7 @@ var App = window.App || {};
 			return n;
 		},
 
+		/* 사용자가 움직임 줄이기를 켰는지 */
 		reduced = function(){
 			return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 		};

@@ -51,35 +51,6 @@ App.account = (function(){
 			recurringDel: contextPath + '/ledger/account/recurring/delete'
 		},
 
-		/* 절댓값에 천 단위 쉼표 */
-		num = function(n){ return Math.abs(Number(n)).toLocaleString('ko-KR'); },
-		/* 음수면 − 를 붙인 숫자 */
-		signed = function(n){ return (Number(n) < 0 ? '−' : '') + num(n); },
-		/* "2026-10-12" → "2026.10.12" */
-		dotted = function(d){ return d.replace(/-/g, '.'); },
-
-		/* 기준 잔액 칸: 앞의 -(음수)와 숫자·쉼표만 서식 정리(settings.js 시작 잔액과 같은 규칙) */
-		signedNumber = function(n){ return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR'); },
-
-		/* "-1,000" 같은 입력 → 숫자. 형식이 틀리면 null */
-		parseSigned = function(s){
-			var t = String(s).replace(/[,\s]/g, '').replace('−', '-');
-			return /^-?\d{1,11}$/.test(t) ? Number(t) : null;
-		},
-
-		/* 입력하는 동안 서식 정리, 틀리면 aria-invalid */
-		formatSigned = function(input){
-			var t = input.value.replace(/[,\s]/g, '').replace('−', '-');
-			if(t === '' || t === '-'){
-				input.removeAttribute('aria-invalid');
-			} else if(/^-?\d{1,11}$/.test(t)){
-				input.value = signedNumber(Number(t));
-				input.removeAttribute('aria-invalid');
-			} else {
-				input.setAttribute('aria-invalid', 'true');
-			}
-		},
-
 		/* 정기 이체 휴일 보정 선택값 */
 		checkedAdjust = function(){
 			var el = document.querySelector('input[name="' + RED + '-adjust"]:checked');
@@ -97,7 +68,7 @@ App.account = (function(){
 			m$.accountNew.addEventListener('click', function(){ openAccount(null); });
 			m$.transferNew.addEventListener('click', function(){ openTransfer(null); });
 			m$.recurringNew.addEventListener('click', function(){ openRecurring(null); });
-			m$.account.amount.addEventListener('input', function(){ formatSigned(m$.account.amount); });
+			m$.account.amount.addEventListener('input', function(){ App.formatSigned(m$.account.amount); });
 			m$.account.reset.addEventListener('click', resetToNow);
 			m$.account.isDefault.addEventListener('change', showDefault);
 			App.bindAmountInput(m$.transfer.amount);
@@ -139,9 +110,9 @@ App.account = (function(){
 		/* 통장 합계·가계부 잔액·차이 */
 		renderMetrics = function(accounts, ledgerBalance, hasDefault){
 			var total = accounts.reduce(function(sum, a){ return sum + Number(a.balance); }, 0);
-			m$.bankTotal.textContent = signed(total);
-			m$.ledgerBalance.textContent = signed(ledgerBalance);
-			m$.diff.textContent = accounts.length ? signed(total - ledgerBalance) : '—';
+			m$.bankTotal.textContent = App.signed(total);
+			m$.ledgerBalance.textContent = App.signed(ledgerBalance);
+			m$.diff.textContent = accounts.length ? App.signed(total - ledgerBalance) : '—';
 			m$.diffFoot.textContent = !accounts.length ? '통장을 추가해 주세요'
 				: hasDefault ? '기본 통장이 나머지를 맡아 항상 0이에요'
 				: '기본 통장을 정하면 0이 돼요';
@@ -173,7 +144,7 @@ App.account = (function(){
 						App.h('strong', {className: balance < 0 ? 'expense' : '', text: App.money(balance)})
 					]),
 					App.h('td', {attrs: {'data-label': '기준'},
-						text: a.isDefault ? '가계부 잔액에서 계산' : dotted(a.baseDate) + ' · ' + App.money(a.baseBalance)}),
+						text: a.isDefault ? '가계부 잔액에서 계산' : App.dotted(a.baseDate) + ' · ' + App.money(a.baseBalance)}),
 					App.h('td', {attrs: {'data-label': '관리'}}, [editButton(a.name, function(){ openAccount(a); })])
 				]);
 			}));
@@ -219,12 +190,12 @@ App.account = (function(){
 			}
 			m$.transferBody.replaceChildren.apply(m$.transferBody, transfers.map(function(t){
 				return App.h('tr', null, [
-					App.h('th', {attrs: {scope: 'row'}, text: dotted(t.transferDate)}),
+					App.h('th', {attrs: {scope: 'row'}, text: App.dotted(t.transferDate)}),
 					App.h('td', {attrs: {'data-label': '보내는 → 받는 통장'}}, [route(t)]
 						.concat(t.recurring ? [' ', App.h('span', {className: 'chip neutral', text: '정기'})] : [])),
 					App.h('td', {attrs: {'data-label': '금액'}, text: App.money(t.amount)}),
 					App.h('td', {attrs: {'data-label': '메모'}, text: t.memo || '—'}),
-					App.h('td', {attrs: {'data-label': '관리'}}, [editButton(dotted(t.transferDate) + ' ' + route(t), function(){ openTransfer(t); })])
+					App.h('td', {attrs: {'data-label': '관리'}}, [editButton(App.dotted(t.transferDate) + ' ' + route(t), function(){ openTransfer(t); })])
 				]);
 			}));
 		},
@@ -262,7 +233,7 @@ App.account = (function(){
 			ed.isDefault.checked = a ? !!a.isDefault : !settings.accounts.length;
 			/* 수정할 때는 저장된 기준을 그대로 보여 준다. 기준 금액·날짜가 바뀌어야 기준 시각을 새로 잡는다. */
 			/* 기본 통장은 기준이 없으므로, 기본을 풀 때를 위해 지금 계산한 잔액·오늘을 채워 둔다 */
-			ed.amount.value = !a ? '' : signedNumber(Number(a.isDefault ? a.balance : a.baseBalance));
+			ed.amount.value = !a ? '' : App.signedNumber(Number(a.isDefault ? a.balance : a.baseBalance));
 			ed.amount.removeAttribute('aria-invalid');
 			ed.date.value = a && !a.isDefault ? a.baseDate : settings.today;
 			ed.date.max = settings.today;
@@ -276,7 +247,7 @@ App.account = (function(){
 		resetToNow = function(){
 			var ed = m$.account, a = settings.editing.account;
 			if(!a) return;
-			ed.amount.value = signedNumber(Number(a.balance));
+			ed.amount.value = App.signedNumber(Number(a.balance));
 			ed.amount.removeAttribute('aria-invalid');
 			ed.date.value = settings.today;
 			ed.amount.focus();
@@ -287,7 +258,7 @@ App.account = (function(){
 		saveAccount = function(){
 			var ed = m$.account,
 				isDefault = ed.isDefault.checked,
-				amount = isDefault ? 0 : ed.amount.value.trim() ? parseSigned(ed.amount.value) : 0;
+				amount = isDefault ? 0 : ed.amount.value.trim() ? App.parseSigned(ed.amount.value) : 0;
 			if(settings.submitting) return;
 			if(!ed.name.value.trim()){
 				_error('알림', '통장 이름을 입력해주세요.');
@@ -326,7 +297,7 @@ App.account = (function(){
 			ed.heading.textContent = t ? '이체 수정' : '이체 기록';
 			fillAccounts(ed.from, t ? t.fromAccountId : settings.accounts[0].id);
 			fillAccounts(ed.to, t ? t.toAccountId : settings.accounts[1].id);
-			ed.amount.value = t ? num(t.amount) : '';
+			ed.amount.value = t ? App.num(t.amount) : '';
 			ed.amount.removeAttribute('aria-invalid');
 			ed.date.value = t ? t.transferDate : settings.today;
 			ed.memo.value = t && t.memo ? t.memo : '';
@@ -363,7 +334,7 @@ App.account = (function(){
 		removeTransfer = function(){
 			var t = settings.editing.transfer;
 			if(!t) return;
-			_confirm('삭제할까요?', dotted(t.transferDate) + ' ' + route(t) + ' ' + App.money(t.amount) + ' 이체를 삭제해요.'
+			_confirm('삭제할까요?', App.dotted(t.transferDate) + ' ' + route(t) + ' ' + App.money(t.amount) + ' 이체를 삭제해요.'
 					+ (t.recurring ? '\n정기 이체가 만든 기록이라 이번 달에는 다시 만들지 않아요.' : ''), function(){
 				remove(url.transferDel, t.id, m$.transfer);
 			});
@@ -377,7 +348,7 @@ App.account = (function(){
 			ed.heading.textContent = item ? '정기 이체 수정' : '정기 이체 추가';
 			fillAccounts(ed.from, item ? item.fromAccountId : settings.accounts[0].id);
 			fillAccounts(ed.to, item ? item.toAccountId : settings.accounts[1].id);
-			ed.amount.value = item ? num(item.amount) : '';
+			ed.amount.value = item ? App.num(item.amount) : '';
 			ed.amount.removeAttribute('aria-invalid');
 			ed.day.value = item ? item.dayOfMonth : '';
 			document.querySelectorAll('input[name="' + RED + '-adjust"]').forEach(function(r){

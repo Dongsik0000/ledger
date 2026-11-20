@@ -6,6 +6,9 @@ import jakarta.servlet.http.HttpSession;
 // 로그인 세션 도우미: 사용자 id 읽기, 로그인·로그아웃
 public class SessionUtil {
 
+    private SessionUtil() {
+    }
+
     // 로그인 사용자 id. 인터셉터를 지난 요청에서는 null 이 아니다.
     public static Long getUserId(HttpSession session) {
         return (Long) session.getAttribute(Constants.SESSION_USER_ID);

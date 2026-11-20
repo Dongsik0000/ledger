@@ -3,6 +3,7 @@
 <%-- 요약: 표·차트는 summary.js 가 /ledger/summary/load·donut, 주기 지표는 /ledger/dashboard/summary 로 채운다 --%>
 <t:layout title="흐름" page="summary">
     <jsp:attribute name="script">
+        <script defer src="<c:url value='/resources/js/lib/chartjs/chart.umd.js'/>"></script>
         <script defer src="<c:url value='/resources/js/app/summary/summary.js'/>"></script>
     </jsp:attribute>
     <jsp:body>

@@ -15,7 +15,6 @@ public class ParamUtil {
     private static final Pattern ISO_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
     private static final Pattern ISO_MONTH = Pattern.compile("\\d{4}-\\d{2}");
 
-    // 정적 메서드만 쓰는 클래스
     private ParamUtil() {
     }
 

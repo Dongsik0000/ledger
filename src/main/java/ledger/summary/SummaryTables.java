@@ -16,7 +16,6 @@ public final class SummaryTables {
     public record Row(String label, List<Long> values, long total, String kind) {
     }
 
-    // 정적 메서드만 쓰는 클래스
     private SummaryTables() {
     }
 

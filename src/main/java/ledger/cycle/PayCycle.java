@@ -18,7 +18,6 @@ public final class PayCycle {
     public record Due(YearMonth month, LocalDate date) {
     }
 
-    // 정적 메서드만 쓰는 클래스
     private PayCycle() {
     }
 

@@ -211,9 +211,6 @@ App.dashboard = (function(){
 				.catch(function(){});
 		},
 
-		/* "2026-10-12" → "2026.10.12" */
-		dotted = function(d){ return d.replace(/-/g, '.'); },
-
 		/* "2026-10-12" → Date(그날 0시) */
 		toDate = function(iso){
 			var p = iso.split('-');
@@ -252,7 +249,7 @@ App.dashboard = (function(){
 				passed = Math.min(total, Math.max(0, dayDiff(s.cycleStart, s.today) + 1));
 			settings.summary = s;
 			m$.todayLabel.textContent = (t.getMonth() + 1) + '월 ' + t.getDate() + '일 ' + DOW.charAt(t.getDay()) + '요일';
-			m$.cycleRange.textContent = dotted(s.cycleStart).slice(5) + ' — ' + dotted(s.cycleEnd).slice(5) + ' · ' + passed + '일째 / ' + total + '일';
+			m$.cycleRange.textContent = App.dotted(s.cycleStart).slice(5) + ' — ' + App.dotted(s.cycleEnd).slice(5) + ' · ' + passed + '일째 / ' + total + '일';
 			m$.cycleBar.style.width = (passed / total * 100) + '%';
 			m$.daysLeft.textContent = s.daysLeft + '일 남음';
 			m$.dailyBudget.textContent = (s.dailyBudget < 0 ? '−' : '') + Math.abs(s.dailyBudget).toLocaleString('ko-KR');

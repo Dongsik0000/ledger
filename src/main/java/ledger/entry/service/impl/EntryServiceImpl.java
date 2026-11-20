@@ -22,25 +22,21 @@ public class EntryServiceImpl implements EntryService {
     @Autowired
     private AssetDAO assetDAO;
 
-    // 조건별 거래 목록(날짜 내림차순)
     @Override
     public List<Map<String, Object>> selectEntryList(Map<String, Object> param) {
         return entryDAO.selectEntryList(param);
     }
 
-    // 같은 조건의 건수·수입·지출 합계
     @Override
     public Map<String, Object> selectEntrySum(Map<String, Object> param) {
         return entryDAO.selectEntrySum(param);
     }
 
-    // 오늘까지의 최근 거래
     @Override
     public List<Map<String, Object>> selectRecentEntries(Map<String, Object> param) {
         return entryDAO.selectRecentEntries(param);
     }
 
-    // 내 거래 하나
     @Override
     public Map<String, Object> selectEntry(Map<String, Object> param) {
         return entryDAO.selectEntry(param);
@@ -71,9 +67,13 @@ public class EntryServiceImpl implements EntryService {
     @Transactional
     public int updateEntry(Map<String, Object> param) {
         Map<String, Object> old = entryDAO.selectEntryForUpdate(param);
-        if (old == null) return 0;
+        if (old == null) {
+            return 0;
+        }
         int updated = entryDAO.updateEntry(param);
-        if (updated != 0) adjust(param, assetId(old), ((Number) old.get("amount")).longValue());
+        if (updated != 0) {
+            adjust(param, assetId(old), ((Number) old.get("amount")).longValue());
+        }
         return updated;
     }
 
@@ -82,9 +82,13 @@ public class EntryServiceImpl implements EntryService {
     @Transactional
     public int deleteEntry(Map<String, Object> param) {
         Map<String, Object> old = entryDAO.selectEntryForUpdate(param);
-        if (old == null) return 0;
+        if (old == null) {
+            return 0;
+        }
         int deleted = entryDAO.deleteEntry(param);
-        if (deleted != 0) adjust(param, assetId(old), ((Number) old.get("amount")).longValue(), null, 0);
+        if (deleted != 0) {
+            adjust(param, assetId(old), ((Number) old.get("amount")).longValue(), null, 0);
+        }
         return deleted;
     }
 

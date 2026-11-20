@@ -18,6 +18,7 @@ public class HealthController {
     @Autowired
     private DataSource dataSource;
 
+    // DB 커넥션을 2초 안에 검증하면 200 "ok", 실패하면 503 "db"
     @GetMapping("/health")
     public ResponseEntity<String> health() throws SQLException {
         try (Connection connection = dataSource.getConnection()) {

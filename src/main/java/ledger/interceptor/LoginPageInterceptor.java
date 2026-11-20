@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import ledger.auth.service.AuthService;
 import ledger.cmmn.util.Constants;
+import ledger.cmmn.util.RequestUtil;
 import ledger.cmmn.util.SessionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -30,7 +31,7 @@ public class LoginPageInterceptor implements HandlerInterceptor {
             session.invalidate();
         }
 
-        if ("XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) {
+        if (RequestUtil.isAjax(request)) {
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             response.getWriter().write("{\"sessionExpired\": true}");

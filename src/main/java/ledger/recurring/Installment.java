@@ -11,7 +11,6 @@ public final class Installment {
     public static final int MONTHS_MIN = 2;
     public static final int MONTHS_MAX = 60;
 
-    // 정적 메서드만 쓰는 클래스
     private Installment() {
     }
 

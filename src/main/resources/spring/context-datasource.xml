@@ -2,10 +2,8 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:context="http://www.springframework.org/schema/context"
-       xmlns:tx="http://www.springframework.org/schema/tx"
        xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
-                           http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
-                           http://www.springframework.org/schema/tx https://www.springframework.org/schema/tx/spring-tx.xsd">
+                           http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd">
 
     <!-- globals.properties 의 값은 ${ENV_VAR:기본값} 형태로 환경변수를 참조한다 (서버: /etc/ledger/app.env) -->
     <context:property-placeholder location="classpath:/egovProps/globals.properties"/>
@@ -30,10 +28,10 @@
         <constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory-ledger-postgre"/>
     </bean>
 
+    <!-- @Transactional 은 dispatcher-servlet.xml 의 tx:annotation-driven 이 켠다(빈 스캔이 그 컨텍스트에 있다) -->
     <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
         <property name="dataSource" ref="dataSource-postgresql"/>
     </bean>
-    <tx:annotation-driven transaction-manager="transactionManager"/>
 
     <!-- 비밀번호 해시 -->
     <bean id="passwordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
