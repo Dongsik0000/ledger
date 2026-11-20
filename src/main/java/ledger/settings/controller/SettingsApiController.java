@@ -9,7 +9,6 @@ import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
 import ledger.cycle.OpeningBalance;
-import ledger.entry.controller.EntryApiController;
 import ledger.entry.service.EntryService;
 import ledger.settings.service.SettingsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,16 +33,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-// 설정: 주기, 카테고리·결제수단 추가·수정·삭제·순서. 로직은 여기, SettingsServiceImpl 은 DAO 연결만.
+// 설정: 주기·시작 잔액, 카테고리·결제수단 추가·수정·삭제·순서, 거래 CSV 내보내기
 @Controller
 @RequestMapping("/ledger/settings")
 public class SettingsApiController {
 
     private static final int NAME_MAX = 50;    // category.name, payment_method.name VARCHAR(50)
     private static final int ORDER_MAX = 9999;
-    private static final Set<String> TYPES = Set.of("EXPENSE", "INCOME");
     private static final String MSG_IN_USE_DELETE = "거래나 고정 항목에서 쓰고 있어 삭제할 수 없어요.";
     private static final int EXPORT_MAX_YEARS = 10;
 
@@ -109,7 +106,7 @@ public class SettingsApiController {
         LocalDate date = ParamUtil.date(param, "openingDate");
         Long amount = ParamUtil.has(param, "openingBalance") ? ParamUtil.lng(param, "openingBalance") : Long.valueOf(0);
         if ((ParamUtil.has(param, "openingDate") && date == null)
-                || amount == null || Math.abs(amount) > EntryApiController.AMOUNT_MAX) {
+                || amount == null || Math.abs(amount) > Constants.AMOUNT_MAX) {
             return Response.invalid("시작 잔액(999억 원 미만)과 기준일을 확인해 주세요.");
         }
         settingsService.updateOpening(ParamUtil.map("userId", SessionUtil.getUserId(session),
@@ -132,11 +129,11 @@ public class SettingsApiController {
         boolean budgetGiven = param.containsKey("budget");
         Long budget = ParamUtil.lng(param, "budget");
 
-        if ((ParamUtil.has(param, "budget") && (budget == null || budget < 1 || budget > EntryApiController.AMOUNT_MAX))
+        if ((ParamUtil.has(param, "budget") && (budget == null || budget < 1 || budget > Constants.AMOUNT_MAX))
                 || (budget != null && !"EXPENSE".equals(type))) {
             return Response.invalid("예산은 지출 카테고리에만, 1원~999억 원 미만으로 입력해 주세요.");
         }
-        if ((ParamUtil.has(param, "id") && id == null) || !TYPES.contains(type)
+        if ((ParamUtil.has(param, "id") && id == null) || !Constants.ENTRY_TYPES.contains(type)
                 || name.isEmpty() || name.length() > NAME_MAX || groupName.length() > NAME_MAX
                 || (ParamUtil.has(param, "sortOrder") && !isOrder(sortOrder)) || active == null) {
             return Response.invalid("이름·그룹명은 50자 이하, 순서는 0~9999 로 입력해 주세요.");
@@ -206,7 +203,7 @@ public class SettingsApiController {
         long userId = SessionUtil.getUserId(session);
         String type = ParamUtil.str(param, "type");
         List<Long> ids = ids(param.get("ids"));
-        if (!TYPES.contains(type) || ids == null) {
+        if (!Constants.ENTRY_TYPES.contains(type) || ids == null) {
             return Response.invalid("순서를 바꿀 항목을 확인해 주세요.");
         }
         if (!sameIds(settingsService.selectCategoryIds(ParamUtil.map("userId", userId, "type", type)), ids)) {
@@ -307,7 +304,9 @@ public class SettingsApiController {
         Object defaultAccount = null;
         for (Map<String, Object> a : accountService.selectAccountOptions(SessionUtil.getUserId(session))) {
             accountNames.put(a.get("id"), a.get("name"));
-            if (Boolean.TRUE.equals(a.get("isDefault"))) defaultAccount = a.get("name");
+            if (Boolean.TRUE.equals(a.get("isDefault"))) {
+                defaultAccount = a.get("name");
+            }
         }
 
         response.setContentType("text/csv; charset=UTF-8");

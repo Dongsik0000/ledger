@@ -2,16 +2,15 @@ package ledger.entry.controller;
 
 import jakarta.servlet.http.HttpSession;
 import ledger.account.service.AccountService;
-import ledger.asset.service.AssetService;
 import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.LikeUtil;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.CycleLoader;
 import ledger.cycle.PayCycle;
+import ledger.entry.EntryReferences;
 import ledger.entry.service.EntryService;
-import ledger.holiday.service.HolidayService;
-import ledger.settings.service.SettingsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,11 +21,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,32 +33,26 @@ import java.util.Set;
 @RequestMapping("/ledger/entry")
 public class EntryApiController {
 
-    public static final long AMOUNT_MAX = 99_999_999_999L;
     private static final int TITLE_MAX = 100;   // ledger_entry.title VARCHAR(100)
     private static final int MEMO_MAX = 500;    // ledger_entry.memo VARCHAR(500)
     private static final int KEYWORD_MAX = 50;
-    private static final Set<String> TYPES = Set.of("EXPENSE", "INCOME");
     // 조회 기간: 달력 월 / 주기(date 가 속한 급여 주기) / 최근 12개월(11개월 전 1일부터) / 전체.
     // 넓은 기간(최근 12개월·전체)은 최근 거래부터 WIDE_LIMIT 건까지만 보낸다
     private static final Set<String> PERIODS = Set.of("MONTH", "CYCLE", "RECENT12", "ALL");
     private static final int WIDE_LIMIT = 500;
     private static final int BATCH_MAX = 50;
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     @Autowired
     private EntryService entryService;
 
     @Autowired
-    private AssetService assetService;
-
-    @Autowired
-    private SettingsService settingsService;
-
-    @Autowired
     private AccountService accountService;
 
     @Autowired
-    private HolidayService holidayService;
+    private CycleLoader cycleLoader;
+
+    @Autowired
+    private EntryReferences entryReferences;
 
     // 거래 내역 화면
     @GetMapping
@@ -75,14 +66,14 @@ public class EntryApiController {
     public Response list(@RequestBody HashMap<String, Object> param, HttpSession session) {
         String period = ParamUtil.has(param, "period") ? ParamUtil.str(param, "period") : "MONTH";
         YearMonth month = ParamUtil.month(param, "month");
-        LocalDate date = ParamUtil.has(param, "date") ? ParamUtil.date(param, "date") : LocalDate.now(SEOUL);
+        LocalDate date = ParamUtil.has(param, "date") ? ParamUtil.date(param, "date") : LocalDate.now(Constants.SEOUL);
         String type = ParamUtil.str(param, "type");
         Long categoryId = ParamUtil.lng(param, "categoryId");
         Long paymentMethodId = ParamUtil.lng(param, "paymentMethodId");
         Long accountId = ParamUtil.lng(param, "accountId");
         String keyword = ParamUtil.str(param, "keyword");
 
-        if (!PERIODS.contains(period) || ("MONTH".equals(period) && month == null) || date == null || (!type.isEmpty() && !TYPES.contains(type))
+        if (!PERIODS.contains(period) || ("MONTH".equals(period) && month == null) || date == null || (!type.isEmpty() && !Constants.ENTRY_TYPES.contains(type))
                 || (ParamUtil.has(param, "categoryId") && categoryId == null)
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
                 || (ParamUtil.has(param, "accountId") && accountId == null)
@@ -102,22 +93,16 @@ public class EntryApiController {
             from = month.atDay(1);
             to = month.atEndOfMonth();
         } else if ("RECENT12".equals(period)) {
-            from = YearMonth.now(SEOUL).minusMonths(11).atDay(1);
+            from = YearMonth.now(Constants.SEOUL).minusMonths(11).atDay(1);
         }
         Map<String, Object> data = new HashMap<>();
         if ("CYCLE".equals(period)) {
-            long userId = SessionUtil.getUserId(session);
-            Map<String, Object> setting = settingsService.selectUserSetting(userId);
-            int payDay = ((Number) setting.get("payDay")).intValue();
-            boolean adjust = Boolean.TRUE.equals(setting.get("payDayAdjust"));
-            Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
-                    "from", date.minusMonths(3).withDayOfMonth(1), "to", date.plusMonths(3))));
-            PayCycle.Cycle cycle = PayCycle.cycleOf(date, payDay, adjust, holidays);
-            from = cycle.start();
-            to = cycle.end();
-            data.put("cycleMonth", PayCycle.baseMonth(cycle, payDay, adjust, holidays).toString());
+            CycleLoader.UserCycle uc = cycleLoader.load(SessionUtil.getUserId(session), date);
+            from = uc.cycle().start();
+            to = uc.cycle().end();
+            data.put("cycleMonth", PayCycle.baseMonth(uc.cycle(), uc.payDay(), uc.adjust(), uc.holidays()).toString());
             // 보정은 등록된 공휴일만 안다. 주기 연도의 공휴일이 하나도 없으면 주말만 반영됐다고 알린다
-            data.put("holidayMissing", adjust && holidays.stream().noneMatch(d -> d.getYear() == cycle.start().getYear()));
+            data.put("holidayMissing", uc.adjust() && uc.holidays().stream().noneMatch(d -> d.getYear() == uc.cycle().start().getYear()));
         }
         Map<String, Object> query = ParamUtil.map(
                 "userId", SessionUtil.getUserId(session), "from", from, "to", to,
@@ -148,12 +133,7 @@ public class EntryApiController {
     // 순서는 잔액을 쌓은 순서(seq)의 역순: 날짜 → 기록한 시각
     private List<Map<String, Object>> withBalance(List<Map<String, Object>> rows, long userId, long accountId, boolean isDefault,
                                                   boolean withTransfers, LocalDate from, LocalDate to, boolean truncated) {
-        LocalDate today = LocalDate.now(SEOUL);
-        Map<String, Object> setting = settingsService.selectUserSetting(userId);
-        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
-                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
-        LocalDate end = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
-                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays).end();
+        LocalDate end = cycleLoader.load(userId, LocalDate.now(Constants.SEOUL)).cycle().end();
         List<Map<String, Object>> trail = accountService.selectBalanceTrail(ParamUtil.map(
                 "userId", userId, "accountId", accountId, "isDefault", isDefault, "to", end));
 
@@ -249,9 +229,9 @@ public class EntryApiController {
         Boolean refund = ParamUtil.has(param, "refund") ? ParamUtil.bool(param, "refund") : Boolean.FALSE;
 
         if ((ParamUtil.has(param, "id") && id == null) || entryDate == null || refund == null
-                || (ParamUtil.has(param, "accountId") && accountId == null) || !TYPES.contains(type)
+                || (ParamUtil.has(param, "accountId") && accountId == null) || !Constants.ENTRY_TYPES.contains(type)
                 || categoryId == null || title.isEmpty() || title.length() > TITLE_MAX
-                || amount == null || amount < 1 || amount > AMOUNT_MAX
+                || amount == null || amount < 1 || amount > Constants.AMOUNT_MAX
                 || (ParamUtil.has(param, "paymentMethodId") && paymentMethodId == null)
                 || (ParamUtil.has(param, "transferAssetId") && transferAssetId == null)
                 || (transferAssetId != null && !"EXPENSE".equals(type))
@@ -263,21 +243,9 @@ public class EntryApiController {
             return Response.invalid("환불·반납 거래는 적금·예금 자산으로 이체할 수 없어요.");
         }
 
-        // 카테고리·결제수단은 같은 사용자 것이어야 하고, 카테고리는 거래 구분과 같아야 한다
-        Map<String, Object> category = settingsService.selectCategory(ParamUtil.map("id", categoryId, "userId", userId));
-        if (category == null || !type.equals(category.get("type"))) {
-            return Response.invalid("카테고리를 다시 골라 주세요.");
-        }
-        if (paymentMethodId != null
-                && settingsService.selectPayment(ParamUtil.map("id", paymentMethodId, "userId", userId)) == null) {
-            return Response.invalid("결제수단을 다시 골라 주세요.");
-        }
-
-        if (transferAssetId != null && assetService.selectCashAsset(ParamUtil.map("id", transferAssetId, "userId", userId)) == null) {
-            return Response.invalid("이체할 적금·예금 자산을 다시 골라 주세요.");
-        }
-        if (accountId != null && accountService.selectAccount(ParamUtil.map("id", accountId, "userId", userId)) == null) {
-            return Response.invalid("통장을 다시 골라 주세요.");
+        Response refError = entryReferences.check(userId, type, categoryId, paymentMethodId, transferAssetId, accountId);
+        if (refError != null) {
+            return refError;
         }
         entry.putAll(ParamUtil.map("userId", userId, "id", id, "entryDate", entryDate, "type", type,
                 "categoryId", categoryId, "title", title, "amount", amount,

@@ -6,13 +6,13 @@ import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.CycleLoader;
 import ledger.cycle.OpeningBalance;
 import ledger.cycle.PayCycle;
 import ledger.dashboard.service.DashboardService;
 import ledger.entry.service.EntryService;
-import ledger.holiday.service.HolidayService;
 import ledger.recurring.Installment;
-import ledger.settings.service.SettingsService;
+import ledger.recurring.RecurringSchedule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,7 +34,6 @@ import java.util.TreeSet;
 @RequestMapping("/ledger/dashboard")
 public class DashboardApiController {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int RECENT_LIMIT = 10;
 
     @Autowired
@@ -45,10 +43,7 @@ public class DashboardApiController {
     private AssetService assetService;
 
     @Autowired
-    private SettingsService settingsService;
-
-    @Autowired
-    private HolidayService holidayService;
+    private CycleLoader cycleLoader;
 
     @Autowired
     private EntryService entryService;
@@ -64,18 +59,12 @@ public class DashboardApiController {
     @PostMapping("/summary")
     public Response summary(HttpSession session) {
         long userId = SessionUtil.getUserId(session);
-        LocalDate today = LocalDate.now(SEOUL);
+        LocalDate today = LocalDate.now(Constants.SEOUL);
 
-        Map<String, Object> setting = settingsService.selectUserSetting(userId);
-        int payDay = ((Number) setting.get("payDay")).intValue();
-        boolean adjust = Boolean.TRUE.equals(setting.get("payDayAdjust"));
-        // 주기·결제일 보정이 앞뒤 달로 넘어갈 수 있어 넉넉히 조회
-        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
-                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
-
-        PayCycle.Cycle cycle = PayCycle.cycleOf(today, payDay, adjust, holidays);
+        CycleLoader.UserCycle uc = cycleLoader.load(userId, today);
+        PayCycle.Cycle cycle = uc.cycle();
         // 시작 잔액이 있으면 기준일 이전 거래를 빼고 그 금액부터 센다(기준일이 이번 주기 안이면 이월로 본다)
-        OpeningBalance opening = OpeningBalance.of(setting);
+        OpeningBalance opening = OpeningBalance.of(uc.setting());
         long carryOver = opening.balanceAt(dashboardService.selectBalanceBefore(
                 ParamUtil.map("userId", userId, "date", cycle.start(), "from", opening.countFrom())));
         Map<String, Object> sum = dashboardService.selectPeriodSum(
@@ -83,7 +72,7 @@ public class DashboardApiController {
         long income = ((Number) sum.get("income")).longValue();
         long expense = ((Number) sum.get("expense")).longValue();
         long balance = carryOver + income - expense;
-        long pending = pendingFixed(userId, cycle, today, holidays);
+        long pending = pendingFixed(userId, cycle, today, uc.holidays());
         long daysLeft = ChronoUnit.DAYS.between(today, cycle.end()) + 1;
         boolean marketUpdated = assetService.refreshStocks(userId);
         long assetTotal = dashboardService.selectAssetTotal(userId);
@@ -110,12 +99,7 @@ public class DashboardApiController {
     @PostMapping("/budgets")
     public Response budgets(HttpSession session) {
         long userId = SessionUtil.getUserId(session);
-        LocalDate today = LocalDate.now(SEOUL);
-        Map<String, Object> setting = settingsService.selectUserSetting(userId);
-        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
-                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
-        PayCycle.Cycle cycle = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
-                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays);
+        PayCycle.Cycle cycle = cycleLoader.load(userId, LocalDate.now(Constants.SEOUL)).cycle();
 
         Map<String, Object> data = new HashMap<>();
         data.put("from", cycle.start().toString());
@@ -130,22 +114,16 @@ public class DashboardApiController {
     @PostMapping("/recent")
     public Response recent(HttpSession session) {
         return Response.of(Constants.SUCCESS, entryService.selectRecentEntries(ParamUtil.map(
-                "userId", SessionUtil.getUserId(session), "today", LocalDate.now(SEOUL), "limit", RECENT_LIMIT)));
+                "userId", SessionUtil.getUserId(session), "today", LocalDate.now(Constants.SEOUL), "limit", RECENT_LIMIT)));
     }
 
     // 예정 고정지출: 활성 지출 고정 항목의 이번 주기 결제일 중 오늘 이후(오늘 포함)이고 아직 처리(run)되지 않은 것의 합.
     // 할부는 기간 안의 달만, 그 회차 금액으로
     private long pendingFixed(long userId, PayCycle.Cycle cycle, LocalDate today, Set<LocalDate> holidays) {
         List<Map<String, Object>> items = dashboardService.selectActiveExpenseItems(userId);
-        Map<Long, List<PayCycle.Due>> duesByItem = new HashMap<>();
+        Map<Long, List<PayCycle.Due>> duesByItem = RecurringSchedule.duesInCycle(items, cycle, holidays);
         Set<String> months = new TreeSet<>();
-        for (Map<String, Object> item : items) {
-            List<PayCycle.Due> dues = PayCycle.duesInCycle(cycle,
-                    ((Number) item.get("dayOfMonth")).intValue(), (String) item.get("adjust"), holidays);
-            dues.removeIf(d -> Installment.amountFor(item, d.month()) == null);   // 할부 기간 밖
-            duesByItem.put(((Number) item.get("id")).longValue(), dues);
-            dues.forEach(d -> months.add(d.month().toString()));
-        }
+        duesByItem.values().forEach(dues -> dues.forEach(d -> months.add(d.month().toString())));
         if (months.isEmpty()) {
             return 0;
         }
@@ -154,7 +132,7 @@ public class DashboardApiController {
                 ParamUtil.map("userId", userId, "months", List.copyOf(months))));
         long pending = 0;
         for (Map<String, Object> item : items) {
-            long id = ((Number) item.get("id")).longValue();
+            long id = RecurringSchedule.id(item);
             for (PayCycle.Due due : duesByItem.get(id)) {
                 if (!due.date().isBefore(today) && !runs.contains(id + "|" + due.month())) {
                     pending += Installment.amountFor(item, due.month());

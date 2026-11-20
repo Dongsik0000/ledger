@@ -89,9 +89,6 @@ App.recurring = (function(){
 			loadList();
 		},
 
-		/* "2026-10-12" → "2026.10.12" */
-		dotted = function(d){ return d.replace(/-/g, '.'); },
-
 		/* 주기 띠·아직 예정인 지출은 대시보드 계산을 그대로 쓴다 */
 		loadSummary = function(){
 			App.post(url.summary)
@@ -103,7 +100,7 @@ App.recurring = (function(){
 		handleSummaryResult = function(res){
 			App.result(res, {ok: function(){
 				var s = res.data;
-				m$.cycleRange.textContent = dotted(s.cycleStart) + ' — ' + dotted(s.cycleEnd).slice(5);
+				m$.cycleRange.textContent = App.dotted(s.cycleStart) + ' — ' + App.dotted(s.cycleEnd).slice(5);
 				m$.daysLeft.textContent = s.daysLeft + '일 남음';
 				m$.pendingFixed.textContent = Number(s.pendingFixed).toLocaleString('ko-KR');
 			}});

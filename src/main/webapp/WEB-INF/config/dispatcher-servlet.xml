@@ -31,7 +31,8 @@
     <task:scheduler id="scheduler" pool-size="1"/>
 
     <!-- @Transactional 활성화. tx:annotation-driven 은 자기 컨텍스트의 빈에만 적용되는데 컴포넌트 스캔은 이 컨텍스트에 있다.
-         로직을 가진 ApiController 메서드에 @Transactional 을 붙인다. transactionManager 는 루트 컨텍스트(context-datasource.xml) 빈 -->
+         여러 쓰기를 한 번에 묶는 메서드(ServiceImpl, 또는 검사·저장 순서를 가진 ApiController)에 붙인다.
+         transactionManager 는 루트 컨텍스트(context-datasource.xml) 빈 -->
     <tx:annotation-driven transaction-manager="transactionManager"/>
 
     <!-- 0순위: 빈 이름으로 뷰 찾기 (jsonView) -->
@@ -48,14 +49,6 @@
         <property name="prefix" value="/WEB-INF/jsp/ledger/"/>
         <property name="suffix" value=".jsp"/>
         <property name="order" value="1"/>
-    </bean>
-
-    <bean id="messageSource" class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
-        <property name="basenames">
-            <list><value>classpath:/message/message-common</value></list>
-        </property>
-        <property name="defaultEncoding" value="UTF-8"/>
-        <property name="cacheSeconds" value="60"/>
     </bean>
 
     <mvc:interceptors>

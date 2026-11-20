@@ -8,7 +8,6 @@ public class CsvUtil {
 
     private static final String FORMULA_START = "=+-@\t\r";
 
-    // 정적 메서드만 쓰는 클래스
     private CsvUtil() {
     }
 

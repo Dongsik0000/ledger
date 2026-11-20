@@ -6,7 +6,6 @@ import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
-import ledger.entry.controller.EntryApiController;
 import ledger.market.MarketDataClient;
 import ledger.market.MarketValue;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 // 자산 잔액표(수동 입력). 총 잔액 = 가계부 잔액(대시보드 summary) + 자산 합계
@@ -72,9 +73,8 @@ public class AssetApiController {
     // 미국 주식 종목 검색(Alpha Vantage)
     @ResponseBody
     @PostMapping("/search")
-    public Response search(@RequestBody HashMap<String, Object> param, HttpSession session) {
-        SessionUtil.getUserId(session);
-        String query = ParamUtil.str(param, "query").trim();
+    public Response search(@RequestBody HashMap<String, Object> param) {
+        String query = ParamUtil.str(param, "query");
         if (query.length() < 2 || query.length() > 60) {
             return Response.invalid("종목명이나 코드를 2~60자로 입력해 주세요.");
         }
@@ -97,18 +97,20 @@ public class AssetApiController {
         BigDecimal quantity = null;
         BigDecimal price = null;
         BigDecimal rate = null;
-        java.time.LocalDate quoteDate = null;
+        LocalDate quoteDate = null;
         if (Boolean.TRUE.equals(stock)) {
             if (id != null && assetService.hasTransfers(ParamUtil.map("userId", SessionUtil.getUserId(session), "id", id))) {
                 return Response.invalid("거래나 고정 항목에 연결된 자산은 주식 자산으로 바꿀 수 없어요.");
             }
-            symbol = ParamUtil.str(param, "symbol").toUpperCase(java.util.Locale.ROOT);
+            symbol = ParamUtil.str(param, "symbol").toUpperCase(Locale.ROOT);
             String quantityText = ParamUtil.str(param, "quantity");
             if (!symbol.matches("[A-Z.]{1,12}") || !quantityText.matches("[0-9]{1,12}(\\.[0-9]{1,6})?")) {
                 return Response.invalid("미국 주식 종목 코드와 보유 수량을 확인해 주세요.");
             }
             quantity = new BigDecimal(quantityText);
-            if (quantity.signum() <= 0) return Response.invalid("보유 수량을 확인해 주세요.");
+            if (quantity.signum() <= 0) {
+                return Response.invalid("보유 수량을 확인해 주세요.");
+            }
             try {
                 MarketDataClient.StockQuote quote = marketData.stock(symbol);
                 price = quote.price();
@@ -122,7 +124,7 @@ public class AssetApiController {
             amount = ParamUtil.lng(param, "amount");
         }
         if ((ParamUtil.has(param, "id") && id == null) || stock == null || name.isEmpty() || name.length() > NAME_MAX
-                || amount == null || amount < 0 || amount > EntryApiController.AMOUNT_MAX) {
+                || amount == null || amount < 0 || amount > Constants.AMOUNT_MAX) {
             return Response.invalid("자산 이름(50자 이하)과 금액을 확인해 주세요.");
         }
         Map<String, Object> asset = ParamUtil.map("userId", SessionUtil.getUserId(session), "id", id,

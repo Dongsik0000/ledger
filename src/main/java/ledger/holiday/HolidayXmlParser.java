@@ -26,7 +26,6 @@ public final class HolidayXmlParser {
 
     private static final DateTimeFormatter LOCDATE = DateTimeFormatter.BASIC_ISO_DATE; // yyyyMMdd
 
-    // 정적 메서드만 쓰는 클래스
     private HolidayXmlParser() {
     }
 

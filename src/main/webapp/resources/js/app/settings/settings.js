@@ -122,7 +122,7 @@ App.settings = (function(){
 			m$.withdraw.addEventListener('click', function(){ dangerAction(true); });
 			m$.openingBalance.addEventListener('input', function(){
 				settings.openingDirty = true;
-				formatSigned(m$.openingBalance);
+				App.formatSigned(m$.openingBalance);
 			});
 			m$.openingDate.addEventListener('change', function(){ settings.openingDirty = true; });
 			[m$.payDay, m$.payDayAdjust].forEach(function(el){
@@ -312,7 +312,7 @@ App.settings = (function(){
 				m$.payDayAdjust.checked = !!data.payDayAdjust;
 			}
 			if(!settings.openingDirty){
-				m$.openingBalance.value = data.openingDate ? signedNumber(data.openingBalance) : '';
+				m$.openingBalance.value = data.openingDate ? App.signedNumber(data.openingBalance) : '';
 				m$.openingDate.value = data.openingDate || '';
 			}
 			renderList(m$.expenseList, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryItem, '지출 카테고리가 없어요.');
@@ -445,32 +445,10 @@ App.settings = (function(){
 			});
 		},
 
-		/* 시작 잔액 칸: 앞의 -(음수)와 숫자·쉼표만 서식 정리, 그 밖의 입력은 값을 두고 오류 표시 */
-		signedNumber = function(n){ return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR'); },
-
-		/* "-1,000" 같은 입력 → 숫자. 형식이 틀리면 null */
-		parseSigned = function(s){
-			var t = String(s).replace(/[,\s]/g, '').replace('−', '-');
-			return /^-?\d{1,11}$/.test(t) ? Number(t) : null;
-		},
-
-		/* 입력하는 동안 서식 정리, 틀리면 aria-invalid */
-		formatSigned = function(input){
-			var t = input.value.replace(/[,\s]/g, '').replace('−', '-');
-			if(t === '' || t === '-'){
-				input.removeAttribute('aria-invalid');
-			} else if(/^-?\d{1,11}$/.test(t)){
-				input.value = signedNumber(Number(t));
-				input.removeAttribute('aria-invalid');
-			} else {
-				input.setAttribute('aria-invalid', 'true');
-			}
-		},
-
 		/* 입력 확인 후 시작 잔액 저장(기준일을 비우면 해제) */
 		saveOpening = function(){
 			var date = m$.openingDate.value,
-				amount = m$.openingBalance.value.trim() ? parseSigned(m$.openingBalance.value) : 0;
+				amount = m$.openingBalance.value.trim() ? App.parseSigned(m$.openingBalance.value) : 0;
 			if(date && amount === null){
 				_error('알림', '시작 잔액은 숫자만 입력해주세요. (음수는 앞에 -, 소수점 불가, 최대 11자리)');
 				return;

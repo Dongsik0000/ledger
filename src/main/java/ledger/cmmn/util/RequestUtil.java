@@ -7,11 +7,10 @@ public class RequestUtil {
 
     private static final int IP_MAX_LENGTH = 45; // IPv6 문자열 최대 길이
 
-    // 정적 메서드만 쓰는 클래스
     private RequestUtil() {
     }
 
-    // App.ajax 가 붙이는 X-Requested-With 헤더가 있는지
+    // App.post(common.js)가 붙이는 X-Requested-With 헤더가 있는지
     public static boolean isAjax(HttpServletRequest request) {
         return "XMLHttpRequest".equals(request.getHeader("X-Requested-With"));
     }

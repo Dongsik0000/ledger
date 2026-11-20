@@ -7,13 +7,11 @@ import ledger.cmmn.util.Constants;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cmmn.util.Response;
 import ledger.cmmn.util.SessionUtil;
+import ledger.cycle.CycleLoader;
 import ledger.cycle.OpeningBalance;
 import ledger.cycle.PayCycle;
 import ledger.dashboard.service.DashboardService;
-import ledger.entry.controller.EntryApiController;
-import ledger.holiday.service.HolidayService;
-import ledger.recurring.controller.RecurringApiController;
-import ledger.settings.service.SettingsService;
+import ledger.recurring.RecurringSchedule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +23,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,20 +37,15 @@ import java.util.Set;
 @RequestMapping("/ledger/account")
 public class AccountApiController {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int NAME_MAX = 50;     // bank_account.name VARCHAR(50)
     private static final int MEMO_MAX = 500;
     private static final int TRANSFER_LIMIT = 100;
-    private static final Set<String> ADJUSTS = Set.of("NONE", "PREV_BIZ", "NEXT_BIZ");
 
     @Autowired
     private AccountService accountService;
 
     @Autowired
-    private SettingsService settingsService;
-
-    @Autowired
-    private HolidayService holidayService;
+    private CycleLoader cycleLoader;
 
     @Autowired
     private TransferGenerator transferGenerator;
@@ -73,12 +65,8 @@ public class AccountApiController {
     @PostMapping("/list")
     public Response list(HttpSession session) {
         long userId = SessionUtil.getUserId(session);
-        LocalDate today = LocalDate.now(SEOUL);
-        Map<String, Object> setting = settingsService.selectUserSetting(userId);
-        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
-                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
-        PayCycle.Cycle cycle = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
-                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays);
+        LocalDate today = LocalDate.now(Constants.SEOUL);
+        CycleLoader.UserCycle uc = cycleLoader.load(userId, today);
 
         List<Map<String, Object>> recurring = accountService.selectRecurringList(userId);
         if (!recurring.isEmpty()) {
@@ -90,14 +78,14 @@ public class AccountApiController {
                     ParamUtil.map("userId", userId, "months", months)));
             for (Map<String, Object> item : recurring) {
                 PayCycle.Due next = Boolean.TRUE.equals(item.get("active"))
-                        ? RecurringApiController.nextDue(item, today, holidays, p -> handled.contains(item.get("id") + "|" + p))
+                        ? RecurringSchedule.nextDue(item, today, uc.holidays(), p -> handled.contains(item.get("id") + "|" + p))
                         : null;
                 item.put("nextDue", next == null ? null : next.date().toString());
             }
         }
 
         Map<String, Object> data = new HashMap<>();
-        data.put("accounts", accountsWithBalance(userId, setting, cycle.end()));
+        data.put("accounts", accountsWithBalance(userId, uc.setting(), uc.cycle().end()));
         data.put("recurring", recurring);
         data.put("transfers", accountService.selectTransferList(ParamUtil.map("userId", userId, "limit", TRANSFER_LIMIT)));
         data.put("today", today.toString());
@@ -109,15 +97,11 @@ public class AccountApiController {
     @PostMapping("/balances")
     public Response balances(HttpSession session) {
         long userId = SessionUtil.getUserId(session);
-        LocalDate today = LocalDate.now(SEOUL);
-        Map<String, Object> setting = settingsService.selectUserSetting(userId);
-        Set<LocalDate> holidays = new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
-                "from", today.minusMonths(3).withDayOfMonth(1), "to", today.plusMonths(3))));
-        LocalDate to = PayCycle.cycleOf(today, ((Number) setting.get("payDay")).intValue(),
-                Boolean.TRUE.equals(setting.get("payDayAdjust")), holidays).end();
+        CycleLoader.UserCycle uc = cycleLoader.load(userId, LocalDate.now(Constants.SEOUL));
+        LocalDate to = uc.cycle().end();
 
         Map<String, Object> data = new HashMap<>();
-        data.put("accounts", accountsWithBalance(userId, setting, to));
+        data.put("accounts", accountsWithBalance(userId, uc.setting(), to));
         data.put("to", to.toString());
         return Response.of(Constants.SUCCESS, data);
     }
@@ -155,11 +139,11 @@ public class AccountApiController {
         String name = ParamUtil.str(param, "name");
         Boolean isDefault = ParamUtil.has(param, "isDefault") ? ParamUtil.bool(param, "isDefault") : Boolean.FALSE;
         Long baseBalance = Boolean.TRUE.equals(isDefault) ? Long.valueOf(0) : ParamUtil.lng(param, "baseBalance");
-        LocalDate baseDate = Boolean.TRUE.equals(isDefault) ? LocalDate.now(SEOUL) : ParamUtil.date(param, "baseDate");
+        LocalDate baseDate = Boolean.TRUE.equals(isDefault) ? LocalDate.now(Constants.SEOUL) : ParamUtil.date(param, "baseDate");
 
         if ((ParamUtil.has(param, "id") && id == null) || name.isEmpty() || name.length() > NAME_MAX || isDefault == null
-                || baseBalance == null || Math.abs(baseBalance) > EntryApiController.AMOUNT_MAX
-                || baseDate == null || baseDate.isAfter(LocalDate.now(SEOUL))) {
+                || baseBalance == null || Math.abs(baseBalance) > Constants.AMOUNT_MAX
+                || baseDate == null || baseDate.isAfter(LocalDate.now(Constants.SEOUL))) {
             return Response.invalid("이름(50자 이하)·잔액(999억 원 미만)·기준일(오늘까지)을 확인해 주세요.");
         }
         if (id != null && accountService.selectAccount(ParamUtil.map("id", id, "userId", userId)) == null) {
@@ -215,7 +199,7 @@ public class AccountApiController {
         String memo = ParamUtil.str(param, "memo");
 
         if ((ParamUtil.has(param, "id") && id == null) || transferDate == null
-                || amount == null || amount < 1 || amount > EntryApiController.AMOUNT_MAX || memo.length() > MEMO_MAX) {
+                || amount == null || amount < 1 || amount > Constants.AMOUNT_MAX || memo.length() > MEMO_MAX) {
             return Response.invalid("날짜·금액(1원~999억 원 미만)·메모(500자 이하)를 확인해 주세요.");
         }
         Response accountError = checkAccounts(userId, fromAccountId, toAccountId);
@@ -263,8 +247,8 @@ public class AccountApiController {
         Boolean active = ParamUtil.has(param, "active") ? ParamUtil.bool(param, "active") : Boolean.TRUE;
 
         if ((ParamUtil.has(param, "id") && id == null)
-                || amount == null || amount < 1 || amount > EntryApiController.AMOUNT_MAX
-                || dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31 || !ADJUSTS.contains(adjust)
+                || amount == null || amount < 1 || amount > Constants.AMOUNT_MAX
+                || dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31 || !Constants.DUE_ADJUSTS.contains(adjust)
                 || memo.length() > MEMO_MAX || active == null) {
             return Response.invalid("금액(1원~999억 원 미만)·이체일(1~31일)·메모(500자 이하)를 확인해 주세요.");
         }
@@ -290,8 +274,8 @@ public class AccountApiController {
         }
 
         if (active) {
-            LocalDate today = LocalDate.now(SEOUL);
-            if (RecurringApiController.shouldSkipPassed(saved, item)) {
+            LocalDate today = LocalDate.now(Constants.SEOUL);
+            if (RecurringSchedule.shouldSkipPassed(saved, item)) {
                 transferGenerator.skipPassed(item, today);
             }
             transferGenerator.generate(item, today);

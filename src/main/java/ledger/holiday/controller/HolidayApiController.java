@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +23,6 @@ import java.util.Map;
 @RequestMapping("/ledger/holiday")
 public class HolidayApiController {
 
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final int NAME_MAX = 50;   // holiday.name VARCHAR(50)
 
     @Autowired
@@ -37,7 +35,7 @@ public class HolidayApiController {
     @ResponseBody
     @PostMapping("/list")
     public Response list(@RequestBody HashMap<String, Object> param) {
-        int thisYear = LocalDate.now(SEOUL).getYear();
+        int thisYear = LocalDate.now(Constants.SEOUL).getYear();
         Integer year = ParamUtil.has(param, "year") ? ParamUtil.integer(param, "year") : Integer.valueOf(thisYear);
         if (year == null || year < 2000 || year > 2100) {
             return Response.invalid("연도를 확인해 주세요.");
@@ -85,7 +83,7 @@ public class HolidayApiController {
     @ResponseBody
     @PostMapping("/import")
     public Response importYear(@RequestBody HashMap<String, Object> param) {
-        int thisYear = LocalDate.now(SEOUL).getYear();
+        int thisYear = LocalDate.now(Constants.SEOUL).getYear();
         Integer year = ParamUtil.integer(param, "year");
         if (year == null || year < thisYear - 1 || year > thisYear + 2) {
             return Response.invalid("가져올 연도는 " + (thisYear - 1) + "~" + (thisYear + 2) + "년 중에서 골라 주세요.");

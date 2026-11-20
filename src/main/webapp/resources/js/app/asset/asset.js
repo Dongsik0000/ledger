@@ -39,11 +39,6 @@ App.asset = (function(){
 			del: contextPath + '/ledger/asset/delete'
 		},
 
-		/* 천 단위 쉼표 */
-		num = function(n){ return Number(n).toLocaleString('ko-KR'); },
-		/* 음수면 − 를 붙인 숫자 */
-		signed = function(n){ return (n < 0 ? '−' : '') + num(Math.abs(n)); },
-
 		/* 화면 이벤트 연결 후 불러오기 */
 		init = function(){
 			bindEvent();
@@ -93,7 +88,7 @@ App.asset = (function(){
 		handleSummaryResult = function(res){
 			App.result(res, {ok: function(){
 				settings.ledgerBalance = res.data.cycleBalance;
-				m$.ledgerBalance.textContent = signed(res.data.cycleBalance);
+				m$.ledgerBalance.textContent = App.signed(res.data.cycleBalance);
 				renderTotal();
 			}});
 		},
@@ -101,7 +96,7 @@ App.asset = (function(){
 		/* 두 요청이 모두 도착해야 총 잔액을 그린다 */
 		renderTotal = function(){
 			if(settings.ledgerBalance === null || settings.assetTotal === null) return;
-			m$.totalBalance.textContent = signed(settings.ledgerBalance + settings.assetTotal);
+			m$.totalBalance.textContent = App.signed(settings.ledgerBalance + settings.assetTotal);
 		},
 
 		/* 시세 갱신 상태·자산 표·자산 합계 */
@@ -111,7 +106,7 @@ App.asset = (function(){
 				? '시세를 갱신하지 못해 마지막 평가액을 표시해요. 기준일을 확인해 주세요.'
 				: '미국 주식은 마지막 제공 시세 기준 평가액이에요. API 요금제에 따라 장중 가격과 다를 수 있어요.';
 			settings.assetTotal = data.total;
-			m$.assetTotal.textContent = num(data.total);
+			m$.assetTotal.textContent = App.num(data.total);
 			renderTotal();
 			if(!data.assets.length){
 				m$.body.replaceChildren(App.h('tr', null, [App.h('td', {attrs: {colspan: 4}, text: '기록한 자산이 없어요. 통장·적금 잔액을 추가해 보세요.'})]));
@@ -190,7 +185,7 @@ App.asset = (function(){
 			m$.heading.textContent = a ? '자산 수정' : '자산 추가';
 			m$.subtitle.textContent = a ? a.name : '필요한 내용을 입력해 주세요.';
 			m$.name.value = a ? a.name : '';
-			m$.amount.value = a && !a.stockSymbol ? num(a.amount) : '';
+			m$.amount.value = a && !a.stockSymbol ? App.num(a.amount) : '';
 			m$.stock.checked = !!(a && a.stockSymbol);
 			m$.symbol.value = a && a.stockSymbol ? a.stockSymbol : '';
 			m$.stockSearch.value = '';

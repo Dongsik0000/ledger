@@ -39,26 +39,19 @@ App.summary = (function(){
 			donut: contextPath + '/ledger/summary/donut'
 		},
 
-		/* 한 자리 수 앞에 0 */
-		pad = function(n){ return (n < 10 ? '0' : '') + n; },
-
 		/* 기준 월에서 delta 개월 옮긴 "YYYY-MM" */
 		shiftMonth = function(ym, delta){
 			var p = ym.split('-'), d = new Date(Number(p[0]), Number(p[1]) - 1 + delta, 1);
-			return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+			return d.getFullYear() + '-' + App.pad(d.getMonth() + 1);
 		},
 
-		/* 천 단위 쉼표 */
-		num = function(n){ return Number(n).toLocaleString('ko-KR'); },
-		/* "2026-10-12" → "2026.10.12" */
-		dotted = function(d){ return d.replace(/-/g, '.'); },
 		/* "2026-10-12" → "10/12" */
 		shortDate = function(d){ var p = d.split('-'); return Number(p[1]) + '/' + Number(p[2]); },
 
 		/* 기간을 최근 3개월로 채우고 주기 요약·집계·도넛 불러오기 */
 		init = function(){
 			var now = new Date(),
-				thisMonth = now.getFullYear() + '-' + pad(now.getMonth() + 1);
+				thisMonth = now.getFullYear() + '-' + App.pad(now.getMonth() + 1);
 			bindEvent();
 			m$.to.value = thisMonth;
 			m$.from.value = shiftMonth(thisMonth, -2);
@@ -96,13 +89,13 @@ App.summary = (function(){
 		handleCycleResult = function(res){
 			App.result(res, {ok: function(){
 				var s = res.data, range = shortDate(s.cycleStart) + '~' + shortDate(s.cycleEnd);
-				m$.cycleRange.textContent = dotted(s.cycleStart) + ' — ' + dotted(s.cycleEnd).slice(5);
+				m$.cycleRange.textContent = App.dotted(s.cycleStart) + ' — ' + App.dotted(s.cycleEnd).slice(5);
 				m$.daysLeft.textContent = s.daysLeft + '일 남음';
-				m$.cycleBalance.textContent = num(s.cycleBalance);
+				m$.cycleBalance.textContent = App.num(s.cycleBalance);
 				m$.cycleBalanceFoot.textContent = range + ' · 이월 포함';
-				m$.cycleIncome.textContent = num(s.cycleIncome);
+				m$.cycleIncome.textContent = App.num(s.cycleIncome);
 				m$.cycleIncomeFoot.textContent = range + ' 기준';
-				m$.cycleExpense.textContent = num(s.cycleExpense);
+				m$.cycleExpense.textContent = App.num(s.cycleExpense);
 				m$.cycleExpenseFoot.textContent = range + ' 기준';
 			}});
 		},
@@ -123,7 +116,7 @@ App.summary = (function(){
 		/* 표 머리글: 한 해 안이면 "8월", 해를 넘기면 "2026.08" */
 		monthLabels = function(months){
 			var sameYear = months.every(function(m){ return m.slice(0, 4) === months[0].slice(0, 4); });
-			return months.map(function(m){ return sameYear ? Number(m.slice(5)) + '월' : dotted(m); });
+			return months.map(function(m){ return sameYear ? Number(m.slice(5)) + '월' : App.dotted(m); });
 		},
 
 		/* 월별 표·카테고리 표·결제수단 표·막대 차트 */
@@ -140,7 +133,7 @@ App.summary = (function(){
 			m$.monthlyBody.replaceChildren.apply(m$.monthlyBody, data.monthly.map(function(r){
 				return App.h('tr', null, [
 					App.h('th', {attrs: {scope: 'row'}, text: cycle
-						? dotted(r.month) + ' 주기 · ' + shortDate(r.from) + '~' + shortDate(r.to) : dotted(r.month)}),
+						? App.dotted(r.month) + ' 주기 · ' + shortDate(r.from) + '~' + shortDate(r.to) : App.dotted(r.month)}),
 					App.h('td', {text: App.money(r.income)}),
 					App.h('td', {text: App.money(r.expense)}),
 					App.h('td', null, [App.h('span', {className: r.net < 0 ? 'expense' : '', text: (r.net > 0 ? '+' : '') + App.money(r.net)})]),
@@ -152,7 +145,7 @@ App.summary = (function(){
 			renderMatrix(m$.categoryHead, m$.categoryBody, '카테고리', labels, data.categoryRows);
 			renderMatrix(m$.paymentHead, m$.paymentBody, '결제수단', labels, data.paymentRows);
 			renderMonthlyChart(labels, data.monthly);
-			m$.monthlyChartRange.textContent = dotted(data.months[0]) + ' ~ ' + dotted(data.months[data.months.length - 1]);
+			m$.monthlyChartRange.textContent = App.dotted(data.months[0]) + ' ~ ' + App.dotted(data.months[data.months.length - 1]);
 		},
 
 		/* 행 × 월 표. kind 가 subtotal·total 이면 소계 줄 스타일 */
@@ -162,8 +155,8 @@ App.summary = (function(){
 				.concat([App.h('th', {attrs: {scope: 'col'}, text: '기간 합계'})])));
 			body.replaceChildren.apply(body, rows.map(function(r){
 				return App.h('tr', {className: r.kind === 'item' ? '' : 'subtotal'}, [App.h('th', {attrs: {scope: 'row'}, text: r.label})]
-					.concat(r.values.map(function(v){ return App.h('td', {text: num(v)}); }))
-					.concat([App.h('td', {text: num(r.total)})]));
+					.concat(r.values.map(function(v){ return App.h('td', {text: App.num(v)}); }))
+					.concat([App.h('td', {text: App.num(r.total)})]));
 			}));
 		},
 

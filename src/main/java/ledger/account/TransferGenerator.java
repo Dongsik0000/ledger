@@ -4,7 +4,7 @@ import ledger.account.service.AccountService;
 import ledger.cmmn.util.ParamUtil;
 import ledger.cycle.PayCycle;
 import ledger.holiday.service.HolidayService;
-import ledger.recurring.RecurringGenerator;
+import ledger.recurring.RecurringSchedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Set;
 
 // 정기 이체의 이체일 기록. 스케줄러(RecurringScheduler)와 AccountApiController(저장 직후)가 쓴다.
-// 이체일 계산·처리 기록 방식은 고정 항목(RecurringGenerator)과 같다: 지난달·이번 달 이체일, 처리 기록을 먼저 넣어 중복 방지.
+// 이체일 계산(RecurringSchedule)·처리 기록 방식은 고정 항목(RecurringGenerator)과 같다: 지난달·이번 달 이체일, 처리 기록을 먼저 넣어 중복 방지.
 @Component
 public class TransferGenerator {
 
@@ -32,7 +32,7 @@ public class TransferGenerator {
 
     private final TransactionTemplate tx;
 
-    // 정기 이체 한 건마다 트랜잭션을 따로 쓰려고 TransactionTemplate 을 만든다
+    // 정기 이체 한 건마다 트랜잭션을 따로 쓴다(한 건 실패가 다른 이체를 되돌리지 않게)
     @Autowired
     public TransferGenerator(PlatformTransactionManager transactionManager) {
         this.tx = new TransactionTemplate(transactionManager);
@@ -54,7 +54,7 @@ public class TransferGenerator {
 
     // 신규·이체일 변경·재활성화 직후: 이미 지난 이체일은 건너뜀(transfer_id 없는 기록)으로 둔다
     public void skipPassed(Map<String, Object> item, LocalDate today) {
-        for (PayCycle.Due due : RecurringGenerator.duesBefore(day(item), (String) item.get("adjust"), today, holidays(today))) {
+        for (PayCycle.Due due : RecurringSchedule.duesBefore(RecurringSchedule.day(item), (String) item.get("adjust"), today, holidays(today))) {
             accountService.insertRecurringRun(ParamUtil.map(
                     "recurringId", item.get("id"), "periodYm", due.month().toString(), "transferId", null));
         }
@@ -68,7 +68,7 @@ public class TransferGenerator {
     // 오늘까지 이체일 중 처리되지 않은 것을 기록하고 새로 만든 건수를 돌려준다
     private int generate(Map<String, Object> item, LocalDate today, Set<LocalDate> holidays) {
         int created = 0;
-        for (PayCycle.Due due : RecurringGenerator.duesUpTo(day(item), (String) item.get("adjust"), today, holidays)) {
+        for (PayCycle.Due due : RecurringSchedule.duesUpTo(RecurringSchedule.day(item), (String) item.get("adjust"), today, holidays)) {
             if (Boolean.TRUE.equals(tx.execute(status -> generateOne(item, due)))) {
                 created++;
             }
@@ -96,10 +96,5 @@ public class TransferGenerator {
     private Set<LocalDate> holidays(LocalDate today) {
         return new HashSet<>(holidayService.selectHolidayDates(ParamUtil.map(
                 "from", today.minusMonths(2).withDayOfMonth(1), "to", today.plusMonths(1))));
-    }
-
-    // 매월 이체일(1~31)
-    private static int day(Map<String, Object> item) {
-        return ((Number) item.get("dayOfMonth")).intValue();
     }
 }
