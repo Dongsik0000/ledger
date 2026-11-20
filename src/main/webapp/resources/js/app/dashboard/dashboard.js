@@ -22,7 +22,7 @@ App.dashboard = (function(){
 			upcoming: document.getElementById('upcomingList'),  /* 다가오는 고정 항목 */
 			dialog: document.getElementById('quickDialog'),  /* 빠른 기록 창 */
 			amount: document.getElementById('quickAmount'),  /* 빠른 입력: 금액 */
-			categories: document.getElementById('quickCategories'),  /* 카테고리 라디오 묶음 */
+			category: document.getElementById('quickCategory'),  /* 카테고리 선택 */
 			budget: document.getElementById('quickBudget'),  /* 카테고리 예산 안내 */
 			limitList: document.getElementById('limitList'),  /* 예산 막대 목록 */
 			title: document.getElementById('quickTitle'),  /* 내용 */
@@ -79,14 +79,14 @@ App.dashboard = (function(){
 			App.bindAmountInput(m$.amount);
 			document.querySelectorAll('input[name="quickType"]').forEach(function(r){
 				r.addEventListener('change', function(){
-					App.entryForm.renderCategories(m$.categories, 'quickCategory', settings.master.categories, r.value, null);
+					App.entryForm.renderCategories(m$.category, settings.master.categories, r.value, null);
 					showBalance();
 					showBudget();
 				});
 			});
 			m$.amount.addEventListener('input', showBalance);
 			m$.amount.addEventListener('input', showBudget);
-			m$.categories.addEventListener('change', showBudget);
+			m$.category.addEventListener('change', showBudget);
 			m$.account.addEventListener('change', showBalance);
 			m$.date.addEventListener('change', showBalance);
 			m$.date.addEventListener('change', showBudget);
@@ -159,7 +159,7 @@ App.dashboard = (function(){
 		handleMasterResult = function(res){
 			App.result(res, {ok: function(){
 				settings.master = res.data;
-				App.entryForm.renderCategories(m$.categories, 'quickCategory', settings.master.categories, App.entryForm.checked('quickType') || 'EXPENSE', null);
+				App.entryForm.renderCategories(m$.category, settings.master.categories, App.entryForm.checked('quickType') || 'EXPENSE', null);
 				var last = lastPayment(),
 					known = settings.master.paymentMethods.some(function(p){ return p.active && p.id === last; });
 				App.entryForm.renderPayments(m$.payments, 'quickPayment', settings.master.paymentMethods, known ? last : null);
@@ -177,7 +177,7 @@ App.dashboard = (function(){
 
 		/* 카테고리 예산 안내 갱신 */
 		showBudget = function(){
-			App.entryForm.budgetHint(m$.budget, settings.budgets, App.entryForm.checked('quickCategory'), App.entryForm.checked('quickType'),
+			App.entryForm.budgetHint(m$.budget, settings.budgets, m$.category.value, App.entryForm.checked('quickType'),
 				App.parseAmount(m$.amount.value), m$.date.value || App.entryForm.today(), false, false);
 		},
 
@@ -442,7 +442,7 @@ App.dashboard = (function(){
 		save = function(){
 			if(settings.submitting) return;
 			var amount = App.parseAmount(m$.amount.value),
-				categoryId = App.entryForm.checked('quickCategory'),
+				categoryId = m$.category.value,
 				paymentMethodId = App.entryForm.checked('quickPayment'),
 				title = m$.title.value.trim();
 			if(!amount){

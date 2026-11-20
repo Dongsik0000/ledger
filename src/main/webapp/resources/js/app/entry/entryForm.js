@@ -35,17 +35,17 @@ App.entryForm = (function(){
 			]);
 		},
 
-		/* 구분에 맞는 카테고리 라디오. 고른 것이 없으면 첫 항목 */
-		renderCategories = function(container, name, categories, type, selectedId){
-			var list = visible(categories.filter(function(c){ return c.type === type; }), selectedId),
-				sel = list.some(function(c){ return c.id === selectedId; }) ? selectedId : (list[0] && list[0].id);
+		/* 구분에 맞는 카테고리 선택지(select). 고른 것이 없으면 첫 항목, 카테고리가 없으면 빈 값 안내 하나 */
+		renderCategories = function(select, categories, type, selectedId){
+			var list = visible(categories.filter(function(c){ return c.type === type; }), selectedId);
 			if(!list.length){
-				container.replaceChildren(App.h('span', {className: 'form-note', text: '설정에서 카테고리를 추가해 주세요.'}));
+				select.replaceChildren(App.h('option', {value: '', text: '설정에서 카테고리를 추가해 주세요'}));
 				return;
 			}
-			container.replaceChildren.apply(container, list.map(function(c){
-				return radio(name, c.id, c.name + (c.active ? '' : ' (숨김)'), c.id === sel);
+			select.replaceChildren.apply(select, list.map(function(c){
+				return App.h('option', {value: String(c.id), text: c.name + (c.active ? '' : ' (숨김)')});
 			}));
+			select.value = list.some(function(c){ return c.id === selectedId; }) ? String(selectedId) : String(list[0].id);
 		},
 
 		/* 결제수단 라디오. "선택 안 함" 포함 */

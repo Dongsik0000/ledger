@@ -32,7 +32,7 @@ App.entry = (function(){
 			heading: document.getElementById(ED + '-heading'),  /* 창 제목 */
 			subtitle: document.getElementById(ED + '-subtitle'),  /* 창 부제목 */
 			amount: document.getElementById(ED + '-amount'),  /* 금액 */
-			categories: document.getElementById(ED + '-categories'),  /* 카테고리 라디오 묶음 */
+			category: document.getElementById(ED + '-category'),  /* 카테고리 선택 */
 			budget: document.getElementById(ED + '-budget'),  /* 카테고리 예산 안내 */
 			title: document.getElementById(ED + '-title'),  /* 내용 */
 			payments: document.getElementById(ED + '-payments'),  /* 결제수단 라디오 묶음 */
@@ -167,7 +167,7 @@ App.entry = (function(){
 			App.bindAmountInput(m$.amount);
 			m$.dialog.querySelectorAll('input[name="' + ED + '-type"]').forEach(function(r){
 				r.addEventListener('change', function(){
-					App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, r.value, null);
+					App.entryForm.renderCategories(m$.category, settings.master.categories, r.value, null);
 					showRefund();
 					showTransfer();
 					showBalance();
@@ -176,7 +176,7 @@ App.entry = (function(){
 			});
 			m$.amount.addEventListener('input', showBalance);
 			m$.amount.addEventListener('input', showBudget);
-			m$.categories.addEventListener('change', showBudget);
+			m$.category.addEventListener('change', showBudget);
 			m$.account.addEventListener('change', showBalance);
 			m$.date.addEventListener('change', showBalance);
 			m$.date.addEventListener('change', showBudget);
@@ -538,7 +538,7 @@ App.entry = (function(){
 
 		/* 카테고리 예산 안내 갱신 */
 		showBudget = function(){
-			App.entryForm.budgetHint(m$.budget, settings.budgets, App.entryForm.checked(ED + '-category'), App.entryForm.checked(ED + '-type'),
+			App.entryForm.budgetHint(m$.budget, settings.budgets, m$.category.value, App.entryForm.checked(ED + '-type'),
 				App.parseAmount(m$.amount.value), m$.date.value, !!settings.editing, m$.refund.checked);
 		},
 
@@ -612,7 +612,7 @@ App.entry = (function(){
 				: preset ? '‘' + preset.from + '’에서 돌려받거나 돌려준 돈을 적어요.' : '필요한 내용을 입력해 주세요.';
 			m$.amount.value = src ? Number(src.amount).toLocaleString('ko-KR') : '';
 			setType(src ? src.type : 'EXPENSE');
-			App.entryForm.renderCategories(m$.categories, ED + '-category', settings.master.categories, src ? src.type : 'EXPENSE', src ? src.categoryId : null);
+			App.entryForm.renderCategories(m$.category, settings.master.categories, src ? src.type : 'EXPENSE', src ? src.categoryId : null);
 			m$.title.value = src ? src.title : '';
 			App.entryForm.renderPayments(m$.payments, ED + '-payment', settings.master.paymentMethods, src ? src.paymentMethodId : null);
 			App.entryForm.renderAccounts(m$.account, settings.master.accounts || [], src ? src.accountId : App.entryForm.lastAccount());
@@ -637,7 +637,7 @@ App.entry = (function(){
 
 		/* 창에 입력된 값 전체(열었을 때와 비교해 작성 중인지 판단) */
 		snapshot = function(){
-			return JSON.stringify([m$.amount.value, App.entryForm.checked(ED + '-type'), App.entryForm.checked(ED + '-category'),
+			return JSON.stringify([m$.amount.value, App.entryForm.checked(ED + '-type'), m$.category.value,
 				m$.title.value, App.entryForm.checked(ED + '-payment'), m$.account.value, m$.date.value, m$.memo.value,
 				m$.refund.checked, m$.transferAsset.value]);   /* 이체 자산은 마지막(loadTransferAssets 가 바꾼다) */
 		},
@@ -676,7 +676,7 @@ App.entry = (function(){
 		save = function(){
 			if(settings.submitting) return;
 			var amount = App.parseAmount(m$.amount.value),
-				categoryId = App.entryForm.checked(ED + '-category'),
+				categoryId = m$.category.value,
 				title = m$.title.value.trim();
 			if(!amount){
 				_error('알림', App.amountError(m$.amount.value));
@@ -717,7 +717,7 @@ App.entry = (function(){
 		/* 저장 성공: 통장 기억, 창 닫기, 목록 새로고침. 새 지출이 예산 80%·100%를 넘기면 저장 안내 대신 경고 */
 		handleSaveResult = function(res){
 			App.result(res, {ok: function(){
-				var warn = settings.editing ? null : App.entryForm.budgetAlert(settings.budgets, App.entryForm.checked(ED + '-category'),
+				var warn = settings.editing ? null : App.entryForm.budgetAlert(settings.budgets, m$.category.value,
 					App.entryForm.checked(ED + '-type'), App.parseAmount(m$.amount.value), m$.date.value, m$.refund.checked);
 				App.entryForm.rememberAccount(m$.account.value);
 				settings.selDay = m$.date.value;   /* 달력은 방금 저장한 날을 보여 준다(기간 밖이면 기본값으로) */
