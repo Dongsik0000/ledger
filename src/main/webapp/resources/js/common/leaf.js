@@ -1,10 +1,9 @@
-/* 잎새 캐릭터 · 그날 처음 열 때 떨어지는 잎 · 프로필 메뉴 닫기.
+/* 잎새 캐릭터 · 페이지를 열 때마다 떨어지는 잎 · 프로필 메뉴 닫기.
    모두 장식이라 실패하거나 저장소를 못 써도 화면 기능에는 영향을 주지 않는다. */
 var App = window.App || {};
 
 (function(){
 	var NS = 'http://www.w3.org/2000/svg',
-		RAIN_KEY = 'ledger.leafRainDate',
 		MOUTH = {happy: 'M57 80 Q66 89 75 80', soso: 'M58 83 L74 83', worried: 'M57 86 Q66 78 75 86'},
 
 		/* SVG 요소 하나 */
@@ -13,12 +12,6 @@ var App = window.App || {};
 			Object.keys(attrs || {}).forEach(function(k){ n.setAttribute(k, attrs[k]); });
 			(kids || []).forEach(function(k){ n.appendChild(k); });
 			return n;
-		},
-
-		/* 오늘 날짜 "YYYY-MM-DD"(브라우저 시간) */
-		today = function(){
-			var d = new Date();
-			return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 		},
 
 		reduced = function(){
@@ -50,20 +43,13 @@ var App = window.App || {};
 		return svg;
 	};
 
-	/* App.leafRain(): 잎이 하늘에서 살랑살랑 떨어진다. 그날 처음 열 때 한 번만, 동작 줄이기 설정이면 생략 */
+	/* App.leafRain(): 잎이 하늘에서 살랑살랑 떨어진다. 페이지를 열 때마다(새로고침·이동 포함), 동작 줄이기 설정이면 생략.
+	   클릭을 막지 않으므로(pointer-events: none) 떨어지는 동안에도 바로 쓸 수 있다 */
 	App.leafRain = function(){
-		var seen;
 		if(reduced() || !document.body.animate) return;
-		try {
-			seen = localStorage.getItem(RAIN_KEY);
-			if(seen === today()) return;
-			localStorage.setItem(RAIN_KEY, today());
-		} catch(e){
-			return;   /* 저장소를 못 쓰면 매번 떨어지지 않도록 아예 생략 */
-		}
 		var layer = document.createElement('div'),
 			W = window.innerWidth, H = window.innerHeight,
-			n = W < 600 ? 14 : 24,
+			n = W < 600 ? 10 : 18,
 			fills = ['var(--leaf)', 'var(--leaf)', 'var(--accent)', 'color-mix(in srgb, var(--leaf) 55%, white)'],
 			left = n, k;
 		layer.className = 'leaf-rain';

@@ -41,8 +41,24 @@ App.settings = (function(){
 			exportPresets: document.getElementById('exportPresets'),  /* CSV 내보내기 기간 빠른 선택 */
 			exportFrom: document.getElementById('exportFrom'),  /* 내보내기 시작일 */
 			exportTo: document.getElementById('exportTo'),  /* 내보내기 종료일 */
-			exportButton: document.getElementById('exportButton')  /* 내보내기 버튼 */
+			exportButton: document.getElementById('exportButton'),  /* 내보내기 버튼 */
+			cycleDialog: document.getElementById('cycleDialog'),  /* 기록 주기 창 */
+			openingDialog: document.getElementById('openingDialog'),  /* 시작 잔액 창 */
+			exportDialog: document.getElementById('exportDialog'),  /* 내보내기 창 */
+			passwordDialog: document.getElementById('passwordDialog'),  /* 비밀번호 변경 창 */
+			dangerDialog: document.getElementById('dangerDialog'),  /* 초기화·탈퇴 창 */
+			/* 목록 선택 막대(c: 카테고리, p: 결제수단) */
+			bulk: {
+				c: {all: document.getElementById('categorySelectAll'), count: document.getElementById('categorySelectCount'),
+					save: document.getElementById('categoryBulkSave'), del: document.getElementById('categoryBulkDelete')},
+				p: {all: document.getElementById('paymentSelectAll'), count: document.getElementById('paymentSelectCount'),
+					save: document.getElementById('paymentBulkSave'), del: document.getElementById('paymentBulkDelete')}
+			}
 		},
+
+		/* 프로필 메뉴의 ?open= 키 → 창 id */
+		OPEN_KEYS = {cycle: 'cycleDialog', opening: 'openingDialog', 'export': 'exportDialog', category: 'categoryDialog',
+			payment: 'paymentDialog', holiday: 'holidayDialog', password: 'passwordDialog', data: 'dangerDialog'},
 
 		settings = {
 			submitting: false,
@@ -52,6 +68,8 @@ App.settings = (function(){
 			data: null,
 			cycleDirty: false,
 			openingDirty: false,
+			/* 선택한 목록 줄("c12"·"p3" → true). 다시 그려도 선택을 유지한다 */
+			selected: {},
 			/* 저장된 설정으로 계산한 이번 주기 {start, end}(내보내기 '이번 주기'에도 쓴다) */
 			cycle: null
 		},
@@ -75,9 +93,19 @@ App.settings = (function(){
 
 		/* 이벤트 연결, 내보내기 기간을 이번 달로 채우고 설정 불러오기 */
 		init = function(){
+			var key = new URLSearchParams(location.search).get('open');
 			bindEvent();
 			applyExportRange('month');
 			load();
+			if(key && OPEN_KEYS[key]){
+				history.replaceState(null, '', location.pathname);   /* 새로고침해도 다시 열리지 않게 */
+				openDialog(document.getElementById(OPEN_KEYS[key]));
+			}
+		},
+
+		/* 창 열기(이미 다른 창이 열려 있으면 겹쳐 열지 않는다) */
+		openDialog = function(dialog){
+			if(dialog && !dialog.open && !document.querySelector('dialog[open]')) dialog.showModal();
 		},
 
 		/* 화면 이벤트 연결 */
@@ -114,6 +142,9 @@ App.settings = (function(){
 			/* 창을 닫으면 추가 칸도 접는다(다음에 열 때 목록부터 보이게) */
 			m$.categoryDialog.addEventListener('close', closeCategoryAdd);
 			m$.paymentDialog.addEventListener('close', closePaymentAdd);
+			/* 창을 닫으면 선택도 푼다(다음에 열 때 깨끗하게) */
+			m$.categoryDialog.addEventListener('close', function(){ clearSelection('c'); });
+			m$.paymentDialog.addEventListener('close', function(){ clearSelection('p'); });
 			App.bindDialog(m$.categoryDialog, function(){
 				return hasDraft('c') || !!(m$.newCategoryName.value.trim() || m$.newCategoryGroup.value.trim());
 			}, function(){
@@ -136,6 +167,47 @@ App.settings = (function(){
 				});
 			});
 			m$.exportButton.addEventListener('click', exportCsv);
+
+			/* 항목 카드 → 그 항목의 창 */
+			document.querySelectorAll('[data-open-dialog]').forEach(function(b){
+				b.addEventListener('click', function(){ openDialog(document.getElementById(b.getAttribute('data-open-dialog'))); });
+			});
+			/* 이 화면에서 프로필 메뉴를 누르면 새로 열지 않고 창만 연다 */
+			document.addEventListener('click', function(e){
+				var link = e.target.closest ? e.target.closest('[data-settings-open]') : null,
+					dialog = link && document.getElementById(OPEN_KEYS[link.getAttribute('data-settings-open')]);
+				if(!dialog) return;
+				e.preventDefault();
+				var menu = link.closest('details');
+				if(menu) menu.removeAttribute('open');
+				openDialog(dialog);
+			});
+			/* 닫기: 저장하지 않은 입력이 있으면 버릴지 먼저 묻고, 버리면 저장된 값으로 되돌린다 */
+			App.bindDialog(m$.cycleDialog, function(){ return settings.cycleDirty; }, function(){
+				settings.cycleDirty = false;
+				if(settings.data) render(settings.data);
+				renderCycle();
+			});
+			App.bindDialog(m$.openingDialog, function(){ return settings.openingDirty; }, function(){
+				settings.openingDirty = false;
+				m$.openingBalance.removeAttribute('aria-invalid');
+				if(settings.data) render(settings.data);
+			});
+			App.bindDialog(m$.exportDialog, function(){ return false; }, function(){});
+			App.bindDialog(m$.passwordDialog, function(){
+				return !!(m$.currentPassword.value || m$.newPassword.value || m$.newPasswordConfirm.value);
+			}, function(){ m$.passwordForm.reset(); });
+			App.bindDialog(m$.dangerDialog, function(){ return !!m$.dangerPassword.value; }, function(){ m$.dangerPassword.value = ''; });
+
+			['c', 'p'].forEach(function(prefix){
+				var b = m$.bulk[prefix];
+				b.all.addEventListener('change', function(){
+					rowsOf(prefix).forEach(function(li){ setSelected(li, b.all.checked); });
+					updateBulk(prefix);
+				});
+				b.save.addEventListener('click', function(){ bulkSave(prefix); });
+				b.del.addEventListener('click', function(){ bulkDelete(prefix); });
+			});
 		},
 
 		/* Date → "2026-09-28"(로컬 날짜) */
@@ -246,6 +318,12 @@ App.settings = (function(){
 			renderList(m$.expenseList, data.categories.filter(function(c){ return c.type === 'EXPENSE'; }), categoryItem, '지출 카테고리가 없어요.');
 			renderList(m$.incomeList, data.categories.filter(function(c){ return c.type === 'INCOME'; }), categoryItem, '수입 카테고리가 없어요.');
 			renderList(m$.paymentList, data.paymentMethods, paymentItem, '결제수단이 없어요.');
+			/* 없어진 줄의 선택은 버리고 선택 막대를 맞춘다 */
+			Object.keys(settings.selected).forEach(function(k){
+				if(!document.querySelector('[data-handle="' + k + '"]')) delete settings.selected[k];
+			});
+			updateBulk('c');
+			updateBulk('p');
 			/* 키보드로 순서를 옮기던 손잡이에 초점을 되돌린다(다시 그리면 요소가 바뀐다) */
 			if(focused){
 				var handle = document.querySelector('[data-handle="' + focused + '"]');
@@ -261,7 +339,7 @@ App.settings = (function(){
 		},
 
 		/* 요청 공통: 중복 전송을 막고, 성공하면 짧게 알린 뒤 다시 불러온다 */
-		/* opts.title 성공 문구, opts.done 성공 후 추가 동작, opts.inUse 95(사용 중) 처리 */
+		/* opts.title 성공 문구, opts.done 성공 후 추가 동작, opts.close 성공하면 먼저 닫을 창, opts.inUse 95(사용 중) 처리 */
 		send = function(u, param, opts){
 			opts = opts || {};
 			if(settings.submitting) return;
@@ -269,6 +347,7 @@ App.settings = (function(){
 			var handlers = {
 				/* 성공: 알리고 추가 동작 뒤 다시 불러오기 */
 				ok: function(){
+					if(opts.close) opts.close.close();
 					App.saved(opts.title);
 					if(opts.done) opts.done();
 					load();
@@ -366,20 +445,6 @@ App.settings = (function(){
 			});
 		},
 
-		/* 삭제 확인 → 사용 중(95)이면 숨기기를 제안 */
-		confirmDelete = function(name, u, id, hide, key){
-			_confirm('삭제할까요?', '‘' + name + '’ 항목을 삭제해요.', function(){
-				send(u, {id: id}, {
-					title: '삭제했어요',
-					done: clearDraft(key),
-					/* 사용 중이면 대신 숨길지 묻는다 */
-					inUse: function(res){
-						_confirm('사용 중인 항목이에요', res.message + '\n대신 숨길까요?', hide);
-					}
-				});
-			});
-		},
-
 		/* 시작 잔액 칸: 앞의 -(음수)와 숫자·쉼표만 서식 정리, 그 밖의 입력은 값을 두고 오류 표시 */
 		signedNumber = function(n){ return (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('ko-KR'); },
 
@@ -411,7 +476,7 @@ App.settings = (function(){
 				return;
 			}
 			send(url.openingSave, {openingBalance: date ? amount : 0, openingDate: date},
-				{title: date ? '저장했어요' : '시작 잔액을 해제했어요', done: function(){ settings.openingDirty = false; }});
+				{title: date ? '저장했어요' : '시작 잔액을 해제했어요', close: m$.openingDialog, done: function(){ settings.openingDirty = false; }});
 		},
 
 		/* 비밀번호 변경은 목록을 다시 그릴 필요가 없어 send() 대신 직접 보낸다 */
@@ -433,6 +498,7 @@ App.settings = (function(){
 			settings.submitting = true;
 			var handlers = {ok: function(){
 				m$.passwordForm.reset();
+				m$.passwordDialog.close();
 				_alert('비밀번호를 바꿨어요', '다음 로그인부터 새 비밀번호를 써 주세요.');
 			}};
 			handlers[App.CODE.LOGIN_BLOCKED] = function(){
@@ -475,7 +541,7 @@ App.settings = (function(){
 		/* 주기 시작일·보정 저장 */
 		saveCycle = function(){
 			send(url.cycleSave, {payDay: m$.payDay.value, payDayAdjust: m$.payDayAdjust.checked},
-				{done: function(){ settings.cycleDirty = false; }});
+				{close: m$.cycleDialog, done: function(){ settings.cycleDirty = false; }});
 		},
 
 		/* 행 입력칸들을 저장 전 입력(drafts)과 연결한다. inputs: {이름: input}, original: 저장된 값 */
@@ -496,11 +562,6 @@ App.settings = (function(){
 					if(changed) settings.drafts[key] = now; else delete settings.drafts[key];
 				});
 			});
-		},
-
-		/* 저장 성공 뒤 그 항목의 작성 중 표시를 지우는 함수 */
-		clearDraft = function(key){
-			return function(){ delete settings.drafts[key]; };
 		},
 
 		/* prefix: 'c' 카테고리, 'p' 결제수단 */
@@ -526,19 +587,15 @@ App.settings = (function(){
 			return App.h('label', {className: 'switch'}, [input, App.h('span', {attrs: {'aria-hidden': 'true'}})]);
 		},
 
-		/* 작은 버튼 */
-		smallButton = function(text, onClick, extraClass){
-			return App.h('button', {
-				type: 'button',
-				className: 'button small' + (extraClass ? ' ' + extraClass : ''),
-				text: text,
-				on: {click: onClick}
-			});
-		},
-
-		/* 목록 한 줄: 손잡이 / 입력칸들 / 표시 스위치 / 저장·삭제. key 는 drafts·초점 복원에 쓰는 "c12"·"p3" */
+		/* 목록 한 줄: 선택 / 손잡이 / 입력칸들 / 표시 스위치. key 는 drafts·선택·초점 복원에 쓰는 "c12"·"p3" */
 		sortItem = function(key, id, name, active, fields, actions){
+			var select = App.h('input', {type: 'checkbox', checked: !!settings.selected[key], attrs: {'aria-label': '‘' + name + '’ 선택'}});
+			select.addEventListener('change', function(){
+				if(select.checked) settings.selected[key] = true; else delete settings.selected[key];
+				updateBulk(key.charAt(0));
+			});
 			return App.h('li', {className: 'sort-item' + (active ? '' : ' is-inactive'), attrs: {'data-id': id, 'data-name': name}}, [
+				App.h('label', {className: 'row-select'}, [select]),
 				App.h('button', {
 					type: 'button',
 					className: 'drag-handle',
@@ -570,22 +627,17 @@ App.settings = (function(){
 			}
 			bindDraft(key, inputs, original);
 
-			return sortItem(key, c.id, c.name, c.active, fields, [
-				switchField(active),
-				smallButton('저장', function(){
-					/* 예산은 지출 카테고리만 보낸다(빈 값 = 예산 없음). 보내지 않으면 서버가 저장된 예산을 그대로 둔다 */
-					var body = {id: c.id, type: c.type, name: name.value, groupName: group.value, active: active.checked};
-					if(expense) body.budget = budget.value;
-					send(url.categorySave, body, {done: clearDraft(key)});
-				}),
-				smallButton('삭제', function(){
-					/* 숨기기는 저장된 원래 값으로(입력칸에서 고치다 만 값까지 저장하지 않게) */
-					confirmDelete(c.name, url.categoryDelete, c.id, function(){
-						send(url.categorySave, {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', active: false},
-							{title: '숨겼어요', done: clearDraft(key)});
-					}, key);
-				}, 'danger')
-			]);
+			return rowOf(sortItem(key, c.id, c.name, c.active, fields, [switchField(active)]), inputs, {
+				key: key, id: c.id, name: c.name, saveUrl: url.categorySave, deleteUrl: url.categoryDelete,
+				/* 예산은 지출 카테고리만 보낸다(빈 값 = 예산 없음). 보내지 않으면 서버가 저장된 예산을 그대로 둔다 */
+				body: function(){
+					var b = {id: c.id, type: c.type, name: name.value, groupName: group.value, active: active.checked};
+					if(expense) b.budget = budget.value;
+					return b;
+				},
+				/* 사용 중이라 지울 수 없으면 저장된 원래 값으로 숨긴다(고치다 만 값까지 저장하지 않게) */
+				hide: {id: c.id, type: c.type, name: c.name, groupName: c.groupName || '', active: false}
+			});
 		},
 
 		/* 결제수단 한 줄(이름·사용 여부·저장·삭제·손잡이) */
@@ -596,19 +648,127 @@ App.settings = (function(){
 
 			bindDraft(key, {name: name, active: active}, {name: p.name, active: !!p.active});
 
-			return sortItem(key, p.id, p.name, p.active, [
-				field('결제수단 이름', name, 'sort-name')
-			], [
-				switchField(active),
-				smallButton('저장', function(){
-					send(url.paymentSave, {id: p.id, name: name.value, active: active.checked}, {done: clearDraft(key)});
-				}),
-				smallButton('삭제', function(){
-					confirmDelete(p.name, url.paymentDelete, p.id, function(){
-						send(url.paymentSave, {id: p.id, name: p.name, active: false}, {title: '숨겼어요', done: clearDraft(key)});
-					}, key);
-				}, 'danger')
-			]);
+			return rowOf(sortItem(key, p.id, p.name, p.active, [field('결제수단 이름', name, 'sort-name')], [switchField(active)]),
+				{name: name, active: active}, {
+					key: key, id: p.id, name: p.name, saveUrl: url.paymentSave, deleteUrl: url.paymentDelete,
+					body: function(){ return {id: p.id, name: name.value, active: active.checked}; },
+					hide: {id: p.id, name: p.name, active: false}
+				});
+		},
+
+		/* 줄에 저장·삭제 정보를 달고, 고치면 그 줄을 저절로 선택한다(drafts 갱신 뒤에 돌도록 bindDraft 다음에 연결) */
+		rowOf = function(li, inputs, row){
+			li._row = row;
+			Object.keys(inputs).forEach(function(k){
+				var el = inputs[k];
+				el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', function(){
+					if(settings.drafts[row.key] && !settings.selected[row.key]){
+						setSelected(li, true);
+						updateBulk(row.key.charAt(0));
+					}
+				});
+			});
+			return li;
+		},
+
+		/* 그 목록의 줄들(c: 지출+수입 카테고리, p: 결제수단) */
+		rowsOf = function(prefix){
+			return prefix === 'c' ? itemsOf(m$.expenseList).concat(itemsOf(m$.incomeList)) : itemsOf(m$.paymentList);
+		},
+
+		/* 줄 선택 켜고 끄기 */
+		setSelected = function(li, on){
+			var box = li.querySelector('.row-select input');
+			if(box) box.checked = on;
+			if(on) settings.selected[li._row.key] = true; else delete settings.selected[li._row.key];
+		},
+
+		/* 그 목록의 선택을 모두 푼다 */
+		clearSelection = function(prefix){
+			rowsOf(prefix).forEach(function(li){ if(li._row) setSelected(li, false); });
+			updateBulk(prefix);
+		},
+
+		/* 선택한 줄들 */
+		selectedRows = function(prefix){
+			return rowsOf(prefix).filter(function(li){ return li._row && settings.selected[li._row.key]; });
+		},
+
+		/* 선택 막대: 개수 · 전체 선택 상태 · 버튼 사용 가능 여부 */
+		updateBulk = function(prefix){
+			var b = m$.bulk[prefix], n = selectedRows(prefix).length, total = rowsOf(prefix).length;
+			b.count.textContent = '선택 ' + n + '개';
+			b.all.checked = total > 0 && n === total;
+			b.all.indeterminate = n > 0 && n < total;
+			b.save.disabled = b.del.disabled = n === 0 || settings.submitting;
+		},
+
+		/* 여러 줄을 하나씩 차례로 보낸다(한꺼번에 저장하는 API가 없다). step(li) 는 그 줄의 결과를 기록하는 Promise */
+		runRows = function(prefix, rows, step, title){
+			settings.submitting = true;
+			updateBulk(prefix);
+			var result = {fails: []};
+			rows.reduce(function(p, li){
+				return p.then(function(){ return step(li, result); });
+			}, Promise.resolve()).then(function(){
+				settings.submitting = false;
+				if(result.fails.length) _error('일부를 처리하지 못했어요', result.fails.join(' / '));
+				else App.saved(title(result));
+				load();
+			});
+		},
+
+		/* 한 요청. 성공이면 결과(res), 실패면 fails 에 이름과 까닭을 남기고 null */
+		post = function(li, u, body, result){
+			var name = '‘' + li._row.name + '’';
+			return App.post(u, body, {onError: function(){}}).then(function(res){
+				return res;
+			}, function(){
+				result.fails.push(name + ' 연결 오류');
+				return null;
+			});
+		},
+
+		/* 그 줄을 처리했으면 작성 중 표시와 선택을 지운다 */
+		settle = function(li){
+			delete settings.drafts[li._row.key];
+			delete settings.selected[li._row.key];
+		},
+
+		/* 선택 저장 */
+		bulkSave = function(prefix){
+			var rows = selectedRows(prefix);
+			if(!rows.length || settings.submitting) return;
+			runRows(prefix, rows, function(li, result){
+				return post(li, li._row.saveUrl, li._row.body(), result).then(function(res){
+					if(!res) return;
+					if(res.code === App.CODE.SUCCESS){ settle(li); result.saved = (result.saved || 0) + 1; }
+					else result.fails.push('‘' + li._row.name + '’ ' + (res.message || '저장하지 못했어요'));
+				});
+			}, function(r){ return r.saved + '개 저장했어요'; });
+		},
+
+		/* 선택 삭제: 거래·고정 항목에 쓰여 지울 수 없는 항목(95)은 대신 숨긴다 */
+		bulkDelete = function(prefix){
+			var rows = selectedRows(prefix);
+			if(!rows.length || settings.submitting) return;
+			_confirm('선택한 ' + rows.length + '개를 삭제할까요?', '거래나 고정 항목에 쓰인 항목은 지우는 대신 숨겨요.', function(){
+				runRows(prefix, rows, function(li, result){
+					var r = li._row;
+					return post(li, r.deleteUrl, {id: r.id}, result).then(function(res){
+						if(!res) return;
+						if(res.code === App.CODE.SUCCESS){ settle(li); result.deleted = (result.deleted || 0) + 1; return; }
+						if(res.code !== App.CODE.IN_USE){ result.fails.push('‘' + r.name + '’ ' + (res.message || '삭제하지 못했어요')); return; }
+						return post(li, r.saveUrl, r.hide, result).then(function(res2){
+							if(!res2) return;
+							if(res2.code === App.CODE.SUCCESS){ settle(li); result.hidden = (result.hidden || 0) + 1; }
+							else result.fails.push('‘' + r.name + '’ ' + (res2.message || '숨기지 못했어요'));
+						});
+					});
+				}, function(r){
+					return [r.deleted ? '삭제 ' + r.deleted + '개' : '', r.hidden ? '숨김 ' + r.hidden + '개' : ''].filter(Boolean).join(' · ');
+				});
+			});
 		},
 
 		/* 카테고리 추가 칸 비우기 */
