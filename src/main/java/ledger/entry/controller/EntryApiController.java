@@ -128,7 +128,7 @@ public class EntryApiController {
         return Response.of(Constants.SUCCESS, data);
     }
 
-    // 통장 필터를 고르면 거래마다 그 통장의 거래 후 잔액(balance, 모르면 null)을 붙인다. 통장 화면과 같은 기간(이번 주기 마지막 날까지)으로 센다.
+    // 통장 필터를 고르면 거래마다 그 통장의 거래 후 잔액(balance, 모르면 null)과 그 상태(balanceState)를 붙인다. 통장 화면과 같은 기간(이번 주기 마지막 날까지)으로 센다.
     // withTransfers(검색어·구분·카테고리·결제수단 필터 없음)면 조회 기간의 이 통장 이체(kind = TRANSFER)도 넣어 은행 앱 거래내역처럼 잔액이 이어지게 한다.
     // 순서는 잔액을 쌓은 순서(seq)의 역순: 날짜 → 기록한 시각
     private List<Map<String, Object>> withBalance(List<Map<String, Object>> rows, long userId, long accountId, boolean isDefault,
@@ -156,6 +156,7 @@ public class EntryApiController {
         for (Map<String, Object> e : rows) {
             Map<String, Object> t = entryTrail.get(((Number) e.get("id")).longValue());
             e.put("balance", t == null ? null : t.get("balance"));
+            e.put("balanceState", t == null ? null : t.get("balanceState"));
             e.put("seq", t == null ? Long.MAX_VALUE : t.get("seq"));   // 목록과 잔액 조회 사이에 들어온 거래는 맨 위(잔액 없음)
         }
         merged.sort(Comparator.comparingLong((Map<String, Object> r) -> ((Number) r.get("seq")).longValue()).reversed());

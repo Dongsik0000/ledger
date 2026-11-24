@@ -211,14 +211,15 @@ App.entryForm = (function(){
 			return (signOf(type, refund) > 0 ? '+' : '−') + App.money(amount);
 		},
 
-		/* 금액 칸. 통장 필터로 조회해 balance 가 있으면(값이 null 이어도) 그 아래에 거래 후 잔액 */
+		/* 거래 후 잔액을 모르는 이유(서버 balanceState) */
+		NO_BALANCE = {AFTER_CYCLE: '이번 주기 뒤', BEFORE_OPENING: '시작 잔액 전'},
+
+		/* 금액 칸. 통장 필터로 조회해 balance 가 있으면(값이 null 이어도) 그 아래에 거래 후 잔액. 통장 기준일 전이라 거꾸로 계산한 값은 "약" */
 		amountCell = function(e, income, text){
 			var children = [text];
 			if('balance' in e){
-				children.push(App.h('small', {
-					text: e.balance === null ? '잔액 —' : '잔액 ' + App.money(e.balance),
-					attrs: e.balance === null ? {title: '통장 기준일 전이거나 이번 주기 뒤라 잔액을 알 수 없어요'} : null
-				}));
+				children.push(App.h('small', {text: e.balance === null ? '잔액 — ' + (NO_BALANCE[e.balanceState] || '')
+					: '잔액 ' + (e.balanceState === 'ESTIMATED' ? '약 ' : '') + App.money(e.balance)}));
 			}
 			return App.h('strong', {className: 'amount ' + (income ? 'income' : 'expense')}, children);
 		},

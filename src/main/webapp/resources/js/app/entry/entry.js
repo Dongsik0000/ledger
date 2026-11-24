@@ -19,6 +19,7 @@ App.entry = (function(){
 			search: document.getElementById('filterSearch'),  /* 조회 버튼 */
 			count: document.getElementById('listCount'),  /* 건수 */
 			totals: document.getElementById('listTotals'),  /* 수입·지출·차이 합계 */
+			balanceNote: document.getElementById('balanceNote'),  /* 거꾸로 계산한 잔액 설명 */
 			truncated: document.getElementById('listTruncated'),  /* 500건까지만 보인다는 안내 */
 			period: document.getElementById('period'),  /* 기간 선택(달력 월·주기·최근 12개월·전체) */
 			monthField: document.getElementById('monthField'),  /* 조회 월 칸(달력 월일 때만) */
@@ -560,6 +561,7 @@ App.entry = (function(){
 				' · 지출 ', App.h('b', {className: 'expense', text: (t.expense ? '−' : '') + App.money(t.expense)}),
 				' · 차이 ', App.h('b', {text: (net > 0 ? '+' : '') + App.money(net)}));
 			m$.truncated.hidden = !data.truncated;
+			m$.balanceNote.hidden = !rows.some(function(r){ return r.balanceState === 'ESTIMATED'; });
 			m$.count.textContent = data.truncated ? t.count + '건 중 ' + entries.length + '건' : entries.length + '건';
 			/* 달력 기간: 달력 월은 그 달, 주기는 서버가 알려 준 주기 */
 			settings.rows = rows;

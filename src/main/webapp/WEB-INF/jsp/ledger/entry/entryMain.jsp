@@ -90,6 +90,7 @@
                 <span id="listCount">—</span>
                 <span id="listTotals" aria-live="polite"></span>
             </div>
+            <p class="form-note" id="balanceNote" hidden>‘약’이 붙은 잔액은 통장 기준일보다 앞선 날이라, 기록된 거래로 거꾸로 계산한 값이에요. 기록하지 않은 거래가 있으면 실제와 다를 수 있어요.</p>
             <p class="form-note" id="listTruncated" hidden>최근 500건까지만 보여요. 검색어나 필터로 좁혀 보세요. 위 합계는 조건에 맞는 전체 거래 기준이에요.</p>
             <%-- 달력 보기(달력 월·주기): 칸 = 그날 수입·지출 합계와 지출 막대. 고른 날의 기록(검색·필터면 조회 결과)은 오른쪽, 휴대폰은 아래. entry.js 가 그린다 --%>
             <div class="cal-wrap" id="entryCalendarWrap" hidden>
