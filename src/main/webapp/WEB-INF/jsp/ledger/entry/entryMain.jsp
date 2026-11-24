@@ -84,12 +84,14 @@
                             <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>조회</button>
                     </div>
             </div></details>
+            <%-- 적용한 조건: 누르면 그 조건만 뺀다 --%>
+            <div class="filter-chips" id="filterChips" role="group" aria-label="적용한 조건" hidden></div>
             <div class="list-heading">
                 <span id="listCount">—</span>
                 <span id="listTotals" aria-live="polite"></span>
             </div>
             <p class="form-note" id="listTruncated" hidden>최근 500건까지만 보여요. 검색어나 필터로 좁혀 보세요. 위 합계는 조건에 맞는 전체 거래 기준이에요.</p>
-            <%-- 달력 보기(달력 월·주기): 칸 = 그날 수입·지출 합계와 지출 막대, 고른 날의 기록은 오른쪽(휴대폰은 아래). entry.js 가 그린다 --%>
+            <%-- 달력 보기(달력 월·주기): 칸 = 그날 수입·지출 합계와 지출 막대. 고른 날의 기록(검색·필터면 조회 결과)은 오른쪽, 휴대폰은 아래. entry.js 가 그린다 --%>
             <div class="cal-wrap" id="entryCalendarWrap" hidden>
                 <div>
                     <div class="cal-grid" id="entryCalendar" role="group" aria-label="날짜별 지출·수입 달력, 방향키로 날짜 이동"></div>
@@ -104,6 +106,7 @@
                             <h2 id="entryDayTitle">—</h2>
                             <p id="entryDaySum" aria-live="polite"></p>
                         </div>
+                        <button type="button" class="button small" id="entryDayAll" hidden>전체 결과</button>
                     </div>
                     <div id="entryDayList"></div>
                     <button type="button" class="button primary full-button" id="entryDayAdd">

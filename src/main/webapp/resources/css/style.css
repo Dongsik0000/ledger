@@ -246,6 +246,9 @@ summary::-webkit-details-marker { display: none; }
 .filter-body { padding: 12px 0 18px; }
 .filter-body .filters { margin-bottom: 0; }
 .filter-body .filter-actions { margin-top: 14px; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 14px; }
+.filter-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 36px; padding: 0 14px; border: 2px solid var(--outline); border-radius: 999px; background: var(--brand-soft); color: var(--brand-deep); font-size: 14px; overflow-wrap: anywhere; }
+.filter-chip span { font-size: 17px; line-height: 1; }
 .optional-fields { border-top: 2px dashed var(--line); padding-top: 2px; }
 .ui-disclosure { margin-top: var(--space-5); border: 2px solid var(--line); border-radius: 18px; background: var(--card); }
 .ui-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 14px 18px; font: 16px var(--font-heading); }
@@ -503,6 +506,8 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
 .cal-cell { position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 84px; padding: 7px 8px; border: 2px solid var(--line); border-radius: 18px; background: var(--card); color: inherit; text-align: left; transition: transform .16s var(--ease-out), box-shadow .16s var(--ease-out); }
 .cal-cell:active { transform: translateY(2px); }
 .cal-cell.out { opacity: .35; }
+.cal-cell.no-match { background: var(--bg); }
+.cal-cell.no-match:not(.today) .cal-d { color: var(--ink-3); }
 .cal-cell[aria-pressed=true] { border-color: var(--brand-strong); box-shadow: 0 4px 0 color-mix(in srgb, var(--brand-strong) 35%, transparent); transform: translateY(-2px); }
 .cal-top { display: flex; justify-content: space-between; align-items: center; }
 .cal-d { font: 16px var(--font-heading); }
@@ -525,6 +530,7 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
 .view-switch button:disabled { opacity: .45; cursor: not-allowed; }
 .day-panel .panel-head { margin-bottom: 8px; }
 .day-panel .full-button { margin-top: 14px; }
+@media (min-width: 1151px) { .day-panel.is-result #entryDayList { max-height: 60vh; overflow-y: auto; } }
 
 /* ---------- 잎새 캐릭터 · 처음 열 때 떨어지는 잎 ---------- */
 .leaf-rain { position: fixed; inset: 0; z-index: 9000; overflow: hidden; pointer-events: none; }
@@ -615,6 +621,7 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
   .field input:not([type=checkbox]):not([type=radio]), .field select, .field textarea, .period-control .field input, .range-fields input { font-size: 16px !important; }
   .field input.amount-input { font-size: 34px !important; }
   .period-control input { width: 140px !important; }
+  .filter-chip { min-height: 44px; }
   .filters { gap: 10px; }
   .filters > :first-child, .filters > :last-child { grid-column: 1 / -1; }
   .transaction { gap: 10px; }

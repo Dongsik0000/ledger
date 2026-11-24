@@ -10,6 +10,8 @@ App.entry = (function(){
 			month: document.getElementById('month'),  /* 조회 월 */
 			keyword: document.getElementById('filterKeyword'),  /* 검색어 */
 			type: document.getElementById('filterType'),  /* 구분 필터 */
+			filterSummary: document.querySelector('.filter-disclosure > summary'),  /* 검색·필터 펼침 제목 */
+			chips: document.getElementById('filterChips'),  /* 적용한 조건 칩 */
 			category: document.getElementById('filterCategory'),  /* 카테고리 필터 */
 			payment: document.getElementById('filterPayment'),  /* 결제수단 필터 */
 			accountFilter: document.getElementById('filterAccount'),  /* 통장 필터 */
@@ -27,6 +29,8 @@ App.entry = (function(){
 			dayTitle: document.getElementById('entryDayTitle'),  /* 고른 날 제목 */
 			daySum: document.getElementById('entryDaySum'),  /* 고른 날 합계 */
 			dayList: document.getElementById('entryDayList'),  /* 고른 날 기록 */
+			dayPanel: document.querySelector('.day-panel'),  /* 고른 날·조회 결과 패널 */
+			dayAll: document.getElementById('entryDayAll'),  /* 고른 날에서 전체 조회 결과로 */
 			dayAdd: document.getElementById('entryDayAdd'),  /* 고른 날에 기록 추가 */
 			dialog: document.getElementById(ED),  /* 거래 추가·수정 창 */
 			heading: document.getElementById(ED + '-heading'),  /* 창 제목 */
@@ -62,6 +66,9 @@ App.entry = (function(){
 			rows: [],                                         /* 마지막으로 받은 목록(달력이 쓴다) */
 			range: null,                                      /* 달력 기간 {from, to} */
 			selDay: '',                                       /* 달력에서 고른 날 */
+			filtered: false,                                  /* 지금 보이는 목록이 검색·필터 결과인지 */
+			dayPicked: false,                                 /* 조회 결과에서 날짜를 골라 그날만 보는지 */
+			reveal: false,                                    /* 조회를 누른 뒤 결과 패널이 화면 밖이면 그곳으로 이동 */
 			calFocus: false,                                  /* 달력을 다시 그린 뒤 고른 칸에 포커스 */
 			dailyRef: 0,                                      /* 지출 막대 기준: 오늘 쓸 수 있는 돈(못 받으면 평균) */
 			newDate: null                                     /* 추가 창에 미리 넣을 날짜(달력에서 연 경우) */
@@ -122,9 +129,13 @@ App.entry = (function(){
 					list();
 				}
 			});
-			m$.search.addEventListener('click', list);
+			m$.search.addEventListener('click', search);
 			m$.keyword.addEventListener('keydown', function(e){
-				if(e.key === 'Enter') list();
+				if(e.key === 'Enter') search();
+			});
+			m$.dayAll.addEventListener('click', function(){
+				settings.dayPicked = false;
+				renderCalendar();
 			});
 			m$.reset.addEventListener('click', function(){
 				m$.keyword.value = '';
@@ -309,6 +320,7 @@ App.entry = (function(){
 		/* 고른 날 바꾸기 */
 		selectDay = function(iso){
 			settings.selDay = iso;
+			settings.dayPicked = true;
 			settings.calFocus = true;
 			saveQuery();
 			renderCalendar();
@@ -316,15 +328,16 @@ App.entry = (function(){
 
 		/* 달력 그리기: 기간을 일요일~토요일 주로 채우고, 기간 밖 칸은 흐리게(고를 수 없음).
 		   칸 오른쪽 아래에 그날 수입(+, 초록)·지출(−, 빨강) 합계(환불·반납은 뺀 값), 그 아래 지출 막대(오늘까지만).
-		   휴대폰 폭은 "1.4만"처럼 줄여 쓰고, 480px 이하는 CSS 가 기호를 숨겨 색과 줄 위치(수입 위 · 지출 아래)로 구분한다 */
+		   검색·필터 결과면 맞는 거래가 없는 날을 가라앉힌다. 휴대폰 폭은 "1.4만"처럼 줄여 쓰고, 480px 이하는 CSS 가 기호를 숨겨 색과 줄 위치(수입 위 · 지출 아래)로 구분한다 */
 		renderCalendar = function(){
 			var r = settings.range;
 			if(!r) return;
-			var today = App.entryForm.today(), spend = {}, income = {}, cells = [], vals, ref, d,
+			var today = App.entryForm.today(), spend = {}, income = {}, hits = {}, cells = [], vals, ref, d,
 				compact = window.matchMedia('(max-width: 768px)').matches,
 				amt = function(n){ return compact ? shortMoney(n) : n.toLocaleString('ko-KR'); },
 				start = shiftDate(r.from, -dowOf(r.from)), end = shiftDate(r.to, 6 - dowOf(r.to));
 			settings.rows.forEach(function(x){
+				hits[x.entryDate] = true;
 				if(x.kind === 'TRANSFER') return;
 				var sum = x.type === 'EXPENSE' ? spend : income;
 				sum[x.entryDate] = (sum[x.entryDate] || 0) + (x.refund ? -x.amount : x.amount);
@@ -340,13 +353,14 @@ App.entry = (function(){
 			for(d = start; d <= end; d = shiftDate(d, 1)){
 				var inRange = d >= r.from && d <= r.to, sp = spend[d] || 0, inc = income[d] || 0,
 					metered = inRange && d <= today && sp > 0, over = metered && sp > ref,
+					miss = inRange && settings.filtered && !hits[d],
 					p = d.split('-'),
-					attrs = {'data-date': d, 'aria-pressed': String(d === settings.selDay),
+					attrs = {'data-date': d, 'aria-pressed': String(d === settings.selDay && (!settings.filtered || settings.dayPicked)),
 						'aria-label': Number(p[1]) + '월 ' + Number(p[2]) + '일' + (sp > 0 ? ', 지출 ' + App.money(sp) : '')
-							+ (inc > 0 ? ', 수입 ' + App.money(inc) : '') + (over ? ', 오늘 쓸 수 있는 돈보다 많이 씀' : '')};
+							+ (inc > 0 ? ', 수입 ' + App.money(inc) : '') + (over ? ', 오늘 쓸 수 있는 돈보다 많이 씀' : '') + (miss ? ', 조건에 맞는 거래 없음' : '')};
 				if(d === today) attrs['aria-current'] = 'date';
 				cells.push(App.h('button', {
-					type: 'button', className: 'cal-cell' + (inRange ? '' : ' out') + (d === today ? ' today' : ''),
+					type: 'button', className: 'cal-cell' + (inRange ? '' : ' out') + (miss ? ' no-match' : '') + (d === today ? ' today' : ''),
 					tabIndex: d === settings.selDay ? 0 : -1, disabled: !inRange, attrs: attrs
 				}, [
 					App.h('span', {className: 'cal-top'}, [App.h('span', {className: 'cal-d', text: String(Number(p[2]))})]),
@@ -366,21 +380,28 @@ App.entry = (function(){
 			}
 		},
 
-		/* 고른 날의 기록(수정은 목록과 같은 창) */
+		/* 옆 패널: 고른 날의 기록(수정은 목록과 같은 창). 검색·필터 결과면 날짜를 고르기 전까지 결과 전체 */
 		renderDay = function(){
-			var d = settings.selDay, p = d.split('-'),
-				rows = settings.rows.filter(function(x){ return x.entryDate === d; }),
-				out = 0, inc = 0;
+			var d = settings.selDay, p = d.split('-'), all = settings.filtered && !settings.dayPicked,
+				rows = all ? settings.rows : settings.rows.filter(function(x){ return x.entryDate === d; }),
+				out = 0, inc = 0, count = 0, empty;
 			rows.forEach(function(x){
 				if(x.kind === 'TRANSFER') return;
+				count++;
 				var v = x.refund ? -x.amount : x.amount;
 				if(x.type === 'EXPENSE') out += v; else inc += v;
 			});
-			m$.dayTitle.textContent = Number(p[1]) + '월 ' + Number(p[2]) + '일 ' + '일월화수목금토'.charAt(dowOf(d)) + '요일';
+			m$.dayPanel.classList.toggle('is-result', all);
+			m$.dayAll.hidden = all || !settings.filtered;
+			m$.dayAdd.hidden = all;
+			empty = all ? ['조건에 맞는 거래가 없어요', '검색어나 필터를 바꾸거나, 위의 조건을 눌러 빼 보세요.']
+				: settings.filtered ? ['이날은 조건에 맞는 거래가 없어요', '전체 결과를 보거나 다른 날을 골라 보세요.']
+				: ['이날은 조용했어요', '아래 버튼으로 이날의 기록을 바로 적을 수 있어요.'];
+			m$.dayTitle.textContent = all ? '조회 결과 ' + count + '건' : Number(p[1]) + '월 ' + Number(p[2]) + '일 ' + '일월화수목금토'.charAt(dowOf(d)) + '요일';
 			m$.daySum.textContent = rows.length ? '지출 ' + App.money(out) + (inc ? ' · 수입 ' + App.money(inc) : '') : '기록 없음';
 			m$.dayList.replaceChildren.apply(m$.dayList, rows.length
 				? App.entryForm.grouped(rows, openEdit)
-				: [App.entryForm.empty('이날은 조용했어요', '아래 버튼으로 이날의 기록을 바로 적을 수 있어요.')]);
+				: [App.entryForm.empty(empty[0], empty[1])]);
 			m$.dayAdd.lastChild.textContent = Number(p[1]) + '월 ' + Number(p[2]) + '일에 기록 추가';
 		},
 
@@ -442,6 +463,44 @@ App.entry = (function(){
 			return m$.keyword.value.trim() || m$.type.value || m$.category.value || m$.payment.value || m$.accountFilter.value;
 		},
 
+		/* 적용한 조건 칩: 누르면 그 조건만 빼고 다시 조회. 칩에 있던 초점은 남은 칩(없으면 펼침 제목)으로 옮긴다 */
+		renderChips = function(){
+			var focused = m$.chips.contains(document.activeElement),
+				picked = function(el){ return el.value ? el.options[el.selectedIndex].text : ''; },
+				category = settings.master.categories.filter(function(c){ return String(c.id) === m$.category.value; })[0],
+				keyword = m$.keyword.value.trim(),
+				chip = function(kind, text, el){
+					return text ? App.h('button', {type: 'button', className: 'filter-chip', attrs: {'aria-label': kind + ' ' + text + ' 조건 빼기'},
+						on: {click: function(){ el.value = ''; list(); }}}, [text, App.h('span', {text: '×', attrs: {'aria-hidden': 'true'}})]) : null;
+				},
+				chips = [
+					chip('검색어', keyword ? '‘' + keyword + '’' : '', m$.keyword),
+					chip('구분', picked(m$.type), m$.type),
+					chip('카테고리', category ? category.name : '', m$.category),
+					chip('결제수단', picked(m$.payment), m$.payment),
+					chip('통장', picked(m$.accountFilter), m$.accountFilter)
+				].filter(Boolean);
+			m$.chips.replaceChildren.apply(m$.chips, chips);
+			m$.chips.hidden = !chips.length;
+			if(focused) (chips[0] || m$.filterSummary).focus({preventScroll: true});
+		},
+
+		/* 조회 버튼·검색어 Enter: 결과 패널이 화면 아래에 있으면(좁은 폭) 그곳까지 내려간다 */
+		search = function(){
+			settings.reveal = true;
+			list();
+		},
+
+		/* 결과 패널이 화면 아래로 벗어나 있으면 보이게 옮긴다 */
+		revealResult = function(){
+			if(!settings.reveal) return;
+			settings.reveal = false;
+			if(!settings.filtered || !calendarShown()) return;
+			if(m$.dayPanel.getBoundingClientRect().top < window.innerHeight * 0.75) return;
+			m$.dayPanel.scrollIntoView({block: 'start',
+				behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+		},
+
 		/* 조회 조건으로 목록 요청 */
 		list = function(){
 			var p = settings.month.split('-'),
@@ -469,9 +528,16 @@ App.entry = (function(){
 				keyword: m$.keyword.value.trim()
 			})
 				.then(function(res){
-					App.result(res, {ok: function(){ render(res.data); }});
+					App.result(res, {ok: function(){
+						settings.filtered = !!filtered();
+						settings.dayPicked = false;
+						renderChips();
+						render(res.data);
+						revealResult();
+					}});
 				})
-				.catch(function(){});
+				.catch(function(){})
+				.then(function(){ settings.reveal = false; });
 		},
 
 		/* 합계·목록 그리기. ?edit= 로 들어왔으면 그 거래의 수정 창을 연다 */
