@@ -5,8 +5,8 @@
 #   docker compose down              중지
 #
 # 호스트 PostgreSQL(127.0.0.1:5432) 에 붙기 위해 host 네트워크를 쓴다. Tomcat 은 127.0.0.1:8081 에만 열리고
-# 외부 요청은 nginx /p3/ 가 받는다 (deploy/nginx-ledger.conf).
-# 비밀값은 /etc/ledger/app.env (deploy/app.env.example 참고).
+# 외부 요청은 nginx /p3/ 가 받는다 (deploy/nginx/ledger.conf).
+# 비밀값은 deploy/app.env (deploy/app.env.example 참고).
 
 name: ledger
 
@@ -18,7 +18,7 @@ services:
     container_name: ledger
     network_mode: host
     env_file:
-      - /etc/ledger/app.env
+      - deploy/app.env
     environment:
       CATALINA_OPTS: -Dtomcat.address=127.0.0.1
     # 힙 512m(Dockerfile -Xmx) + 힙 밖(메타스페이스·스레드·코드 캐시) 여유. 한 앱이 서버 메모리를 다 쓰지 못하게 막는다

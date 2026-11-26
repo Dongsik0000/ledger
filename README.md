@@ -133,19 +133,18 @@ PC 와 휴대폰 브라우저에서 같은 화면으로 씁니다.
 - 무료 시세는 API 요청을 줄이기 위해 서버에서 최대 4시간 재사용하고, 실시간 시세 이용권을 켜면 1분 동안 재사용합니다. 조회에 실패하면 마지막 평가액을 유지하고 화면에 갱신 실패를 표시합니다. 키가 없거나 처음 시세 조회가 실패하면 달러·주식 항목 등록을 막습니다.
 - [Alpha Vantage 무료 키 발급](https://www.alphavantage.co/support/#api-key) 페이지에서 이용 목적과 이메일을 입력해 키를 받습니다. 무료 기본 한도는 하루 25회 요청입니다. 이 앱은 기본적으로 환율·종목별 시세·동일 검색어 결과를 최대 4시간 캐시하지만, 재시작이나 다른 사용자의 조회로 한도를 넘을 수 있습니다.
 - Alpha Vantage 무료 주식 시세는 장중 실시간 시세가 아니라 최근 거래일 기준입니다. 실시간 미국 주식 시세 이용권이 있으면 `LEDGER_MARKET_REALTIME=true`로 설정합니다. 실시간 또는 15분 지연 시세는 제공업체의 유료 이용 조건을 확인해야 합니다.
-- 기존 서버를 올릴 때는 **새 WAR를 배포하기 전에** `db/006_market_valuation.sql`과 `db/007_asset_transfers.sql`을 순서대로 적용하고 `/etc/ledger/app.env`에 `LEDGER_MARKET_API_KEY`를 설정합니다. 키를 저장소에 넣지 않습니다.
+- 기존 서버를 올릴 때는 **새 WAR를 배포하기 전에** `db/006_market_valuation.sql`과 `db/007_asset_transfers.sql`을 순서대로 적용하고 `deploy/app.env`에 `LEDGER_MARKET_API_KEY`를 설정합니다. 키를 저장소에 넣지 않습니다.
 
 <details>
 <summary>서버 배포 (Docker)</summary>
 
 ```bash
-sudo mkdir -p /etc/ledger
-sudo install -m 600 deploy/app.env.example /etc/ledger/app.env   # 값 입력
+install -m 600 deploy/app.env.example deploy/app.env   # 값 입력
 sudo docker compose up -d --build
 ```
 
-- nginx 설정은 `deploy/nginx-ledger.conf`, `deploy/nginx-ledger-limit.conf` 파일 머리말을 따릅니다.
-- 매일 백업은 `deploy/backup.sh` 를 `deploy/ledger-backup.timer`(systemd) 로 실행합니다.
+- nginx 설정은 `deploy/nginx/ledger.conf`, `deploy/nginx/ledger-limit.conf` 파일 머리말을 따릅니다.
+- 매일 백업은 `deploy/backup/backup.sh` 를 `deploy/backup/ledger-backup.timer`(systemd) 로 실행합니다.
 - 운영 이미지는 로그 `INFO`, 가입 코드가 없으면 가입이 막힌 상태로 뜹니다.
 
 </details>

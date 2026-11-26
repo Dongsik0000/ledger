@@ -37,7 +37,7 @@ COPY --from=build /build/target/ledger.war /usr/local/tomcat/webapps/p3.war
 ENV TZ=Asia/Seoul \
     JAVA_OPTS="-Xms256m -Xmx512m -Duser.timezone=Asia/Seoul -Djava.security.egd=file:/dev/./urandom"
 
-# 운영 기본값: 로그 INFO, 가입 코드 없음(= 가입 불가). /etc/ledger/app.env 의 값이 이보다 우선한다
+# 운영 기본값: 로그 INFO, 가입 코드 없음(= 가입 불가). deploy/app.env 의 값이 이보다 우선한다
 ENV LEDGER_LOG_LEVEL=INFO \
     LEDGER_SIGNUP_CODE=""
 
